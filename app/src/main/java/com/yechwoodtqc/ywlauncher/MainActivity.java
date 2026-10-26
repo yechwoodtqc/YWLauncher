@@ -14,7 +14,7 @@ import java.util.*;
 public class MainActivity extends Activity {
     LinearLayout root, list; ArrayList<ResolveInfo> apps = new ArrayList<>();
     int selected = 0; String appliedTheme; int appliedAccent;
-    @Override public void onCreate(Bundle b) { super.onCreate(b); ThemeUtils.apply(this); appliedTheme=getSharedPreferences("launcher",0).getString("theme_mode","dark"); appliedAccent=ThemeUtils.accent(this); build(); loadApps(); postLaunchNotification(); }
+    @Override public void onCreate(Bundle b) { super.onCreate(b); ThemeUtils.apply(this); appliedTheme=getSharedPreferences("launcher",0).getString("theme_mode","system"); appliedAccent=ThemeUtils.accent(this); build(); loadApps(); postLaunchNotification(); }
     void build() {
         root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(8,6,8,6); applyBackground();
         TextView title = new TextView(this); title.setText("YW LAUNCHER"); title.setTextSize(20); title.setTextColor(ThemeUtils.text(this)); title.setPadding(8,8,8,12); root.addView(title);
