@@ -25,7 +25,18 @@ public class WeatherActivity extends Activity {
         updated=new TextView(this);updated.setTextColor(0xffbbbbbb);root.addView(updated);
         ScrollView sc=new ScrollView(this);result=new TextView(this);result.setTextColor(-1);result.setTextSize(16);result.setPadding(4,12,4,12);sc.addView(result);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         location.setText(getPreferences(0).getString("location","Pomona, NY"));result.setText("Enter a location, then press Refresh.");}
+    static final int LOCATION_PERMISSION_REQUEST=71;
     void detectLocation(){
+        if(android.os.Build.VERSION.SDK_INT>=23 && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},LOCATION_PERMISSION_REQUEST); return;
+        }
+        findLastLocation();
+    }
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==LOCATION_PERMISSION_REQUEST){boolean granted=false;for(int g:grantResults)if(g==PackageManager.PERMISSION_GRANTED)granted=true;if(granted)findLastLocation();else Toast.makeText(this,"Location permission denied; enter a location manually.",Toast.LENGTH_LONG).show();}
+    }
+    void findLastLocation(){
         try {LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);Location loc=lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);if(loc==null)loc=lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);if(loc==null){Toast.makeText(this,"No recent location available. Enter a city or ZIP.",Toast.LENGTH_LONG).show();return;}
             new Thread(()->{try{Geocoder g=new Geocoder(this,Locale.US);List<Address>a=g.getFromLocation(loc.getLatitude(),loc.getLongitude(),1);if(a!=null&&!a.isEmpty()){String s=a.get(0).getLocality()+", "+a.get(0).getAdminArea();handler.post(()->location.setText(s));}}catch(Exception ignored){} }).start();
         }catch(SecurityException e){Toast.makeText(this,"Location permission is not granted; enter a location manually.",Toast.LENGTH_LONG).show();}
