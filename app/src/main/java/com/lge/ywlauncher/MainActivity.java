@@ -27,6 +27,8 @@ public class MainActivity extends Activity {
         appliedAccent = ThemeUtils.accent(this);
         build();
         loadApps();
+        // Re-render after the ScrollView is measured so custom row counts fit the screen.
+        scroll.post(() -> { if (!isFinishing()) renderApps(); });
         postLaunchNotification();
     }
 
@@ -181,7 +183,7 @@ public class MainActivity extends Activity {
         if (!grid) {
             currentPage = 0;
             for (ResolveInfo app : apps) {
-                appsArea.addView(createAppItem(app, false),
+                appsArea.addView(createAppItem(app, false, 60),
                     new LinearLayout.LayoutParams(-1, dp(60)));
             }
             return;
@@ -198,6 +200,11 @@ public class MainActivity extends Activity {
         previousPage.setAlpha(currentPage > 0 ? 1.0f : 0.30f);
         nextPage.setAlpha(currentPage + 1 < pageCount ? 1.0f : 0.30f);
 
+        int cellHeightDp = 64;
+        if (scroll.getHeight() > 0) {
+            int availableHeightDp = Math.round(scroll.getHeight() / getResources().getDisplayMetrics().density);
+            cellHeightDp = clamp(availableHeightDp / rows, 36, 64);
+        }
         int first = currentPage * pageSize;
         int end = Math.min(apps.size(), first + pageSize);
         int rowsToShow = Math.min(rows, (end - first + columns - 1) / columns);
@@ -208,13 +215,13 @@ public class MainActivity extends Activity {
             row.setGravity(Gravity.CENTER_VERTICAL);
             for (int col = 0; col < columns; col++) {
                 if (index < end) {
-                    LinearLayout item = createAppItem(apps.get(index++), true);
-                    row.addView(item, new LinearLayout.LayoutParams(0, dp(64), 1));
+                    LinearLayout item = createAppItem(apps.get(index++), true, cellHeightDp);
+                    row.addView(item, new LinearLayout.LayoutParams(0, dp(cellHeightDp), 1));
                 } else {
-                    row.addView(new View(this), new LinearLayout.LayoutParams(0, dp(64), 1));
+                    row.addView(new View(this), new LinearLayout.LayoutParams(0, dp(cellHeightDp), 1));
                 }
             }
-            appsArea.addView(row, new LinearLayout.LayoutParams(-1, dp(64)));
+            appsArea.addView(row, new LinearLayout.LayoutParams(-1, dp(cellHeightDp)));
         }
     }
 
@@ -231,7 +238,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private LinearLayout createAppItem(ResolveInfo app, boolean grid) {
+    private LinearLayout createAppItem(ResolveInfo app, boolean grid, int cellHeightDp) {
         LinearLayout item = new LinearLayout(this);
         item.setGravity(Gravity.CENTER_VERTICAL);
         item.setOrientation(grid ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
@@ -240,7 +247,9 @@ public class MainActivity extends Activity {
         item.setClickable(true);
         item.setBackground(ThemeUtils.focusBackground(this));
 
-        int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", 40), 28, 56);
+        int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", 40), 18, 56);
+        boolean showLabel = !grid || cellHeightDp >= 42;
+        if (grid) iconSize = Math.min(iconSize, Math.max(18, cellHeightDp - (showLabel ? 18 : 4)));
         ImageView icon = new ImageView(this);
         try {
             icon.setImageDrawable(app.loadIcon(getPackageManager()));
@@ -263,11 +272,13 @@ public class MainActivity extends Activity {
         label.setSingleLine(true);
         label.setEllipsize(android.text.TextUtils.TruncateAt.END);
         label.setPadding(dp(2), dp(1), dp(2), dp(1));
+        if (!showLabel) label.setVisibility(View.GONE);
         LinearLayout.LayoutParams labelParams = grid
             ? new LinearLayout.LayoutParams(-1, -2)
             : new LinearLayout.LayoutParams(0, -2, 1);
         item.addView(label, labelParams);
 
+        item.setTag(app.activityInfo.name);
         item.setOnFocusChangeListener((view, focused) -> {
             label.setTextColor(focused ? ThemeUtils.onAccent(this) : ThemeUtils.text(this));
             icon.setAlpha(focused ? 1.0f : 0.95f);
@@ -363,27 +374,22 @@ public class MainActivity extends Activity {
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))) {
-            if (currentPage > 0 && firstFocusedItemInRow()) { changePage(-1); return true; }
+            if (currentPage > 0 && isPageBoundaryItem(true)) { changePage(-1); return true; }
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))) {
-            if (currentPage + 1 < pageCount()) {
-                View focused = getCurrentFocus();
-                if (focused != null && focused.getParent() instanceof ViewGroup) {
-                    ViewGroup row = (ViewGroup) focused.getParent();
-                    if (row.getChildCount() > 0 && row.getChildAt(row.getChildCount() - 1) == focused) {
-                        changePage(1); return true;
-                    }
-                }
-            }
+            if (currentPage + 1 < pageCount() && isPageBoundaryItem(false)) { changePage(1); return true; }
         }
         return super.onKeyDown(keyCode, event);
     }
 
-    private boolean firstFocusedItemInRow() {
+    private boolean isPageBoundaryItem(boolean first) {
         View focused = getCurrentFocus();
-        if (focused == null || !(focused.getParent() instanceof ViewGroup)) return false;
-        ViewGroup row = (ViewGroup) focused.getParent();
-        return row.getChildCount() > 0 && row.getChildAt(0) == focused;
+        if (focused == null || !(focused.getTag() instanceof String)) return false;
+        int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6)
+            * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+        int index = first ? currentPage * size : Math.min(apps.size(), (currentPage + 1) * size) - 1;
+        if (index < 0 || index >= apps.size()) return false;
+        return apps.get(index).activityInfo.name.equals(focused.getTag());
     }
 
     private int pageCount() {
