@@ -89,5 +89,5 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_BACK){return super.onKeyDown(keyCode,event);}
         return super.onKeyDown(keyCode,event);
     }
-    @Override protected void onResume(){super.onResume(); if(root!=null){String mode=getSharedPreferences("launcher",0).getString("theme_mode","dark");int accent=ThemeUtils.accent(this);if(appliedTheme==null||!appliedTheme.equals(mode)||appliedAccent!=accent){recreate();return;}applyBackground();loadApps();postLaunchNotification();}}
+    @Override protected void onResume(){super.onResume(); if(root!=null){String mode=getSharedPreferences("launcher",0).getString("theme_mode","system");int accent=ThemeUtils.accent(this);if(appliedTheme==null||!appliedTheme.equals(mode)||appliedAccent!=accent){recreate();return;}applyBackground();loadApps();postLaunchNotification();}}
 }
