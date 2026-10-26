@@ -111,8 +111,13 @@ public class WeatherActivity extends Activity {
         }catch(Exception e){handler.post(()->{result.setText("Could not load weather.gov forecast. Check your connection and location format.\n\n"+e.getMessage());refresh.setEnabled(true);});}}).start();
     }
     double[] geocode(String q)throws Exception{
-        // Accept "lat,lon" for power users, otherwise use the US Census geocoder for ZIP/address lookup.
-        if(q.matches("-?\\d+(\\.\\d+)?,\\s*-?\\d+(\\.\\d+)?")){String[]p=q.split(",");return new double[]{Double.parseDouble(p[0]),Double.parseDouble(p[1])};}
+        // Accept explicit coordinates and ZIPs, then try address and place-name geocoders.
+        if(q.matches("-?\\d+(\\.\\d+)?,\\s*-?\\d+(\\.\\d+)?")){
+            String[] p=q.split(",");
+            double lat=Double.parseDouble(p[0].trim()), lon=Double.parseDouble(p[1].trim());
+            if(lat < -90 || lat > 90 || lon < -180 || lon > 180) throw new Exception("Coordinates are outside the valid range.");
+            return new double[]{lat,lon};
+        }
         if(q.matches("\\d{5}")) {
             JSONObject zip=getJson("https://api.zippopotam.us/us/"+q);
             JSONArray places=zip.getJSONArray("places");
@@ -120,8 +125,70 @@ public class WeatherActivity extends Activity {
             JSONObject place=places.getJSONObject(0);
             return new double[]{Double.parseDouble(place.getString("latitude")),Double.parseDouble(place.getString("longitude"))};
         }
-        String url="https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="+URLEncoder.encode(q,"UTF-8")+"&benchmark=Public_AR_Current&format=json";
-        JSONObject j=getJson(url);JSONArray m=j.getJSONObject("result").getJSONObject("addressMatches").getJSONArray("matches");if(m.length()==0)throw new Exception("Location not found. Try a ZIP code or full street address.");JSONObject c=m.getJSONObject(0).getJSONObject("coordinates");return new double[]{c.getDouble("y"),c.getDouble("x")};
+
+        // The Census geocoder is good for street addresses, but often cannot resolve city/state alone.
+        try {
+            String url="https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="+URLEncoder.encode(q,"UTF-8")+"&benchmark=Public_AR_Current&format=json";
+            JSONObject j=getJson(url);
+            JSONArray matches=j.getJSONObject("result").getJSONObject("addressMatches").getJSONArray("matches");
+            if(matches.length()>0) {
+                JSONObject coords=matches.getJSONObject(0).getJSONObject("coordinates");
+                return new double[]{coords.getDouble("y"),coords.getDouble("x")};
+            }
+        } catch(Exception ignored) {
+            // Fall through to place-name lookup below.
+        }
+
+        String placeUrl="https://nominatim.openstreetmap.org/search?q="+URLEncoder.encode(q,"UTF-8")+"&format=jsonv2&limit=1&countrycodes=us";
+        JSONArray places=new JSONArray(getText(placeUrl));
+        if(places.length()==0) throw new Exception("Location not found. Try a US ZIP code, city and state, or full address.");
+        JSONObject match=places.getJSONObject(0);
+        double lat=Double.parseDouble(match.getString("lat"));
+        double lon=Double.parseDouble(match.getString("lon"));
+        if(lat < -90 || lat > 90 || lon < -180 || lon > 180) throw new Exception("The location service returned invalid coordinates.");
+        return new double[]{lat,lon};
     }
-    JSONObject getJson(String s)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(s).openConnection();c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("User-Agent","YWLauncher/1.0 (Android weather client)");c.setRequestProperty("Accept","application/geo+json, application/json");try{int code=c.getResponseCode();InputStream in=code>=400?c.getErrorStream():c.getInputStream();if(in==null)throw new IOException("HTTP "+code);ByteArrayOutputStream b=new ByteArrayOutputStream();byte[]buf=new byte[4096];int n;while((n=in.read(buf))>0)b.write(buf,0,n);String body=new String(b.toByteArray(),"UTF-8");if(code>=400)throw new IOException("Server returned HTTP "+code);return new JSONObject(body);}finally{c.disconnect();}}
+
+    JSONObject getJson(String url)throws Exception {
+        return new JSONObject(getText(url));
+    }
+
+    String getText(String url)throws Exception {
+        HttpURLConnection connection=(HttpURLConnection)new URL(url).openConnection();
+        connection.setConnectTimeout(12000);
+        connection.setReadTimeout(12000);
+        connection.setRequestProperty("User-Agent","YWLauncher/1.0 (Android weather and location lookup)");
+        connection.setRequestProperty("Accept","application/geo+json, application/json");
+        try {
+            int code=connection.getResponseCode();
+            InputStream input=code>=400?connection.getErrorStream():connection.getInputStream();
+            if(input==null) throw new IOException("HTTP "+code);
+            ByteArrayOutputStream output=new ByteArrayOutputStream();
+            try {
+                byte[] buffer=new byte[4096];
+                int count;
+                while((count=input.read(buffer))>0) output.write(buffer,0,count);
+            } finally {
+                input.close();
+            }
+            String body=new String(output.toByteArray(),"UTF-8");
+            if(code>=400) throw new IOException("Server returned HTTP "+code);
+            return body;
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    @Override protected void onDestroy() {
+        if(locationTimeout!=null) handler.removeCallbacks(locationTimeout);
+        if(pendingLocationListener!=null) {
+            try {
+                LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);
+                manager.removeUpdates(pendingLocationListener);
+            } catch(SecurityException ignored) {
+            }
+            pendingLocationListener=null;
+        }
+        super.onDestroy();
+    }
 }
