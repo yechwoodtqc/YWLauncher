@@ -203,7 +203,7 @@ public class MainActivity extends Activity {
         int cellHeightDp = 64;
         if (scroll.getHeight() > 0) {
             int availableHeightDp = Math.round(scroll.getHeight() / getResources().getDisplayMetrics().density);
-            cellHeightDp = clamp(availableHeightDp / rows, 36, 64);
+            cellHeightDp = clamp(availableHeightDp / rows, 28, 64);
         }
         int first = currentPage * pageSize;
         int end = Math.min(apps.size(), first + pageSize);
