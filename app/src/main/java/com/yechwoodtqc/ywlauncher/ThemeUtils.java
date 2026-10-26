@@ -12,7 +12,11 @@ import android.widget.Button;
 public final class ThemeUtils {
     private ThemeUtils() {}
     public static boolean isDark(Context context) {
-        return context.getSharedPreferences("launcher",0).getString("theme_mode","dark").equals("dark");
+        String mode=context.getSharedPreferences("launcher",0).getString("theme_mode","system");
+        if("dark".equals(mode)) return true;
+        if("light".equals(mode)) return false;
+        int night=context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return night==android.content.res.Configuration.UI_MODE_NIGHT_YES;
     }
     public static int accent(Context context) {
         return context.getSharedPreferences("launcher",0).getInt("accent_color",Color.rgb(26,115,232));
