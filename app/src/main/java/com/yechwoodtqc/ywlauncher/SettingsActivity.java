@@ -4,37 +4,157 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.*;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.*;
 import android.widget.*;
+import java.io.*;
 import java.util.*;
 
 public class SettingsActivity extends Activity {
-    LinearLayout box; SharedPreferences prefs;
-    @Override public void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("launcher",0);box=new LinearLayout(this);box.setOrientation(1);box.setPadding(12,12,12,12);box.setBackgroundColor(Color.rgb(16,24,32));setContentView(box);TextView h=new TextView(this);h.setText("LAUNCHER SETTINGS");h.setTextColor(-1);h.setTextSize(20);box.addView(h);
-        check("Show launch notification", "notify",true,()->{});check("Show notification status icon","status_icon",false,()->{});
-        item("Choose apps",()->chooseApps());
-        item("Layout: Compact list / large list",()->new AlertDialog.Builder(this).setItems(new String[]{"Compact","Comfortable","Large"},(d,w)->prefs.edit().putInt("row_height",new int[]{48,64,80}[w]).apply()).show());
-        item("Background",()->new AlertDialog.Builder(this).setItems(new String[]{"System wallpaper","Blue","Black"},(d,w)->prefs.edit().putInt("background",w).apply()).show());
-        item("Add date widget",()->new AlertDialog.Builder(this).setMessage("Add the English/Hebrew date widget from your phone's home-screen widget picker. Widget support depends on the installed home app.").setPositiveButton("OK",null).show());
-        item("Export logcat to Downloads",()->exportLogcat());
-        item("Open Weather",()->startActivity(new Intent(this,WeatherActivity.class)));
+    LinearLayout box;
+    SharedPreferences prefs;
+    static final int CREATE_LOG_FILE = 501;
+    String pendingLogcat;
+
+    @Override public void onCreate(Bundle b) {
+        super.onCreate(b);
+        prefs=getSharedPreferences("launcher",0);
+        box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(12,12,12,12);
+        box.setBackgroundColor(Color.rgb(16,24,32)); setContentView(box);
+        TextView h=new TextView(this); h.setText("LAUNCHER SETTINGS"); h.setTextColor(Color.WHITE); h.setTextSize(20); h.setPadding(4,4,4,12); box.addView(h);
+        check("Show launch notification", "notify", true, this::refreshNotification);
+        check("Show notification status icon", "status_icon", false, this::refreshNotification);
+        item("Choose apps", this::chooseApps);
+        item("Reorder apps", this::reorderApps);
+        item("Layout size", () -> new AlertDialog.Builder(this).setTitle("App tile size")
+            .setSingleChoiceItems(new String[]{"Compact","Comfortable","Large"}, currentLayout(), (d,w)->{
+                prefs.edit().putInt("row_height",new int[]{48,64,80}[w]).apply(); d.dismiss();
+            }).setNegativeButton("Cancel",null).show());
+        item("Background", () -> new AlertDialog.Builder(this).setTitle("Background")
+            .setSingleChoiceItems(new String[]{"System wallpaper","Blue","Black"}, prefs.getInt("background",0), (d,w)->{
+                prefs.edit().putInt("background",w).apply(); d.dismiss();
+            }).setNegativeButton("Cancel",null).show());
+        item("Date widget", () -> new AlertDialog.Builder(this)
+            .setMessage("To add the date widget, open the phone's home-screen widget picker and choose “English and Hebrew Date”. Widget support depends on the installed home app.")
+            .setPositiveButton("OK",null).show());
+        item("Export logcat text file", this::exportLogcat);
+        item("Open Weather", () -> startActivity(new Intent(this,WeatherActivity.class)));
     }
-    void check(String label,String key,boolean def,Runnable r){CheckBox c=new CheckBox(this);c.setText(label);c.setTextColor(-1);c.setChecked(prefs.getBoolean(key,def));c.setOnCheckedChangeListener((v,checked)->{prefs.edit().putBoolean(key,checked).apply();r.run();});box.addView(c);}
-    void item(String label,Runnable run){Button b=new Button(this);b.setText(label);b.setOnClickListener(v->run.run());box.addView(b);}
-    void chooseApps(){
-        Intent q=new Intent(Intent.ACTION_MAIN);q.addCategory(Intent.CATEGORY_LAUNCHER);List<ResolveInfo> apps=getPackageManager().queryIntentActivities(q,0);
+
+    int currentLayout() {
+        int v=prefs.getInt("row_height",64);
+        return v<=48?0:(v>=80?2:1);
+    }
+    void refreshNotification() {
+        if(prefs.getBoolean("notify",true)) {
+            Intent i=new Intent(this,MainActivity.class);
+            PendingIntent pi=PendingIntent.getActivity(this,1,i,PendingIntent.FLAG_UPDATE_CURRENT|(android.os.Build.VERSION.SDK_INT>=23?PendingIntent.FLAG_IMMUTABLE:0));
+            if(android.os.Build.VERSION.SDK_INT>=26) {
+                NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+                nm.createNotificationChannel(new NotificationChannel("yw_launcher","Launcher access",NotificationManager.IMPORTANCE_LOW));
+            }
+            Notification.Builder n=android.os.Build.VERSION.SDK_INT>=26?new Notification.Builder(this,"yw_launcher"):new Notification.Builder(this);
+            n.setSmallIcon(prefs.getBoolean("status_icon",false)?android.R.drawable.ic_menu_view:R.drawable.ic_notification_hidden)
+             .setContentTitle("YW Launcher").setContentText("Press to open your app launcher").setContentIntent(pi).setOngoing(true);
+            ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(42,n.build());
+        } else ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).cancel(42);
+    }
+    void check(String label,String key,boolean def,Runnable changed) {
+        CheckBox c=new CheckBox(this); c.setText(label); c.setTextColor(Color.WHITE); c.setChecked(prefs.getBoolean(key,def));
+        c.setOnCheckedChangeListener((v,checked)->{prefs.edit().putBoolean(key,checked).apply();changed.run();}); box.addView(c);
+    }
+    void item(String label,Runnable run) { Button b=new Button(this); b.setText(label); b.setOnClickListener(v->run.run()); box.addView(b); }
+
+    ArrayList<ResolveInfo> queryApps() {
+        Intent q=new Intent(Intent.ACTION_MAIN); q.addCategory(Intent.CATEGORY_LAUNCHER);
+        ArrayList<ResolveInfo> apps=new ArrayList<>(getPackageManager().queryIntentActivities(q,0));
         Collections.sort(apps,(a,b)->String.CASE_INSENSITIVE_ORDER.compare(a.loadLabel(getPackageManager()).toString(),b.loadLabel(getPackageManager()).toString()));
-        Set<String> old=prefs.getStringSet("included",null); boolean[] checks=new boolean[apps.size()];String[] labels=new String[apps.size()];
-        for(int i=0;i<apps.size();i++){ResolveInfo a=apps.get(i);labels[i]=a.loadLabel(getPackageManager()).toString();boolean sys=(a.activityInfo.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM)!=0;checks[i]=old==null?!sys:old.contains(a.activityInfo.packageName);}
-        new AlertDialog.Builder(this).setTitle("Apps to show").setMultiChoiceItems(labels,checks,(d,which,on)->checks[which]=on).setPositiveButton("Save",(d,w)->{Set<String>s=new LinkedHashSet<>();for(int i=0;i<apps.size();i++)if(checks[i])s.add(apps.get(i).activityInfo.packageName);prefs.edit().putStringSet("included",s).apply();new AlertDialog.Builder(this).setMessage("Apps saved. Display order remains alphabetical; manual reordering is not implemented yet.").setPositiveButton("OK",null).show();}).setNegativeButton("Cancel",null).show();
+        return apps;
     }
-    void exportLogcat(){
+    void chooseApps() {
+        ArrayList<ResolveInfo> apps=queryApps();
+        Set<String> old=prefs.getStringSet("included",null);
+        boolean[] checks=new boolean[apps.size()]; String[] labels=new String[apps.size()];
+        for(int i=0;i<apps.size();i++) {
+            ResolveInfo a=apps.get(i); labels[i]=a.loadLabel(getPackageManager()).toString();
+            boolean sys=(a.activityInfo.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM)!=0;
+            checks[i]=old==null?!sys:old.contains(a.activityInfo.packageName);
+        }
+        new AlertDialog.Builder(this).setTitle("Apps to show")
+            .setMultiChoiceItems(labels,checks,(d,which,on)->checks[which]=on)
+            .setPositiveButton("Save",(d,w)->{
+                LinkedHashSet<String> included=new LinkedHashSet<>();
+                for(int i=0;i<apps.size();i++) if(checks[i]) included.add(apps.get(i).activityInfo.packageName);
+                String previous=prefs.getString("ordered_apps","");
+                ArrayList<String> ordered=new ArrayList<>();
+                for(String p:previous.split("\\n")) if(included.contains(p)&&!ordered.contains(p)) ordered.add(p);
+                for(ResolveInfo a:apps) if(included.contains(a.activityInfo.packageName)&&!ordered.contains(a.activityInfo.packageName)) ordered.add(a.activityInfo.packageName);
+                prefs.edit().putStringSet("included",included).putString("ordered_apps",joinLines(ordered)).apply();
+                Toast.makeText(this,"App list saved",Toast.LENGTH_SHORT).show();
+            }).setNegativeButton("Cancel",null).show();
+    }
+
+    void reorderApps() {
+        ArrayList<ResolveInfo> all=queryApps();
+        Set<String> included=prefs.getStringSet("included",null);
+        ArrayList<ResolveInfo> chosen=new ArrayList<>();
+        for(ResolveInfo a:all) {
+            boolean system=(a.activityInfo.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM)!=0;
+            if(included==null ? !system : included.contains(a.activityInfo.packageName)) chosen.add(a);
+        }
+        final Map<String,ResolveInfo> byPackage=new HashMap<>();
+        for(ResolveInfo a:chosen) byPackage.put(a.activityInfo.packageName,a);
+        ArrayList<String> order=new ArrayList<>();
+        String raw=prefs.getString("ordered_apps","");
+        if(raw!=null) for(String p:raw.split("\\n")) if(byPackage.containsKey(p)&&!order.contains(p)) order.add(p);
+        for(ResolveInfo a:chosen) if(!order.contains(a.activityInfo.packageName)) order.add(a.activityInfo.packageName);
+        if(order.isEmpty()) { new AlertDialog.Builder(this).setMessage("No apps are selected. Use Choose apps first.").setPositiveButton("OK",null).show(); return; }
+
+        LinearLayout layout=new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL); layout.setPadding(12,8,12,8);
+        TextView help=new TextView(this); help.setText("Select an app, then move it up or down."); layout.addView(help);
+        ListView list=new ListView(this); ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_list_item_activated_1);
+        for(String p:order) adapter.add(labelFor(byPackage.get(p)));
+        list.setAdapter(adapter); list.setChoiceMode(ListView.CHOICE_MODE_SINGLE); list.setItemChecked(0,true); layout.addView(list,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout controls=new LinearLayout(this);
+        Button up=new Button(this); up.setText("Move up"); Button down=new Button(this); down.setText("Move down");
+        controls.addView(up,new LinearLayout.LayoutParams(0,-2,1)); controls.addView(down,new LinearLayout.LayoutParams(0,-2,1)); layout.addView(controls);
+        final int[] selected={0};
+        list.setOnItemClickListener((parent,view,position,id)->selected[0]=position);
+        up.setOnClickListener(v->{int i=selected[0];if(i>0){Collections.swap(order,i,i-1);selected[0]=i-1;refreshOrderAdapter(adapter,order,byPackage);list.setItemChecked(selected[0],true);}});
+        down.setOnClickListener(v->{int i=selected[0];if(i<order.size()-1){Collections.swap(order,i,i+1);selected[0]=i+1;refreshOrderAdapter(adapter,order,byPackage);list.setItemChecked(selected[0],true);}});
+        new AlertDialog.Builder(this).setTitle("App order").setView(layout)
+            .setPositiveButton("Save",(d,w)->prefs.edit().putString("ordered_apps",joinLines(order)).apply())
+            .setNegativeButton("Cancel",null).show();
+    }
+    String labelFor(ResolveInfo r) { return r==null?"Unknown app":r.loadLabel(getPackageManager()).toString(); }
+    void refreshOrderAdapter(ArrayAdapter<String> adapter,ArrayList<String> order,Map<String,ResolveInfo> map) {
+        adapter.clear(); for(String p:order) adapter.add(labelFor(map.get(p))); adapter.notifyDataSetChanged();
+    }
+    String joinLines(List<String> values) { StringBuilder b=new StringBuilder(); for(String s:values){if(b.length()>0)b.append('\n');b.append(s);}return b.toString(); }
+
+    void exportLogcat() {
         try {
-            
-            Process p=Runtime.getRuntime().exec(new String[]{"logcat","-d","-t","2000"});java.io.BufferedReader br=new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line).append('\n');
-            java.io.File dir=getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS);if(dir==null)dir=getFilesDir();dir.mkdirs();java.io.File f=new java.io.File(dir,"ywlauncher-logcat.txt");java.io.FileOutputStream out=new java.io.FileOutputStream(f);out.write(sb.toString().getBytes("UTF-8"));out.close();
-            new AlertDialog.Builder(this).setMessage("Logcat saved to app Documents storage:\n"+f.getAbsolutePath()).setPositiveButton("OK",null).show();
-        }catch(Exception e){new AlertDialog.Builder(this).setMessage("Could not export logcat: "+e.getMessage()).setPositiveButton("OK",null).show();}
+            Process p=Runtime.getRuntime().exec(new String[]{"logcat","-d","-t","3000"});
+            BufferedReader br=new BufferedReader(new InputStreamReader(p.getInputStream())); StringBuilder sb=new StringBuilder(); String line;
+            while((line=br.readLine())!=null) sb.append(line).append('\n');
+            br.close(); pendingLogcat=sb.toString();
+            Intent create=new Intent(Intent.ACTION_CREATE_DOCUMENT); create.addCategory(Intent.CATEGORY_OPENABLE);
+            create.setType("text/plain"); create.putExtra(Intent.EXTRA_TITLE,"ywlauncher-logcat.txt");
+            startActivityForResult(create,CREATE_LOG_FILE);
+        } catch(Exception e) { showError("Could not collect logcat: "+e.getMessage()); }
     }
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode==CREATE_LOG_FILE && resultCode==RESULT_OK && data!=null && data.getData()!=null) {
+            try {
+                Uri uri=data.getData(); OutputStream out=getContentResolver().openOutputStream(uri);
+                if(out==null) throw new IOException("Could not open selected file");
+                out.write((pendingLogcat==null?"":pendingLogcat).getBytes("UTF-8")); out.close();
+                Toast.makeText(this,"Logcat file saved",Toast.LENGTH_LONG).show();
+            } catch(Exception e) { showError("Could not save logcat: "+e.getMessage()); }
+        }
+        pendingLogcat=null;
+    }
+    void showError(String message) { new AlertDialog.Builder(this).setMessage(message).setPositiveButton("OK",null).show(); }
 }
