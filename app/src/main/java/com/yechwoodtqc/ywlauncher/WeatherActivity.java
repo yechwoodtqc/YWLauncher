@@ -16,7 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class WeatherActivity extends Activity {
-    EditText location; TextView result,updated; Button refresh; Handler handler=new Handler();
+    EditText location; TextView result,updated; Button refresh; Handler handler=new Handler(); LocationListener pendingLocationListener; Runnable locationTimeout;
     @Override public void onCreate(Bundle b){super.onCreate(b);LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(12,12,12,12);root.setBackgroundColor(Color.rgb(16,24,32));setContentView(root);
         TextView title=new TextView(this);title.setText("YW WEATHER · weather.gov");title.setTextColor(-1);title.setTextSize(20);root.addView(title);
         location=new EditText(this);location.setSingleLine(true);location.setHint("ZIP code or city, state");location.setTextColor(-1);location.setHintTextColor(0xffbbbbbb);root.addView(location);
@@ -37,9 +37,68 @@ public class WeatherActivity extends Activity {
         if(requestCode==LOCATION_PERMISSION_REQUEST){boolean granted=false;for(int g:grantResults)if(g==PackageManager.PERMISSION_GRANTED)granted=true;if(granted)findLastLocation();else Toast.makeText(this,"Location permission denied; enter a location manually.",Toast.LENGTH_LONG).show();}
     }
     void findLastLocation(){
-        try {LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);Location loc=lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);if(loc==null)loc=lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);if(loc==null){Toast.makeText(this,"No recent location available. Enter a city or ZIP.",Toast.LENGTH_LONG).show();return;}
-            new Thread(()->{try{Geocoder g=new Geocoder(this,Locale.US);List<Address>a=g.getFromLocation(loc.getLatitude(),loc.getLongitude(),1);if(a!=null&&!a.isEmpty()){String s=a.get(0).getLocality()+", "+a.get(0).getAdminArea();handler.post(()->location.setText(s));}}catch(Exception ignored){} }).start();
-        }catch(SecurityException e){Toast.makeText(this,"Location permission is not granted; enter a location manually.",Toast.LENGTH_LONG).show();}
+        try {
+            LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);
+            Location best=null;
+            for(String provider:lm.getProviders(true)) {
+                try {
+                    Location candidate=lm.getLastKnownLocation(provider);
+                    if(candidate!=null && (best==null || candidate.getTime()>best.getTime())) best=candidate;
+                } catch(IllegalArgumentException ignored) {}
+            }
+            if(best!=null) { resolveLocation(best); return; }
+            List<String> providers=lm.getProviders(true);
+            if(providers.isEmpty()) {
+                Toast.makeText(this,"No location provider is enabled. Enter a city or ZIP.",Toast.LENGTH_LONG).show();
+                return;
+            }
+            Toast.makeText(this,"Finding current location…",Toast.LENGTH_SHORT).show();
+            if(pendingLocationListener!=null) lm.removeUpdates(pendingLocationListener);
+            pendingLocationListener=new LocationListener() {
+                @Override public void onLocationChanged(Location location) {
+                    if(pendingLocationListener==null) return;
+                    lm.removeUpdates(this); pendingLocationListener=null;
+                    if(locationTimeout!=null) handler.removeCallbacks(locationTimeout);
+                    resolveLocation(location);
+                }
+                @Override public void onStatusChanged(String provider,int status,Bundle extras) {}
+                @Override public void onProviderEnabled(String provider) {}
+                @Override public void onProviderDisabled(String provider) {}
+            };
+            for(String provider:providers) {
+                try { lm.requestLocationUpdates(provider,0,0,pendingLocationListener); }
+                catch(IllegalArgumentException ignored) {}
+            }
+            locationTimeout=()->{
+                if(pendingLocationListener!=null) {
+                    try { lm.removeUpdates(pendingLocationListener); } catch(SecurityException ignored) {}
+                    pendingLocationListener=null;
+                    Toast.makeText(this,"Could not get a location fix. Enter a city or ZIP.",Toast.LENGTH_LONG).show();
+                }
+            };
+            handler.postDelayed(locationTimeout,20000);
+        } catch(SecurityException e) {
+            Toast.makeText(this,"Location permission is not granted; enter a location manually.",Toast.LENGTH_LONG).show();
+        }
+    }
+    void resolveLocation(Location loc) {
+        new Thread(()->{
+            try {
+                Geocoder g=new Geocoder(this,Locale.US);
+                List<Address> addresses=g.getFromLocation(loc.getLatitude(),loc.getLongitude(),1);
+                if(addresses!=null&&!addresses.isEmpty()) {
+                    Address a=addresses.get(0);
+                    String city=a.getLocality();
+                    if(city==null || city.trim().isEmpty()) city=a.getSubAdminArea();
+                    String state=a.getAdminArea();
+                    final String place=(city==null?"":city)+(state==null||state.isEmpty()?"":", "+state);
+                    if(!place.trim().isEmpty()) handler.post(()->location.setText(place));
+                    else handler.post(()->Toast.makeText(this,"Location found, but could not resolve its city name.",Toast.LENGTH_LONG).show());
+                } else handler.post(()->Toast.makeText(this,"Location found, but no city name was returned.",Toast.LENGTH_LONG).show());
+            } catch(Exception e) {
+                handler.post(()->Toast.makeText(this,"Could not resolve location name. Enter a city or ZIP.",Toast.LENGTH_LONG).show());
+            }
+        }).start();
     }
     void fetchForecast(){
         String place=location.getText().toString().trim();if(place.isEmpty()){Toast.makeText(this,"Enter a location first",Toast.LENGTH_SHORT).show();return;}
