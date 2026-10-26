@@ -66,8 +66,11 @@ public final class LegacyTlsCompat {
                     try {
                         systemTrust.checkServerTrusted(chain, authType);
                     } catch (CertificateException systemFailure) {
+                        if (!isMissingTrustAnchor(systemFailure)) {
+                            throw systemFailure;
+                        }
                         try {
-                            // This still performs PKIX chain/expiry/signature checks to ISRG Root X1.
+                            // Retry only the missing-trust-anchor case; retain PKIX chain, expiry and signature checks.
                             extraTrust.checkServerTrusted(chain, authType);
                         } catch (CertificateException extraFailure) {
                             extraFailure.addSuppressed(systemFailure);
@@ -91,6 +94,16 @@ public final class LegacyTlsCompat {
             cachedFactory = sslContext.getSocketFactory();
             return cachedFactory;
         }
+    }
+
+    private static boolean isMissingTrustAnchor(Throwable failure) {
+        for (Throwable current = failure; current != null; current = current.getCause()) {
+            String message = current.getMessage();
+            if (message != null && message.contains("Trust anchor for certification path not found")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static X509TrustManager findX509TrustManager(KeyStore store)
