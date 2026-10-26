@@ -87,9 +87,10 @@ public class SettingsActivity extends Activity {
                 LinkedHashSet<String> included=new LinkedHashSet<>();
                 for(int i=0;i<apps.size();i++) if(checks[i]) included.add(apps.get(i).activityInfo.packageName);
                 String previous=prefs.getString("ordered_apps","");
+                Set<String> oldOrder=new LinkedHashSet<>(Arrays.asList(previous.split("\\n")));
                 ArrayList<String> ordered=new ArrayList<>();
-                for(String p:previous.split("\\n")) if(included.contains(p)&&!ordered.contains(p)) ordered.add(p);
-                for(ResolveInfo a:apps) if(included.contains(a.activityInfo.packageName)&&!ordered.contains(a.activityInfo.packageName)) ordered.add(a.activityInfo.packageName);
+                for(ResolveInfo a:apps) if(included.contains(a.activityInfo.packageName)&&oldOrder.contains(a.activityInfo.name)&&!ordered.contains(a.activityInfo.name)) ordered.add(a.activityInfo.name);
+                for(ResolveInfo a:apps) if(included.contains(a.activityInfo.packageName)&&!ordered.contains(a.activityInfo.name)) ordered.add(a.activityInfo.name);
                 prefs.edit().putStringSet("included",included).putString("ordered_apps",joinLines(ordered)).apply();
                 Toast.makeText(this,"App list saved",Toast.LENGTH_SHORT).show();
             }).setNegativeButton("Cancel",null).show();
@@ -104,11 +105,11 @@ public class SettingsActivity extends Activity {
             if(included==null ? !system : included.contains(a.activityInfo.packageName)) chosen.add(a);
         }
         final Map<String,ResolveInfo> byPackage=new HashMap<>();
-        for(ResolveInfo a:chosen) byPackage.put(a.activityInfo.packageName,a);
+        for(ResolveInfo a:chosen) byPackage.put(a.activityInfo.name,a);
         ArrayList<String> order=new ArrayList<>();
         String raw=prefs.getString("ordered_apps","");
         if(raw!=null) for(String p:raw.split("\\n")) if(byPackage.containsKey(p)&&!order.contains(p)) order.add(p);
-        for(ResolveInfo a:chosen) if(!order.contains(a.activityInfo.packageName)) order.add(a.activityInfo.packageName);
+        for(ResolveInfo a:chosen) if(!order.contains(a.activityInfo.name)) order.add(a.activityInfo.name);
         if(order.isEmpty()) { new AlertDialog.Builder(this).setMessage("No apps are selected. Use Choose apps first.").setPositiveButton("OK",null).show(); return; }
 
         LinearLayout layout=new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL); layout.setPadding(12,8,12,8);
