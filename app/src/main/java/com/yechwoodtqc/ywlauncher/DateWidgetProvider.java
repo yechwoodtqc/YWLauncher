@@ -1,5 +1,6 @@
 package com.yechwoodtqc.ywlauncher;
 
+import android.app.PendingIntent;
 import android.appwidget.*;
 import android.content.*;
 import android.widget.*;
