@@ -5,4 +5,10 @@ android {
     compileSdk 34
     defaultConfig { applicationId 'com.lge.ywlauncher'; minSdk 23; targetSdk 28; versionCode 1; versionName '1.0.0' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+
+    lint {
+        // This APK is intended for direct installation on Android 6 flip phones, not Google Play.
+        // Keep targetSdk 28 for the compatibility behavior this legacy device relies on.
+        disable 'ExpiredTargetSdkVersion'
+    }
 }
