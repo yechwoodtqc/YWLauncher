@@ -17,13 +17,13 @@ import java.util.*;
 
 public class WeatherActivity extends Activity {
     EditText location; TextView result,updated; Button refresh; Handler handler=new Handler(); LocationListener pendingLocationListener; Runnable locationTimeout;
-    @Override public void onCreate(Bundle b){super.onCreate(b);LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(12,12,12,12);root.setBackgroundColor(Color.rgb(16,24,32));setContentView(root);
-        TextView title=new TextView(this);title.setText("YW WEATHER · weather.gov");title.setTextColor(-1);title.setTextSize(20);root.addView(title);
-        location=new EditText(this);location.setSingleLine(true);location.setHint("ZIP code or city, state");location.setTextColor(-1);location.setHintTextColor(0xffbbbbbb);root.addView(location);
-        Button detect=new Button(this);detect.setText("Use current location");detect.setOnClickListener(v->detectLocation());root.addView(detect);
-        refresh=new Button(this);refresh.setText("↻  Refresh forecast");refresh.setOnClickListener(v->fetchForecast());root.addView(refresh);
-        updated=new TextView(this);updated.setTextColor(0xffbbbbbb);root.addView(updated);
-        ScrollView sc=new ScrollView(this);result=new TextView(this);result.setTextColor(-1);result.setTextSize(16);result.setPadding(4,12,4,12);sc.addView(result);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+    @Override public void onCreate(Bundle b){super.onCreate(b);ThemeUtils.apply(this);LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(12,12,12,12);root.setBackgroundColor(ThemeUtils.surface(this));setContentView(root);
+        TextView title=new TextView(this);title.setText("YW WEATHER · weather.gov");title.setTextColor(ThemeUtils.text(this));title.setTextSize(20);root.addView(title);
+        location=new EditText(this);location.setSingleLine(true);location.setHint("ZIP code or city, state");location.setTextColor(ThemeUtils.text(this));location.setHintTextColor(ThemeUtils.isDark(this)?0xffbbbbbb:0xff666666);root.addView(location);
+        Button detect=new Button(this);detect.setText("Use current location");ThemeUtils.tint(detect,this);detect.setOnClickListener(v->detectLocation());root.addView(detect);
+        refresh=new Button(this);refresh.setText("↻  Refresh forecast");ThemeUtils.tint(refresh,this);refresh.setOnClickListener(v->fetchForecast());root.addView(refresh);
+        updated=new TextView(this);updated.setTextColor(ThemeUtils.isDark(this)?0xffbbbbbb:0xff555555);root.addView(updated);
+        ScrollView sc=new ScrollView(this);result=new TextView(this);result.setTextColor(ThemeUtils.text(this));result.setTextSize(16);result.setPadding(4,12,4,12);sc.addView(result);root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
         location.setText(getPreferences(0).getString("location","Pomona, NY"));result.setText("Enter a location, then press Refresh.");}
     static final int LOCATION_PERMISSION_REQUEST=71;
     void detectLocation(){
