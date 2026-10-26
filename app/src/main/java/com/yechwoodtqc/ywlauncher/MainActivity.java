@@ -31,7 +31,16 @@ public class MainActivity extends Activity {
         list.removeAllViews(); apps.clear();
         Intent query = new Intent(Intent.ACTION_MAIN); query.addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> found = getPackageManager().queryIntentActivities(query,0);
-        Collections.sort(found,(a,b)->String.CASE_INSENSITIVE_ORDER.compare(a.loadLabel(getPackageManager()).toString(),b.loadLabel(getPackageManager()).toString()));
+        final Map<String,Integer> order = orderedPackageIndex();
+        Collections.sort(found,(a,b)->{
+            Integer ai=order.get(a.activityInfo.packageName), bi=order.get(b.activityInfo.packageName);
+            if(ai!=null || bi!=null) {
+                if(ai==null) return 1;
+                if(bi==null) return -1;
+                int cmp=ai.compareTo(bi); if(cmp!=0) return cmp;
+            }
+            return String.CASE_INSENSITIVE_ORDER.compare(a.loadLabel(getPackageManager()).toString(),b.loadLabel(getPackageManager()).toString());
+        });
         Set<String> chosen = getSharedPreferences("launcher",0).getStringSet("included",null);
         ArrayList<ResolveInfo> visible = new ArrayList<>();
         for (ResolveInfo ri:found) {
@@ -55,6 +64,15 @@ public class MainActivity extends Activity {
         Button all = new Button(this); all.setText("Customize app list and order"); all.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class))); list.addView(all);
         if(list.getChildCount()>0) list.getChildAt(0).requestFocus();
     }
+    Map<String,Integer> orderedPackageIndex() {
+        Map<String,Integer> result=new HashMap<>();
+        String raw=getSharedPreferences("launcher",0).getString("ordered_apps","");
+        if(raw!=null && !raw.isEmpty()) {
+            String[] values=raw.split("\\n");
+            for(int i=0;i<values.length;i++) if(!values[i].trim().isEmpty()&&!result.containsKey(values[i])) result.put(values[i],i);
+        }
+        return result;
+    }
     void postLaunchNotification() {
         if(!getSharedPreferences("launcher",0).getBoolean("notify",true)) return;
         if(android.os.Build.VERSION.SDK_INT>=26) { NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE); nm.createNotificationChannel(new NotificationChannel("yw_launcher","Launcher access",NotificationManager.IMPORTANCE_LOW)); }
@@ -62,7 +80,7 @@ public class MainActivity extends Activity {
         Notification.Builder nb=android.os.Build.VERSION.SDK_INT>=26?new Notification.Builder(this,"yw_launcher"):new Notification.Builder(this);
         nb.setContentTitle("YW Launcher").setContentText("Press to open your app launcher").setContentIntent(pi).setAutoCancel(false).setOngoing(true);
         boolean status=getSharedPreferences("launcher",0).getBoolean("status_icon",false);
-        nb.setSmallIcon(status?android.R.drawable.ic_menu_view:android.R.drawable.stat_notify_more);
+        nb.setSmallIcon(status?android.R.drawable.ic_menu_view:R.drawable.ic_notification_hidden);
         if(!status && android.os.Build.VERSION.SDK_INT>=21) nb.setVisibility(Notification.VISIBILITY_SECRET);
         ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(42,nb.build());
     }
