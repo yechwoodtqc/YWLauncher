@@ -100,18 +100,18 @@ public class SettingsActivity extends Activity {
         for(int i=0;i<apps.size();i++) {
             ResolveInfo a=apps.get(i); labels[i]=a.loadLabel(getPackageManager()).toString();
             boolean sys=(a.activityInfo.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM)!=0;
-            checks[i]=old==null?!sys:old.contains(a.activityInfo.packageName);
+            checks[i]=old==null?!sys:(old.contains(a.activityInfo.name)||old.contains(a.activityInfo.packageName));
         }
         new AlertDialog.Builder(this).setTitle("Apps to show")
             .setMultiChoiceItems(labels,checks,(d,which,on)->checks[which]=on)
             .setPositiveButton("Save",(d,w)->{
                 LinkedHashSet<String> included=new LinkedHashSet<>();
-                for(int i=0;i<apps.size();i++) if(checks[i]) included.add(apps.get(i).activityInfo.packageName);
+                for(int i=0;i<apps.size();i++) if(checks[i]) included.add(apps.get(i).activityInfo.name);
                 String previous=prefs.getString("ordered_apps","");
                 Set<String> oldOrder=new LinkedHashSet<>(Arrays.asList(previous.split("\\n")));
                 ArrayList<String> ordered=new ArrayList<>();
-                for(ResolveInfo a:apps) if(included.contains(a.activityInfo.packageName)&&oldOrder.contains(a.activityInfo.name)&&!ordered.contains(a.activityInfo.name)) ordered.add(a.activityInfo.name);
-                for(ResolveInfo a:apps) if(included.contains(a.activityInfo.packageName)&&!ordered.contains(a.activityInfo.name)) ordered.add(a.activityInfo.name);
+                for(ResolveInfo a:apps) if((included.contains(a.activityInfo.name)||included.contains(a.activityInfo.packageName))&&oldOrder.contains(a.activityInfo.name)&&!ordered.contains(a.activityInfo.name)) ordered.add(a.activityInfo.name);
+                for(ResolveInfo a:apps) if((included.contains(a.activityInfo.name)||included.contains(a.activityInfo.packageName))&&!ordered.contains(a.activityInfo.name)) ordered.add(a.activityInfo.name);
                 prefs.edit().putStringSet("included",included).putString("ordered_apps",joinLines(ordered)).apply();
                 Toast.makeText(this,"App list saved",Toast.LENGTH_SHORT).show();
             }).setNegativeButton("Cancel",null).show();
@@ -123,7 +123,7 @@ public class SettingsActivity extends Activity {
         ArrayList<ResolveInfo> chosen=new ArrayList<>();
         for(ResolveInfo a:all) {
             boolean system=(a.activityInfo.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM)!=0;
-            if(included==null ? !system : included.contains(a.activityInfo.packageName)) chosen.add(a);
+            if(included==null ? !system : (included.contains(a.activityInfo.name)||included.contains(a.activityInfo.packageName))) chosen.add(a);
         }
         final Map<String,ResolveInfo> byPackage=new HashMap<>();
         for(ResolveInfo a:chosen) byPackage.put(a.activityInfo.name,a);
