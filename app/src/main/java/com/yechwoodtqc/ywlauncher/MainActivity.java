@@ -44,9 +44,10 @@ public class MainActivity extends Activity {
         }
         apps.addAll(visible);
         for (ResolveInfo ri:apps) {
-            LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(8,3,8,3); row.setFocusable(true); row.setBackgroundResource(android.R.drawable.list_selector_background);
-            ImageView icon=new ImageView(this); Drawable d=ri.loadIcon(getPackageManager()); icon.setImageDrawable(d); row.addView(icon,new LinearLayout.LayoutParams(48,48));
-            TextView label=new TextView(this); label.setText(ri.loadLabel(getPackageManager())); label.setTextColor(Color.WHITE); label.setTextSize(16); label.setPadding(12,4,4,4); row.addView(label,new LinearLayout.LayoutParams(0,56,1));
+            LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.VERTICAL); row.setGravity(Gravity.CENTER); row.setPadding(4,6,4,6); row.setFocusable(true); row.setClickable(true); row.setBackgroundResource(android.R.drawable.list_selector_background);
+            ImageView icon=new ImageView(this); icon.setImageDrawable(ri.loadIcon(getPackageManager())); row.addView(icon,new LinearLayout.LayoutParams(48,48));
+            TextView label=new TextView(this); label.setText(ri.loadLabel(getPackageManager())); label.setTextColor(Color.WHITE); label.setTextSize(14); label.setGravity(Gravity.CENTER); label.setMaxLines(2); label.setPadding(2,3,2,2); row.addView(label,new LinearLayout.LayoutParams(-1,-2));
+            row.setMinimumHeight(getSharedPreferences("launcher",0).getInt("row_height",64)+48);
             row.setOnClickListener(v->{try { Intent i=new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_LAUNCHER); i.setClassName(ri.activityInfo.packageName,ri.activityInfo.name); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); } catch(Exception e){Toast.makeText(this,"Unable to launch app",Toast.LENGTH_SHORT).show();}});
             row.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(ri.loadLabel(getPackageManager())).setItems(new String[]{"Launch","Uninstall","Hide from launcher"},(dialog,which)->{if(which==0)row.performClick();else if(which==1){if(ri.activityInfo.packageName.equals(getPackageName())){Toast.makeText(this,"Cannot uninstall launcher from itself",Toast.LENGTH_SHORT).show();return;}Intent i=new Intent(Intent.ACTION_DELETE,android.net.Uri.parse("package:"+ri.activityInfo.packageName));startActivity(i);}else{Set<String>s=new HashSet<>(getSharedPreferences("launcher",0).getStringSet("included",new HashSet<String>()));s.remove(ri.activityInfo.packageName);getSharedPreferences("launcher",0).edit().putStringSet("included",s).apply();loadApps();}}).show();return true;});
             list.addView(row);
