@@ -27,6 +27,14 @@ public final class ThemeUtils {
     public static int surface(Context context) {
         return isDark(context)?Color.rgb(16,24,32):Color.rgb(245,247,250);
     }
+    public static Context scaleContext(Context base) {
+        String size=base.getSharedPreferences("launcher",0).getString("display_size","default");
+        float scale="small".equals(size)?0.90f:("large".equals(size)?1.15f:1.0f);
+        if(scale==1.0f) return base;
+        android.content.res.Configuration configuration=new android.content.res.Configuration(base.getResources().getConfiguration());
+        configuration.densityDpi=Math.max(120,Math.round(configuration.densityDpi*scale));
+        return base.createConfigurationContext(configuration);
+    }
     public static void apply(Activity activity) {
         activity.setTheme(isDark(activity)?R.style.AppThemeDark:R.style.AppTheme);
     }
