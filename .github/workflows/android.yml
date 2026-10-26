@@ -25,9 +25,29 @@ jobs:
         with:
           gradle-version: '8.2'
       - name: Build debug APK
-        run: gradle --no-daemon assembleDebug lintDebug
+        run: gradle --no-daemon assembleDebug
+      - name: Run Android lint
+        shell: bash
+        run: |
+          set +e
+          gradle --no-daemon lintDebug
+          status=$?
+          echo "===== LINT TEXT REPORT ====="
+          if [ -f app/build/intermediates/lint_intermediate_text_report/debug/lint-results-debug.txt ]; then
+            cat app/build/intermediates/lint_intermediate_text_report/debug/lint-results-debug.txt
+          elif [ -f app/build/reports/lint-results-debug.txt ]; then
+            cat app/build/reports/lint-results-debug.txt
+          else
+            echo "No lint text report found."
+          fi
+          exit "$status"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: ywlauncher-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          name: ywlauncher-build-diagnostics
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.txt
+            app/build/intermediates/lint_intermediate_text_report/debug/lint-results-debug.txt
+          if-no-files-found: warn
