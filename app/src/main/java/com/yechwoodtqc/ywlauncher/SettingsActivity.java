@@ -19,12 +19,26 @@ public class SettingsActivity extends Activity {
 
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
+        ThemeUtils.apply(this);
         prefs=getSharedPreferences("launcher",0);
         box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(12,12,12,12);
-        box.setBackgroundColor(Color.rgb(16,24,32)); setContentView(box);
-        TextView h=new TextView(this); h.setText("LAUNCHER SETTINGS"); h.setTextColor(Color.WHITE); h.setTextSize(20); h.setPadding(4,4,4,12); box.addView(h);
+        box.setBackgroundColor(ThemeUtils.surface(this)); setContentView(box);
+        TextView h=new TextView(this); h.setText("LAUNCHER SETTINGS"); h.setTextColor(ThemeUtils.text(this)); h.setTextSize(20); h.setPadding(4,4,4,12); box.addView(h);
         check("Show launch notification", "notify", true, this::refreshNotification);
         check("Show notification status icon", "status_icon", false, this::refreshNotification);
+        item("Theme: Light / Dark", () -> new AlertDialog.Builder(this).setTitle("Theme")
+            .setSingleChoiceItems(new String[]{"Dark","Light"}, ThemeUtils.isDark(this)?0:1, (d,w)->{
+                prefs.edit().putString("theme_mode",w==0?"dark":"light").apply(); d.dismiss(); recreate();
+            }).setNegativeButton("Cancel",null).show());
+        item("Accent color", () -> {
+            String[] names={"Blue","Deep Purple","Purple","Teal","Green","Red","Orange","Yellow","Grey","Retro"};
+            int[] colors={Color.rgb(26,115,232),Color.rgb(94,53,177),Color.rgb(123,31,162),Color.rgb(0,150,136),Color.rgb(56,142,60),Color.rgb(211,47,47),Color.rgb(245,124,0),Color.rgb(251,192,45),Color.rgb(117,117,117),Color.rgb(0,230,118)};
+            int current=prefs.getInt("accent_color",Color.rgb(26,115,232)); int selected=0;
+            for(int i=0;i<colors.length;i++) if(colors[i]==current) selected=i;
+            new AlertDialog.Builder(this).setTitle("Accent color").setSingleChoiceItems(names,selected,(d,w)->{
+                prefs.edit().putInt("accent_color",colors[w]).apply(); d.dismiss(); recreate();
+            }).setNegativeButton("Cancel",null).show();
+        });
         item("Choose apps", this::chooseApps);
         item("Reorder apps", this::reorderApps);
         item("Layout size", () -> new AlertDialog.Builder(this).setTitle("App tile size")
@@ -61,10 +75,10 @@ public class SettingsActivity extends Activity {
         } else ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).cancel(42);
     }
     void check(String label,String key,boolean def,Runnable changed) {
-        CheckBox c=new CheckBox(this); c.setText(label); c.setTextColor(Color.WHITE); c.setChecked(prefs.getBoolean(key,def));
+        CheckBox c=new CheckBox(this); c.setText(label); c.setTextColor(ThemeUtils.text(this)); c.setButtonTintList(android.content.res.ColorStateList.valueOf(ThemeUtils.accent(this))); c.setChecked(prefs.getBoolean(key,def));
         c.setOnCheckedChangeListener((v,checked)->{prefs.edit().putBoolean(key,checked).apply();changed.run();}); box.addView(c);
     }
-    void item(String label,Runnable run) { Button b=new Button(this); b.setText(label); b.setOnClickListener(v->run.run()); box.addView(b); }
+    void item(String label,Runnable run) { Button b=new Button(this); b.setText(label); ThemeUtils.tint(b,this); b.setOnClickListener(v->run.run()); box.addView(b); }
 
     ArrayList<ResolveInfo> queryApps() {
         Intent q=new Intent(Intent.ACTION_MAIN); q.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -118,7 +132,7 @@ public class SettingsActivity extends Activity {
         for(String p:order) adapter.add(labelFor(byPackage.get(p)));
         list.setAdapter(adapter); list.setChoiceMode(ListView.CHOICE_MODE_SINGLE); list.setItemChecked(0,true); layout.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout controls=new LinearLayout(this);
-        Button up=new Button(this); up.setText("Move up"); Button down=new Button(this); down.setText("Move down");
+        Button up=new Button(this); up.setText("Move up"); ThemeUtils.tint(up,this); Button down=new Button(this); down.setText("Move down"); ThemeUtils.tint(down,this);
         controls.addView(up,new LinearLayout.LayoutParams(0,-2,1)); controls.addView(down,new LinearLayout.LayoutParams(0,-2,1)); layout.addView(controls);
         final int[] selected={0};
         list.setOnItemClickListener((parent,view,position,id)->selected[0]=position);
