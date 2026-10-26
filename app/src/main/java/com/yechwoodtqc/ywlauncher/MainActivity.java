@@ -13,8 +13,8 @@ import java.util.*;
 
 public class MainActivity extends Activity {
     LinearLayout root, list; ArrayList<ResolveInfo> apps = new ArrayList<>();
-    int selected = 0;
-    @Override public void onCreate(Bundle b) { super.onCreate(b); ThemeUtils.apply(this); build(); loadApps(); postLaunchNotification(); }
+    int selected = 0; String appliedTheme; int appliedAccent;
+    @Override public void onCreate(Bundle b) { super.onCreate(b); ThemeUtils.apply(this); appliedTheme=getSharedPreferences("launcher",0).getString("theme_mode","dark"); appliedAccent=ThemeUtils.accent(this); build(); loadApps(); postLaunchNotification(); }
     void build() {
         root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(8,6,8,6); applyBackground();
         TextView title = new TextView(this); title.setText("YW LAUNCHER"); title.setTextSize(20); title.setTextColor(ThemeUtils.text(this)); title.setPadding(8,8,8,12); root.addView(title);
@@ -89,5 +89,5 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_BACK){return super.onKeyDown(keyCode,event);}
         return super.onKeyDown(keyCode,event);
     }
-    @Override protected void onResume(){super.onResume(); if(root!=null){applyBackground();loadApps();postLaunchNotification();}}
+    @Override protected void onResume(){super.onResume(); if(root!=null){String mode=getSharedPreferences("launcher",0).getString("theme_mode","dark");int accent=ThemeUtils.accent(this);if(appliedTheme==null||!appliedTheme.equals(mode)||appliedAccent!=accent){recreate();return;}applyBackground();loadApps();postLaunchNotification();}}
 }
