@@ -32,7 +32,7 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
-            android:label="Launcher Settings" />
+            android:label="Settings" />
 
         <activity
             android:name=".MainActivity"
@@ -42,13 +42,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
 
-            <!-- Handle assist-key actions by opening the normal launcher UI only. -->
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -57,9 +51,13 @@
                 <action android:name="android.intent.action.VOICE_ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- Legacy/OEM voice-key dispatch used by some Android devices. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MIC_VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VOICE_COMMAND" />
+                <action android:name="com.nuance.android.intent.action.SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

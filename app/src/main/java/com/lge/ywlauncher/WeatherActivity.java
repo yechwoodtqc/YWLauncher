@@ -154,11 +154,15 @@ public class WeatherActivity extends Activity {
     }
 
     String getText(String url)throws Exception {
-        HttpURLConnection connection=(HttpURLConnection)new URL(url).openConnection();
+        java.net.URLConnection opened = new URL(url).openConnection();
+        if (opened instanceof javax.net.ssl.HttpsURLConnection) {
+            LegacyTlsCompat.configure(this, (javax.net.ssl.HttpsURLConnection) opened);
+        }
+        HttpURLConnection connection = (HttpURLConnection) opened;
         connection.setConnectTimeout(12000);
         connection.setReadTimeout(12000);
-        connection.setRequestProperty("User-Agent","YWLauncher/1.0 (Android weather and location lookup)");
-        connection.setRequestProperty("Accept","application/geo+json, application/json");
+        connection.setRequestProperty("User-Agent", "YWLauncher/1.0 (Android weather client)");
+        connection.setRequestProperty("Accept", "application/geo+json, application/json");
         try {
             int code=connection.getResponseCode();
             InputStream input=code>=400?connection.getErrorStream():connection.getInputStream();
