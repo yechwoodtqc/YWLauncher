@@ -21,6 +21,11 @@ public final class ThemeUtils {
     public static int accent(Context context) {
         return context.getSharedPreferences("launcher",0).getInt("accent_color",Color.rgb(26,115,232));
     }
+    public static int onAccent(Context context) {
+        int color=accent(context);
+        int luminance=(Color.red(color)*299+Color.green(color)*587+Color.blue(color)*114)/1000;
+        return luminance>140?Color.BLACK:Color.WHITE;
+    }
     public static int text(Context context) {
         return isDark(context)?Color.WHITE:Color.rgb(28,36,44);
     }
@@ -32,7 +37,7 @@ public final class ThemeUtils {
     }
     public static void tint(Button button, Context context) {
         button.setBackgroundTintList(ColorStateList.valueOf(accent(context)));
-        button.setTextColor(Color.WHITE);
+        button.setTextColor(onAccent(context));
     }
     public static StateListDrawable focusBackground(Context context) {
         int color=accent(context);
