@@ -1,6 +1,7 @@
 package com.yechwoodtqc.ywlauncher;
 
 import android.app.*;
+import android.app.WallpaperManager;
 import android.content.*;
 import android.content.pm.*;
 import android.graphics.Color;
@@ -15,7 +16,7 @@ public class MainActivity extends Activity {
     int selected = 0;
     @Override public void onCreate(Bundle b) { super.onCreate(b); build(); loadApps(); postLaunchNotification(); }
     void build() {
-        root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(12,10,12,10); root.setBackgroundColor(Color.rgb(16,24,32));
+        root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(8,6,8,6); applyBackground();
         TextView title = new TextView(this); title.setText("YW LAUNCHER"); title.setTextSize(20); title.setTextColor(Color.WHITE); title.setPadding(8,8,8,12); root.addView(title);
         LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL);
         addAction(actions,"Weather",v->startActivity(new Intent(this,WeatherActivity.class)));
@@ -24,6 +25,7 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this); list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); scroll.setFillViewport(true); scroll.addView(list); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         setContentView(root);
     }
+    void applyBackground() { int bg=getSharedPreferences("launcher",0).getInt("background",0); if(bg==1)root.setBackgroundColor(Color.rgb(18,48,78)); else if(bg==2)root.setBackgroundColor(Color.BLACK); else { try { Drawable d=WallpaperManager.getInstance(this).getDrawable(); if(d!=null)root.setBackground(d); else root.setBackgroundColor(Color.rgb(16,24,32)); } catch(Exception e){root.setBackgroundColor(Color.rgb(16,24,32));} } }
     void addAction(LinearLayout parent,String text, View.OnClickListener l) { Button b=new Button(this); b.setText(text); b.setTextColor(Color.WHITE); b.setOnClickListener(l); parent.addView(b,new LinearLayout.LayoutParams(0,48,1)); }
     void loadApps() {
         list.removeAllViews(); apps.clear();
@@ -46,7 +48,7 @@ public class MainActivity extends Activity {
             ImageView icon=new ImageView(this); Drawable d=ri.loadIcon(getPackageManager()); icon.setImageDrawable(d); row.addView(icon,new LinearLayout.LayoutParams(48,48));
             TextView label=new TextView(this); label.setText(ri.loadLabel(getPackageManager())); label.setTextColor(Color.WHITE); label.setTextSize(16); label.setPadding(12,4,4,4); row.addView(label,new LinearLayout.LayoutParams(0,56,1));
             row.setOnClickListener(v->{try { Intent i=new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_LAUNCHER); i.setClassName(ri.activityInfo.packageName,ri.activityInfo.name); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); } catch(Exception e){Toast.makeText(this,"Unable to launch app",Toast.LENGTH_SHORT).show();}});
-            row.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(ri.loadLabel(getPackageManager())).setItems(new String[]{"Launch","Uninstall","Hide from launcher"},(dialog,which)->{if(which==0)row.performClick();else if(which==1){Intent i=new Intent(Intent.ACTION_DELETE,android.net.Uri.parse("package:"+ri.activityInfo.packageName));startActivity(i);}else{Set<String>s=new HashSet<>(getSharedPreferences("launcher",0).getStringSet("included",new HashSet<String>()));s.remove(ri.activityInfo.packageName);getSharedPreferences("launcher",0).edit().putStringSet("included",s).apply();loadApps();}}).show();return true;});
+            row.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(ri.loadLabel(getPackageManager())).setItems(new String[]{"Launch","Uninstall","Hide from launcher"},(dialog,which)->{if(which==0)row.performClick();else if(which==1){if(ri.activityInfo.packageName.equals(getPackageName())){Toast.makeText(this,"Cannot uninstall launcher from itself",Toast.LENGTH_SHORT).show();return;}Intent i=new Intent(Intent.ACTION_DELETE,android.net.Uri.parse("package:"+ri.activityInfo.packageName));startActivity(i);}else{Set<String>s=new HashSet<>(getSharedPreferences("launcher",0).getStringSet("included",new HashSet<String>()));s.remove(ri.activityInfo.packageName);getSharedPreferences("launcher",0).edit().putStringSet("included",s).apply();loadApps();}}).show();return true;});
             list.addView(row);
         }
         Button all = new Button(this); all.setText("Customize app list and order"); all.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class))); list.addView(all);
@@ -68,5 +70,5 @@ public class MainActivity extends Activity {
         if(keyCode==KeyEvent.KEYCODE_BACK){return super.onKeyDown(keyCode,event);}
         return super.onKeyDown(keyCode,event);
     }
-    @Override protected void onResume(){super.onResume(); if(root!=null)loadApps();}
+    @Override protected void onResume(){super.onResume(); if(root!=null){applyBackground();loadApps();postLaunchNotification();}}
 }
