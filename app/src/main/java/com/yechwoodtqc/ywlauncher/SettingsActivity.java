@@ -1,4 +1,4 @@
-package com.yechwoodtqc.ywlauncher;
+package com.lge.ywlauncher;
 
 import android.app.*;
 import android.content.*;
