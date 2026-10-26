@@ -28,7 +28,12 @@ public class MainActivity extends Activity {
         build();
         loadApps();
         // Re-render after the ScrollView is measured so custom row counts fit the screen.
-        scroll.post(() -> { if (!isFinishing()) renderApps(); });
+        scroll.post(() -> {
+            if (!isFinishing()) {
+                renderApps();
+                focusFirstApp();
+            }
+        });
         postLaunchNotification();
     }
 
@@ -227,6 +232,23 @@ public class MainActivity extends Activity {
 
     private int clamp(int value, int low, int high) {
         return Math.max(low, Math.min(high, value));
+    }
+
+    private void focusFirstApp() {
+        if (appsArea.getChildCount() == 0) return;
+        View first = appsArea.getChildAt(0);
+        if (first instanceof ViewGroup) {
+            ViewGroup row = (ViewGroup) first;
+            for (int i = 0; i < row.getChildCount(); i++) {
+                View candidate = row.getChildAt(i);
+                if (candidate.getVisibility() == View.VISIBLE && candidate.isFocusable() && candidate.isEnabled()) {
+                    candidate.requestFocus();
+                    return;
+                }
+            }
+        } else if (first.isFocusable() && first.isEnabled()) {
+            first.requestFocus();
+        }
     }
 
     private void changePage(int delta) {
