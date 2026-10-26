@@ -44,7 +44,7 @@ public class WeatherActivity extends Activity {
                 try {
                     Location candidate=lm.getLastKnownLocation(provider);
                     if(candidate!=null && (best==null || candidate.getTime()>best.getTime())) best=candidate;
-                } catch(IllegalArgumentException ignored) {}
+                } catch(IllegalArgumentException | SecurityException ignored) {}
             }
             if(best!=null) { resolveLocation(best); return; }
             List<String> providers=lm.getProviders(true);
@@ -67,7 +67,7 @@ public class WeatherActivity extends Activity {
             };
             for(String provider:providers) {
                 try { lm.requestLocationUpdates(provider,0,0,pendingLocationListener); }
-                catch(IllegalArgumentException ignored) {}
+                catch(IllegalArgumentException | SecurityException ignored) {}
             }
             locationTimeout=()->{
                 if(pendingLocationListener!=null) {
