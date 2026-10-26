@@ -1,11 +1,10 @@
 package com.lge.ywlauncher;
 
 import android.app.*;
-import android.app.WallpaperManager;
 import android.content.*;
 import android.content.pm.*;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.*;
 import android.widget.*;
@@ -25,7 +24,22 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this); list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); scroll.setFillViewport(true); scroll.addView(list); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         setContentView(root);
     }
-    void applyBackground() { int bg=getSharedPreferences("launcher",0).getInt("background",0); if(bg==1)root.setBackgroundColor(Color.rgb(18,48,78)); else if(bg==2)root.setBackgroundColor(Color.BLACK); else { try { Drawable d=WallpaperManager.getInstance(this).getDrawable(); if(d!=null)root.setBackground(d); else root.setBackgroundColor(Color.rgb(16,24,32)); } catch(Exception e){root.setBackgroundColor(Color.rgb(16,24,32));} } }
+    void applyBackground() {
+        int bg=getSharedPreferences("launcher",0).getInt("background",0);
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        if(bg==1) {
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundColor(Color.rgb(18,48,78));
+        } else if(bg==2) {
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundColor(Color.BLACK);
+        } else {
+            // Let Android draw the system wallpaper behind this transparent launcher window.
+            // This avoids calling the privileged WallpaperManager.getDrawable() API.
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundColor(Color.TRANSPARENT);
+        }
+    }
     void addAction(LinearLayout parent,String text, View.OnClickListener l) { Button b=new Button(this); b.setText(text); ThemeUtils.tint(b,this); b.setOnClickListener(l); parent.addView(b,new LinearLayout.LayoutParams(0,48,1)); }
     void loadApps() {
         list.removeAllViews(); apps.clear();
@@ -55,7 +69,8 @@ public class MainActivity extends Activity {
         for (ResolveInfo ri:apps) {
             LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.VERTICAL); row.setGravity(Gravity.CENTER); row.setPadding(4,6,4,6); row.setFocusable(true); row.setClickable(true); row.setBackground(ThemeUtils.focusBackground(this));
             ImageView icon=new ImageView(this); icon.setImageDrawable(ri.loadIcon(getPackageManager())); row.addView(icon,new LinearLayout.LayoutParams(48,48));
-            TextView label=new TextView(this); label.setText(ri.loadLabel(getPackageManager())); label.setTextColor(new android.content.res.ColorStateList(new int[][]{new int[]{android.R.attr.state_focused},new int[]{}},new int[]{ThemeUtils.onAccent(this),ThemeUtils.text(this)})); label.setTextSize(14); label.setGravity(Gravity.CENTER); label.setMaxLines(2); label.setPadding(2,3,2,2); row.addView(label,new LinearLayout.LayoutParams(-1,-2));
+            TextView label=new TextView(this); label.setText(ri.loadLabel(getPackageManager())); label.setTextColor(ThemeUtils.text(this)); label.setTextSize(14); label.setGravity(Gravity.CENTER); label.setMaxLines(2); label.setPadding(2,3,2,2); row.addView(label,new LinearLayout.LayoutParams(-1,-2));
+            row.setOnFocusChangeListener((view,hasFocus)->label.setTextColor(hasFocus?ThemeUtils.onAccent(this):ThemeUtils.text(this)));
             row.setMinimumHeight(getSharedPreferences("launcher",0).getInt("row_height",64)+48);
             row.setOnClickListener(v->{try { Intent i=new Intent(Intent.ACTION_MAIN); i.addCategory(Intent.CATEGORY_LAUNCHER); i.setClassName(ri.activityInfo.packageName,ri.activityInfo.name); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); } catch(Exception e){Toast.makeText(this,"Unable to launch app",Toast.LENGTH_SHORT).show();}});
             row.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(ri.loadLabel(getPackageManager())).setItems(new String[]{"Launch","Uninstall","Hide from launcher"},(dialog,which)->{if(which==0)row.performClick();else if(which==1){if(ri.activityInfo.packageName.equals(getPackageName())){Toast.makeText(this,"Cannot uninstall launcher from itself",Toast.LENGTH_SHORT).show();return;}Intent i=new Intent(Intent.ACTION_DELETE,android.net.Uri.parse("package:"+ri.activityInfo.packageName));startActivity(i);}else{SharedPreferences prefs=getSharedPreferences("launcher",0);Set<String> saved=prefs.getStringSet("included",null);Set<String>s=new HashSet<>();if(saved!=null)s.addAll(saved);else{Intent q=new Intent(Intent.ACTION_MAIN);q.addCategory(Intent.CATEGORY_LAUNCHER);for(ResolveInfo app:getPackageManager().queryIntentActivities(q,0)){boolean system=(app.activityInfo.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM)!=0;if(!system)s.add(app.activityInfo.name);}}s.remove(ri.activityInfo.name);s.remove(ri.activityInfo.packageName);prefs.edit().putStringSet("included",s).apply();loadApps();}}).show();return true;});
