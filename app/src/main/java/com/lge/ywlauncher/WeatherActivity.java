@@ -17,7 +17,7 @@ import java.util.*;
 
 public class WeatherActivity extends Activity {
     EditText location; TextView result,updated; Button refresh; Handler handler=new Handler(); LocationListener pendingLocationListener; Runnable locationTimeout;
-    @Override public void onCreate(Bundle b){super.onCreate(b);ThemeUtils.apply(this);LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(12,12,12,12);root.setBackgroundColor(ThemeUtils.surface(this));setContentView(root);
+    @Override public void onCreate(Bundle b){super.onCreate(b);ThemeUtils.apply(this);LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(12,12,12,12);root.setBackgroundColor(ThemeUtils.surface(this));setContentView(root);
         TextView title=new TextView(this);title.setText("YW WEATHER · weather.gov");title.setTextColor(ThemeUtils.text(this));title.setTextSize(20);root.addView(title);
         location=new EditText(this);location.setSingleLine(true);location.setHint("ZIP code or city, state");location.setTextColor(ThemeUtils.text(this));location.setHintTextColor(ThemeUtils.isDark(this)?0xffbbbbbb:0xff666666);root.addView(location);
         Button detect=new Button(this);detect.setText("Use current location");ThemeUtils.tint(detect,this);detect.setOnClickListener(v->detectLocation());root.addView(detect);
