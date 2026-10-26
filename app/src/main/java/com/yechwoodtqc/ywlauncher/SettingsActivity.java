@@ -26,10 +26,17 @@ public class SettingsActivity extends Activity {
         TextView h=new TextView(this); h.setText("LAUNCHER SETTINGS"); h.setTextColor(ThemeUtils.text(this)); h.setTextSize(20); h.setPadding(4,4,4,12); box.addView(h);
         check("Show launch notification", "notify", true, this::refreshNotification);
         check("Show notification status icon", "status_icon", false, this::refreshNotification);
-        item("Theme: Light / Dark", () -> new AlertDialog.Builder(this).setTitle("Theme")
-            .setSingleChoiceItems(new String[]{"Dark","Light"}, ThemeUtils.isDark(this)?0:1, (d,w)->{
-                prefs.edit().putString("theme_mode",w==0?"dark":"light").apply(); d.dismiss(); recreate();
-            }).setNegativeButton("Cancel",null).show());
+        item("Theme: System / Light / Dark", () -> {
+            String mode=prefs.getString("theme_mode","system");
+            int selected="dark".equals(mode)?2:("light".equals(mode)?1:0);
+            new AlertDialog.Builder(this).setTitle("Theme")
+                .setSingleChoiceItems(new String[]{"System","Light","Dark"},selected,(d,w)->{
+                    String[] modes={"system","light","dark"};
+                    prefs.edit().putString("theme_mode",modes[w]).apply();
+                    d.dismiss();
+                    recreate();
+                }).setNegativeButton("Cancel",null).show();
+        });
         item("Accent color", () -> {
             String[] names={"Blue","Deep Purple","Purple","Teal","Green","Red","Orange","Yellow","Grey","Retro"};
             int[] colors={Color.rgb(26,115,232),Color.rgb(94,53,177),Color.rgb(123,31,162),Color.rgb(0,150,136),Color.rgb(56,142,60),Color.rgb(211,47,47),Color.rgb(245,124,0),Color.rgb(251,192,45),Color.rgb(117,117,117),Color.rgb(0,230,118)};
