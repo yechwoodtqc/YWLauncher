@@ -1,6 +1,8 @@
 package com.yechwoodtqc.ywlauncher;
 
+import android.Manifest;
 import android.app.*;
+import android.content.pm.PackageManager;
 import android.content.*;
 import android.location.*;
 import android.os.*;
@@ -32,7 +34,7 @@ public class WeatherActivity extends Activity {
         String place=location.getText().toString().trim();if(place.isEmpty()){Toast.makeText(this,"Enter a location first",Toast.LENGTH_SHORT).show();return;}
         getPreferences(0).edit().putString("location",place).apply();refresh.setEnabled(false);result.setText("Loading forecast…");
         new Thread(()->{try{
-            double[] ll=geocode(place);String point="https://api.weather.gov/points/"+ll[0]+","+ll[1];JSONObject p=getJson(point);String forecast=p.getJSONObject("properties").getString("forecast");
+            double[] ll=geocode(place);if(ll[0]<-90||ll[0]>90||ll[1]<-180||ll[1]>180)throw new Exception("Invalid latitude/longitude.");String point="https://api.weather.gov/points/"+ll[0]+","+ll[1];JSONObject p=getJson(point);String forecast=p.getJSONObject("properties").getString("forecast");
             JSONObject f=getJson(forecast);JSONArray periods=f.getJSONObject("properties").getJSONArray("periods");StringBuilder sb=new StringBuilder();
             for(int i=0;i<Math.min(8,periods.length());i++){JSONObject x=periods.getJSONObject(i);sb.append(x.getString("name")).append("\n").append(x.optString("temperature","?")).append("° ").append(x.optString("temperatureUnit","F")).append(" · ").append(x.optString("shortForecast","")).append("\n").append("Wind: ").append(x.optString("windSpeed","")).append(" ").append(x.optString("windDirection","")).append("\n\n");}
             String output=sb.toString();handler.post(()->{result.setText(output);updated.setText("Last updated: "+new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.US).format(new Date()));refresh.setEnabled(true);});
@@ -44,5 +46,5 @@ public class WeatherActivity extends Activity {
         String url="https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="+URLEncoder.encode(q,"UTF-8")+"&benchmark=Public_AR_Current&format=json";
         JSONObject j=getJson(url);JSONArray m=j.getJSONObject("result").getJSONObject("addressMatches").getJSONArray("matches");if(m.length()==0)throw new Exception("Location not found. Try a ZIP code or full street address.");JSONObject c=m.getJSONObject(0).getJSONObject("coordinates");return new double[]{c.getDouble("y"),c.getDouble("x")};
     }
-    JSONObject getJson(String s)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(s).openConnection();c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("User-Agent","YWLauncher/1.0 (Android weather client)");c.setRequestProperty("Accept","application/geo+json, application/json");try{InputStream in=c.getInputStream();ByteArrayOutputStream b=new ByteArrayOutputStream();byte[]buf=new byte[4096];int n;while((n=in.read(buf))>0)b.write(buf,0,n);return new JSONObject(new String(b.toByteArray(),"UTF-8"));}finally{c.disconnect();}}
+    JSONObject getJson(String s)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(s).openConnection();c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("User-Agent","YWLauncher/1.0 (Android weather client)");c.setRequestProperty("Accept","application/geo+json, application/json");try{int code=c.getResponseCode();InputStream in=code>=400?c.getErrorStream():c.getInputStream();if(in==null)throw new IOException("HTTP "+code);ByteArrayOutputStream b=new ByteArrayOutputStream();byte[]buf=new byte[4096];int n;while((n=in.read(buf))>0)b.write(buf,0,n);String body=new String(b.toByteArray(),"UTF-8");if(code>=400)throw new IOException("Server returned HTTP "+code);return new JSONObject(body);}finally{c.disconnect();}}
 }
