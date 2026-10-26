@@ -22,7 +22,11 @@ public class SettingsActivity extends Activity {
         ThemeUtils.apply(this);
         prefs=getSharedPreferences("launcher",0);
         box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(12,12,12,12);
-        box.setBackgroundColor(ThemeUtils.surface(this)); setContentView(box);
+        box.setBackgroundColor(ThemeUtils.surface(this));
+        ScrollView settingsScroll=new ScrollView(this);
+        settingsScroll.setFillViewport(true);
+        settingsScroll.addView(box);
+        setContentView(settingsScroll);
         TextView h=new TextView(this); h.setText("LAUNCHER SETTINGS"); h.setTextColor(ThemeUtils.text(this)); h.setTextSize(20); h.setPadding(4,4,4,12); box.addView(h);
         check("Show launch notification", "notify", true, this::refreshNotification);
         check("Show notification status icon", "status_icon", false, this::refreshNotification);
