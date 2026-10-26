@@ -2,17 +2,22 @@
 
 A native Android launcher project targeting Android 6.0 (API 23) and keypad-only LG flip phones.
 
-## Current implementation
-- Standalone launcher activity with focusable D-pad rows and app icons/names.
-- Long-press app actions: launch, uninstall, or hide.
-- App inclusion settings (defaults to excluding system apps) and launcher access notification with boot receiver.
-- Weather activity using the National Weather Service API, manual location lookup, last-updated timestamp, and refresh button.
-- Date home-screen widget provider.
-- Logcat export to the app-specific Documents directory.
-- GitHub Actions workflow builds and uploads a debug APK artifact.
+## Implemented
+- D-pad-focusable launcher rows with app icons above app names.
+- App inclusion controls, with system apps excluded by default.
+- Custom per-activity ordering with Move Up / Move Down controls.
+- Long-press actions to launch, uninstall, or hide an app.
+- Background choices (system wallpaper, blue, or black) and compact/comfortable/large app tiles.
+- Persistent launcher notification, boot receiver, and a visually hidden small icon by default (Android still requires a notification icon resource).
+- Weather screen using the National Weather Service API, ZIP-code lookup, manual location input, current-location detection with provider fallback, refresh, and last-updated time.
+- English/Hebrew date home-screen widget provider.
+- Logcat collection with a system file picker so the user can choose where to save the text file.
+- GitHub Actions workflow configured to build and upload a debug APK artifact named `ywlauncher-debug-apk`.
 
 ## Build
-Run `gradle assembleDebug` with JDK 17 and Android SDK platform 34 installed. GitHub Actions runs the same build and uploads the APK as `ywlauncher-debug-apk`.
+The workflow uses JDK 17, Android SDK platform 34, Gradle 8.2, and runs `gradle --no-daemon assembleDebug`. To build locally, install the Android SDK platform 34 and run `gradle assembleDebug` with JDK 17.
 
-## Device notes
-This is an early build, not yet device-tested on an LG Exalt or LG Classic Flip. Android widgets are hosted by the phone's home app, not inside this app; widget availability therefore depends on the stock home app. Location detection requires runtime location permission and a recent location fix. App list order is currently alphabetical; the manual reorder UI and exact D-PAD Player theme parity still need follow-up work. Logcat access is restricted by Android on production devices, so exported logs may contain only the app-visible portion.
+## Device and build status
+This project has not yet been verified on an LG Exalt or LG Classic Flip. The GitHub connector did not return a workflow run or commit status for the latest commits, so a successful APK build is **not confirmed**. Check the repository's Actions page for the actual run and download the artifact if the build succeeds.
+
+Android widgets are hosted by the phone's home app, not inside this app, so widget availability depends on that home app. The weather.gov service is intended for US forecasts. Location detection needs runtime permission and may fail indoors or when no provider can obtain a fix. Android restricts access to system-wide logcat on production devices, so exported logs may not contain every system message.
