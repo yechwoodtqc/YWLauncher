@@ -1,5 +1,7 @@
 # YWLauncher
 
+**Android application ID:** `com.lge.ywlauncher`
+
 A native Android launcher project targeting Android 6.0 (API 23) and keypad-only LG flip phones.
 
 ## Implemented
