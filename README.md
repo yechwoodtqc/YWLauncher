@@ -3,11 +3,11 @@
 A native Android launcher project targeting Android 6.0 (API 23) and keypad-only LG flip phones.
 
 ## Implemented
-- D-pad-focusable launcher rows with app icons above app names.
+- Selectable Android home launcher with D-pad-focusable rows, app icons above names, and visible focus states.
 - App inclusion controls, with system apps excluded by default.
 - Custom per-activity ordering with Move Up / Move Down controls.
 - Long-press actions to launch, uninstall, or hide an app.
-- Background choices (system wallpaper, blue, or black) and compact/comfortable/large app tiles.
+- Background choices (system wallpaper, blue, or black), compact/comfortable/large app tiles, light/dark themes, and ten accent palettes.
 - Persistent launcher notification, boot receiver, and a visually hidden small icon by default (Android still requires a notification icon resource).
 - Weather screen using the National Weather Service API, ZIP-code lookup, manual location input, current-location detection with provider fallback, refresh, and last-updated time.
 - English/Hebrew date home-screen widget provider.
