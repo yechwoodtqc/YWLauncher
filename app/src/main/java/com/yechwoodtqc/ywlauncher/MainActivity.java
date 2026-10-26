@@ -33,7 +33,7 @@ public class MainActivity extends Activity {
         List<ResolveInfo> found = getPackageManager().queryIntentActivities(query,0);
         final Map<String,Integer> order = orderedPackageIndex();
         Collections.sort(found,(a,b)->{
-            Integer ai=order.get(a.activityInfo.packageName), bi=order.get(b.activityInfo.packageName);
+            Integer ai=order.get(a.activityInfo.name), bi=order.get(b.activityInfo.name);
             if(ai!=null || bi!=null) {
                 if(ai==null) return 1;
                 if(bi==null) return -1;
