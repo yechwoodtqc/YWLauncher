@@ -54,6 +54,13 @@ public class WeatherActivity extends Activity {
     double[] geocode(String q)throws Exception{
         // Accept "lat,lon" for power users, otherwise use the US Census geocoder for ZIP/address lookup.
         if(q.matches("-?\\d+(\\.\\d+)?,\\s*-?\\d+(\\.\\d+)?")){String[]p=q.split(",");return new double[]{Double.parseDouble(p[0]),Double.parseDouble(p[1])};}
+        if(q.matches("\\d{5}")) {
+            JSONObject zip=getJson("https://api.zippopotam.us/us/"+q);
+            JSONArray places=zip.getJSONArray("places");
+            if(places.length()==0) throw new Exception("ZIP code not found.");
+            JSONObject place=places.getJSONObject(0);
+            return new double[]{Double.parseDouble(place.getString("latitude")),Double.parseDouble(place.getString("longitude"))};
+        }
         String url="https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address="+URLEncoder.encode(q,"UTF-8")+"&benchmark=Public_AR_Current&format=json";
         JSONObject j=getJson(url);JSONArray m=j.getJSONObject("result").getJSONObject("addressMatches").getJSONArray("matches");if(m.length()==0)throw new Exception("Location not found. Try a ZIP code or full street address.");JSONObject c=m.getJSONObject(0).getJSONObject("coordinates");return new double[]{c.getDouble("y"),c.getDouble("x")};
     }
