@@ -435,11 +435,9 @@ public class SettingsActivity extends Activity {
         for (String name : order) adapter.add(labelFor(byName.get(name)));
         list.setAdapter(adapter);
         list.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        dialogLayout.addView(list, new LinearLayout.LayoutParams(-1, dp(190)));
-
         LinearLayout controls = new LinearLayout(this);
-        Button up = new Button(this); up.setText("Move up"); ThemeUtils.tint(up, this);
-        Button down = new Button(this); down.setText("Move down"); ThemeUtils.tint(down, this);
+        Button up = new Button(this); up.setText("↑  Move up"); ThemeUtils.tint(up, this); up.setMinimumHeight(dp(48)); up.setTextSize(14);
+        Button down = new Button(this); down.setText("↓  Move down"); ThemeUtils.tint(down, this); down.setMinimumHeight(dp(48)); down.setTextSize(14);
         controls.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
         controls.addView(down, new LinearLayout.LayoutParams(0, -2, 1));
         dialogLayout.addView(controls);
