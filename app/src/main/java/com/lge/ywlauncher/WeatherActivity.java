@@ -65,7 +65,7 @@ public class WeatherActivity extends Activity {
         toolbar.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
 
         refreshButton = new ImageButton(this);
-        refreshButton.setImageResource(android.R.drawable.ic_popup_sync);
+        refreshButton.setImageResource(R.drawable.ic_refresh_modern);
         refreshButton.setColorFilter(ThemeUtils.accent(this));
         refreshButton.setContentDescription("Refresh weather");
         refreshButton.setBackground(ThemeUtils.focusBackground(this));
