@@ -32,6 +32,11 @@ public final class ThemeUtils {
 
     public static int text(Context context) { return isDark(context) ? Color.WHITE : Color.rgb(24, 28, 33); }
     public static int secondaryText(Context context) { return isDark(context) ? Color.rgb(190, 198, 208) : Color.rgb(85, 95, 105); }
+    public static int focusText(Context context) {
+        return context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false)
+            ? text(context) : onAccent(context);
+    }
+
     public static int surface(Context context) { return isDark(context) ? Color.rgb(12, 17, 23) : Color.WHITE; }
     public static int divider(Context context) { return isDark(context) ? Color.rgb(48, 58, 68) : Color.rgb(225, 229, 234); }
 
