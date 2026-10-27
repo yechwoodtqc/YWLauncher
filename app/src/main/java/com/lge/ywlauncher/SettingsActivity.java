@@ -66,14 +66,20 @@ public class SettingsActivity extends Activity {
         addSettingRow("Icon size", iconSizeSummary(), this::chooseIconSize);
         addSettingRow("Background", backgroundSummary(), this::chooseBackground);
         addSettingRow("Theme", themeSummary(), this::chooseTheme);
-        addSettingRow("Accent color", "Change the highlight color used for keypad focus.", this::chooseAccent);
+        addSettingRow("Accent color", "Choose the highlight color.", this::chooseAccent);
+        addSettingRow("Focus highlight", prefs.getBoolean("focus_outline_only", false) ? "Outline only" : "Filled highlight", this::chooseFocusStyle);
 
         section("Apps");
         addSettingRow("Choose apps", "Choose which installed apps appear in the app grid.", this::chooseApps);
         addSettingRow("Reorder apps", "Change the order of app icons.", this::reorderApps);
 
         section("Tools");
-        addSettingRow("Weather", "Location and forecast settings.", () -> startActivity(new Intent(this, WeatherActivity.class)));
+        addSettingRow("Weather location", prefs.getString("weather_location", "Use current location"), () -> {
+            Intent intent = new Intent(this, WeatherActivity.class);
+            intent.putExtra("configure_location", true);
+            startActivity(intent);
+        });
+        addSettingRow("Weather", "Open the forecast.", () -> startActivity(new Intent(this, WeatherActivity.class)));
         addSettingRow("Date widget", "Instructions for adding the date widget from the phone's widget picker.", () ->
             new AlertDialog.Builder(this)
                 .setMessage("To add the date widget, open the phone's home-screen widget picker and choose “English and Hebrew Date”. Widget support depends on the installed home app.")
@@ -203,7 +209,7 @@ public class SettingsActivity extends Activity {
 
     private String backgroundSummary() {
         int value = prefs.getInt("background", 0);
-        return value == 1 ? "Blue" : (value == 2 ? "Black" : "System wallpaper");
+        return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : "System wallpaper"));
     }
 
     private String themeSummary() {
@@ -270,18 +276,63 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseAccent() {
-        String[] names = {"Blue", "Deep Purple", "Purple", "Teal", "Green", "Red", "Orange", "Yellow", "Grey", "Retro"};
-        int[] colors = {Color.rgb(26,115,232), Color.rgb(94,53,177), Color.rgb(123,31,162), Color.rgb(0,150,136),
-            Color.rgb(56,142,60), Color.rgb(211,47,47), Color.rgb(245,124,0), Color.rgb(251,192,45),
-            Color.rgb(117,117,117), Color.rgb(0,230,118)};
-        int current = prefs.getInt("accent_color", Color.rgb(26,115,232));
-        int selected = 0;
-        for (int i = 0; i < colors.length; i++) if (colors[i] == current) selected = i;
-        new AlertDialog.Builder(this).setTitle("Accent color").setSingleChoiceItems(names, selected, (dialog, which) -> {
-            prefs.edit().putInt("accent_color", colors[which]).apply();
-            dialog.dismiss();
-            recreate();
-        }).setNegativeButton("Cancel", null).show();
+        choosePalette("Accent color", "accent_color", Color.rgb(26, 115, 232));
+    }
+
+    private void chooseFocusStyle() {
+        boolean outline = prefs.getBoolean("focus_outline_only", false);
+        new AlertDialog.Builder(this).setTitle("Focus highlight")
+            .setSingleChoiceItems(new String[]{"Filled highlight", "Outline only"}, outline ? 1 : 0, (dialog, which) -> {
+                prefs.edit().putBoolean("focus_outline_only", which == 1).apply();
+                dialog.dismiss();
+                recreate();
+            }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void choosePalette(String title, String key, int defaultColor) {
+        String[] names = {"Blue", "Sky blue", "Indigo", "Deep purple", "Purple", "Pink", "Red", "Orange",
+            "Amber", "Yellow", "Lime", "Green", "Teal", "Cyan", "Slate", "Black", "White"};
+        int[] colors = {0xff1a73e8, 0xff039be5, 0xff3949ab, 0xff5e35b1, 0xff8e24aa, 0xffd81b60,
+            0xffe53935, 0xfff4511e, 0xffffb300, 0xfffdd835, 0xff7cb342, 0xff43a047,
+            0xff00897b, 0xff00acc1, 0xff607d8b, Color.BLACK, Color.WHITE};
+        int current = prefs.getInt(key, defaultColor);
+        LinearLayout choices = new LinearLayout(this);
+        choices.setOrientation(LinearLayout.VERTICAL);
+        ScrollView scroller = new ScrollView(this);
+        scroller.addView(choices);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(scroller)
+            .setNegativeButton("Cancel", null).create();
+        for (int i = 0; i < names.length; i++) {
+            final int color = colors[i];
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(18), dp(8), dp(18), dp(8));
+            View swatch = new View(this);
+            android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+            shape.setColor(color);
+            shape.setCornerRadius(dp(5));
+            shape.setStroke(dp(1), 0xff9aa3ad);
+            swatch.setBackground(shape);
+            row.addView(swatch, new LinearLayout.LayoutParams(dp(28), dp(28)));
+            TextView label = new TextView(this);
+            label.setText(names[i] + (current == color ? "  ✓" : ""));
+            label.setTextColor(ThemeUtils.text(this));
+            label.setTextSize(15);
+            label.setPadding(dp(14), 0, 0, 0);
+            row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+            row.setBackground(ThemeUtils.focusBackground(this));
+            row.setFocusable(true);
+            row.setOnClickListener(v -> {
+                prefs.edit().putInt(key, color).apply();
+                dialog.dismiss();
+                recreate();
+            });
+            choices.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            View line = new View(this);
+            line.setBackgroundColor(ThemeUtils.divider(this));
+            choices.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+        }
+        dialog.show();
     }
 
     private ArrayList<ResolveInfo> queryApps() {
@@ -440,7 +491,7 @@ public class SettingsActivity extends Activity {
         Notification.Builder notification = android.os.Build.VERSION.SDK_INT >= 26
             ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
         boolean showIcon = prefs.getBoolean("status_icon", false);
-        notification.setSmallIcon(showIcon ? android.R.drawable.ic_menu_view : R.drawable.ic_notification_hidden)
+        notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
             .setContentTitle("YW Launcher")
             .setContentText("Press to open your app launcher")
             .setContentIntent(pending)
