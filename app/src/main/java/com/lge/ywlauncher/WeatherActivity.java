@@ -123,7 +123,11 @@ public class WeatherActivity extends Activity {
                 fetchForecast();
             })
             .setNeutralButton("Use current location", null)
-            .setNegativeButton("Cancel", (d, which) -> { if (!prefs().contains("weather_location")) detectLocation(); })
+            .setNegativeButton("Cancel", (d, which) -> {
+                String saved = prefs().getString("weather_location", "");
+                if (saved.trim().isEmpty() || "Use current location".equals(saved)) detectLocation();
+                else { updateLocationTitle(saved); fetchForecast(); }
+            })
             .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
             prefs().edit().putString("weather_location", "Use current location").apply();
