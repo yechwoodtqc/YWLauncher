@@ -247,7 +247,7 @@ public class WeatherActivity extends Activity {
         new Thread(() -> {
             try {
                 double[] coordinates = geocode(place);
-                fetchForecastAt(coordinates[0], coordinates[1]);
+                handler.post(() -> fetchForecastAt(coordinates[0], coordinates[1]));
             } catch (Exception e) {
                 handler.post(() -> {
                     forecastList.removeAllViews();
