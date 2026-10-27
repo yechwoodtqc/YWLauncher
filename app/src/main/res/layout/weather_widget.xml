@@ -1,0 +1,18 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/weatherWidgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="#10243A">
+    <TextView android:id="@+id/weatherWidgetLocation" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Weather location" android:textColor="#BFDFFF" android:textSize="12sp" android:maxLines="1" android:ellipsize="end"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/weatherWidgetIcon" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center"
+            android:text="🌤️" android:textSize="30sp"/>
+        <TextView android:id="@+id/weatherWidgetTemperature" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="—" android:textColor="#FFFFFF" android:textSize="26sp" android:textStyle="bold"/>
+    </LinearLayout>
+    <TextView android:id="@+id/weatherWidgetSummary" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Open YW Weather to load a forecast" android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="2" android:ellipsize="end"/>
+</LinearLayout>
