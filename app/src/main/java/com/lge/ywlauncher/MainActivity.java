@@ -4,6 +4,10 @@ import android.app.*;
 import android.content.*;
 import android.content.pm.*;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.*;
@@ -111,6 +115,24 @@ public class MainActivity extends Activity {
         } else if (background == 3) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(custom);
+        } else if (background == 4) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            boolean applied = false;
+            String imageUri = getSharedPreferences("launcher", 0).getString("custom_background_uri", "");
+            if (imageUri != null && !imageUri.isEmpty()) {
+                try (java.io.InputStream input = getContentResolver().openInputStream(Uri.parse(imageUri))) {
+                    if (input != null) {
+                        Bitmap bitmap = BitmapFactory.decodeStream(input);
+                        if (bitmap != null) {
+                            BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
+                            drawable.setGravity(Gravity.FILL);
+                            root.setBackground(drawable);
+                            applied = true;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (!applied) root.setBackgroundColor(custom);
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
