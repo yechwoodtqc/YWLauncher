@@ -297,7 +297,7 @@ public class MainActivity extends Activity {
         item.setSelected(selectedApps.contains(name));
         item.setOnFocusChangeListener((view, focused) -> {
             boolean selected = selectedApps.contains(name);
-            label.setTextColor(focused || selected ? ThemeUtils.onAccent(this) : ThemeUtils.text(this));
+            label.setTextColor(focused || selected ? ThemeUtils.focusText(this) : ThemeUtils.text(this));
             icon.setAlpha(focused || selected ? 1.0f : 0.94f);
             if (selected) item.setBackground(ThemeUtils.selectedBackground(this));
         });
