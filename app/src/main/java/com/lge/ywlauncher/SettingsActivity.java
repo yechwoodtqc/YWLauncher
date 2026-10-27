@@ -80,9 +80,9 @@ public class SettingsActivity extends Activity {
             startActivity(intent);
         });
         addSettingRow("Weather", "Open the forecast.", () -> startActivity(new Intent(this, WeatherActivity.class)));
-        addSettingRow("Date widget", "Instructions for adding the date widget from the phone's widget picker.", () ->
+        addSettingRow("Widgets", "Date and weather widgets for the phone home screen.", () ->
             new AlertDialog.Builder(this)
-                .setMessage("To add the date widget, open the phone's home-screen widget picker and choose “English and Hebrew Date”. Widget support depends on the installed home app.")
+                .setMessage("YW Launcher provides English/Hebrew Date and Weather widgets. To add one, open the phone's existing home-screen widget picker and choose “English and Hebrew Date” or “YW Weather”. These widgets appear on the phone's current home app; YW Launcher itself remains a regular app, not the default Home app.")
                 .setPositiveButton("OK", null).show());
         addSettingRow("Export logcat", "Save recent Android log messages to a text file.", this::exportLogcat);
     }
