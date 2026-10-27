@@ -142,8 +142,8 @@ public class SettingsActivity extends Activity {
         row.addView(chevron, new LinearLayout.LayoutParams(dp(24), -1));
 
         row.setOnFocusChangeListener((view, focused) -> {
-            int primary = focused ? ThemeUtils.onAccent(this) : ThemeUtils.text(this);
-            int secondary = focused ? ThemeUtils.onAccent(this) : ThemeUtils.secondaryText(this);
+            int primary = focused ? ThemeUtils.focusText(this) : ThemeUtils.text(this);
+            int secondary = focused ? ThemeUtils.focusText(this) : ThemeUtils.secondaryText(this);
             title.setTextColor(primary);
             summary.setTextColor(secondary);
             chevron.setTextColor(secondary);
