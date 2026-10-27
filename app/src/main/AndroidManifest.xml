@@ -73,6 +73,19 @@
         </receiver>
 
         <receiver
+            android:name=".WeatherWidgetProvider"
+            android:exported="true"
+            android:label="YW Weather"
+            android:icon="@drawable/ic_weather">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_info" />
+        </receiver>
+
+        <receiver
             android:name=".DateWidgetProvider"
             android:exported="true"
             android:label="English and Hebrew Date">
