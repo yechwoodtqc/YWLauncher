@@ -16,7 +16,8 @@ import java.util.*;
 public class SettingsActivity extends Activity {
     private LinearLayout content;
     private SharedPreferences prefs;
-    private static final int CREATE_LOG_FILE = 501;\n    private static final int PICK_BACKGROUND_IMAGE = 502;
+    private static final int CREATE_LOG_FILE = 501;
+    private static final int PICK_BACKGROUND_IMAGE = 502;
     private String pendingLogcat;
 
     @Override public void onCreate(Bundle state) {
