@@ -265,6 +265,7 @@ public class SettingsActivity extends Activity {
                 } else if (which == 4) {
                     Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     pick.addCategory(Intent.CATEGORY_OPENABLE);
+                    pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                     pick.setType("image/*");
                     startActivityForResult(pick, PICK_BACKGROUND_IMAGE);
                 } else {
