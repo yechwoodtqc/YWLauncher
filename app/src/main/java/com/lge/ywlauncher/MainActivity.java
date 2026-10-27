@@ -20,7 +20,7 @@ public class MainActivity extends Activity {
     private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
     private int currentPage = 0;
     private String appliedTheme;
-    private int appliedAccent;
+    private int appliedAccent;\n    private final ArrayList<String> uninstallQueue = new ArrayList<>();\n    private String currentUninstallPackage;\n    private boolean processingUninstalls;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -342,13 +342,37 @@ public class MainActivity extends Activity {
 
     private void uninstallSelectedApps() {
         ArrayList<String> packages = new ArrayList<>();
-        for (ResolveInfo app : apps) if (selectedApps.contains(app.activityInfo.name) && !packages.contains(app.activityInfo.packageName)
-            && !app.activityInfo.packageName.equals(getPackageName())) packages.add(app.activityInfo.packageName);
-        if (packages.isEmpty()) { Toast.makeText(this, "The selected apps cannot be uninstalled from here.", Toast.LENGTH_LONG).show(); return; }
-        String first = packages.get(0);
-        if (packages.size() > 1) Toast.makeText(this, "Android will ask for confirmation one app at a time. Select the remaining apps after this one.", Toast.LENGTH_LONG).show();
+        for (ResolveInfo app : apps) {
+            if (selectedApps.contains(app.activityInfo.name) && !packages.contains(app.activityInfo.packageName)
+                && !app.activityInfo.packageName.equals(getPackageName())) packages.add(app.activityInfo.packageName);
+        }
+        if (packages.isEmpty()) {
+            Toast.makeText(this, "The selected apps cannot be uninstalled from here.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        uninstallQueue.clear();
+        uninstallQueue.addAll(packages);
+        processingUninstalls = true;
         clearSelection();
-        startActivity(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + first)));
+        launchNextUninstall();
+    }
+
+    private void launchNextUninstall() {
+        if (uninstallQueue.isEmpty()) {
+            processingUninstalls = false;
+            currentUninstallPackage = null;
+            Toast.makeText(this, "Finished processing selected apps.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        currentUninstallPackage = uninstallQueue.remove(0);
+        try {
+            startActivity(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + currentUninstallPackage)));
+        } catch (Exception e) {
+            processingUninstalls = false;
+            currentUninstallPackage = null;
+            uninstallQueue.clear();
+            Toast.makeText(this, "Could not open Android's uninstall screen.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void launchApp(ResolveInfo app) {
@@ -404,5 +428,19 @@ public class MainActivity extends Activity {
         int accent = ThemeUtils.accent(this);
         if (!Objects.equals(appliedTheme, mode) || appliedAccent != accent) { recreate(); return; }
         applyBackground(); loadApps(); postLaunchNotification();
+        if (processingUninstalls && currentUninstallPackage != null) {
+            boolean stillInstalled = true;
+            try { getPackageManager().getPackageInfo(currentUninstallPackage, 0); }
+            catch (PackageManager.NameNotFoundException e) { stillInstalled = false; }
+            if (stillInstalled) {
+                processingUninstalls = false;
+                currentUninstallPackage = null;
+                uninstallQueue.clear();
+                Toast.makeText(this, "Uninstall canceled. Select the remaining apps to continue.", Toast.LENGTH_LONG).show();
+            } else {
+                currentUninstallPackage = null;
+                launchNextUninstall();
+            }
+        }
     }
 }
