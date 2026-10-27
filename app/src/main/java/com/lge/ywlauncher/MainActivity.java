@@ -85,7 +85,6 @@ public class MainActivity extends Activity {
         settingsButton.setPadding(dp(7), dp(7), dp(7), dp(7));
         settingsButton.setContentDescription("Settings");
         settingsButton.setBackground(ThemeUtils.focusBackground(this));
-        settingsButton.setColorFilter(ThemeUtils.text(this));
         settingsButton.setFocusable(true);
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(54), dp(48)));
