@@ -120,14 +120,28 @@ public class MainActivity extends Activity {
             boolean applied = false;
             String imageUri = getSharedPreferences("launcher", 0).getString("custom_background_uri", "");
             if (imageUri != null && !imageUri.isEmpty()) {
-                try (java.io.InputStream input = getContentResolver().openInputStream(Uri.parse(imageUri))) {
-                    if (input != null) {
-                        Bitmap bitmap = BitmapFactory.decodeStream(input);
-                        if (bitmap != null) {
-                            BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
-                            drawable.setGravity(Gravity.FILL);
-                            root.setBackground(drawable);
-                            applied = true;
+                try {
+                    Uri uri = Uri.parse(imageUri);
+                    BitmapFactory.Options bounds = new BitmapFactory.Options();
+                    bounds.inJustDecodeBounds = true;
+                    try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+                        if (input != null) BitmapFactory.decodeStream(input, null, bounds);
+                    }
+                    int targetW = Math.max(1, getResources().getDisplayMetrics().widthPixels);
+                    int targetH = Math.max(1, getResources().getDisplayMetrics().heightPixels);
+                    int sample = 1;
+                    while (bounds.outWidth / sample > targetW * 2 || bounds.outHeight / sample > targetH * 2) sample *= 2;
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inSampleSize = sample;
+                    try (java.io.InputStream input = getContentResolver().openInputStream(uri)) {
+                        if (input != null) {
+                            Bitmap bitmap = BitmapFactory.decodeStream(input, null, options);
+                            if (bitmap != null) {
+                                BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
+                                drawable.setGravity(Gravity.FILL);
+                                root.setBackground(drawable);
+                                applied = true;
+                            }
                         }
                     }
                 } catch (Exception ignored) {}
