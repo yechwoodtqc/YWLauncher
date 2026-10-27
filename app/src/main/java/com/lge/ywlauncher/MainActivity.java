@@ -121,7 +121,9 @@ public class MainActivity extends Activity {
         Intent query = new Intent(Intent.ACTION_MAIN);
         query.addCategory(Intent.CATEGORY_LAUNCHER);
         ArrayList<ResolveInfo> result = new ArrayList<>(getPackageManager().queryIntentActivities(query, 0));
-        result.removeIf(item -> MainActivity.class.getName().equals(item.activityInfo.name));
+        for (int i = result.size() - 1; i >= 0; i--) {
+            if (MainActivity.class.getName().equals(result.get(i).activityInfo.name)) result.remove(i);
+        }
         return result;
     }
 
