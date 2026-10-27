@@ -437,6 +437,7 @@ public class SettingsActivity extends Activity {
         controls.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
         controls.addView(down, new LinearLayout.LayoutParams(0, -2, 1));
         dialogLayout.addView(controls);
+        dialogLayout.addView(list, new LinearLayout.LayoutParams(-1, dp(100)));
 
         final int[] selected = {0};
         list.setOnItemClickListener((parent, view, position, id) -> selected[0] = position);
