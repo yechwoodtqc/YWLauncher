@@ -256,10 +256,15 @@ public class SettingsActivity extends Activity {
     private void chooseBackground() {
         int selected = prefs.getInt("background", 0);
         new AlertDialog.Builder(this).setTitle("Background")
-            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black"}, selected, (dialog, which) -> {
-                prefs.edit().putInt("background", which).apply();
+            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color"}, Math.min(3, selected), (dialog, which) -> {
                 dialog.dismiss();
-                recreate();
+                if (which == 3) {
+                    prefs.edit().putInt("background", 3).apply();
+                    choosePalette("Custom background color", "custom_background", Color.rgb(25, 35, 48));
+                } else {
+                    prefs.edit().putInt("background", which).apply();
+                    recreate();
+                }
             }).setNegativeButton("Cancel", null).show();
     }
 
