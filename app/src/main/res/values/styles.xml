@@ -5,8 +5,8 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">#142333</item>
         <item name="android:navigationBarColor">#142333</item>
-        <item name="android:windowBackground">#F5F7FA</item>
-        <item name="android:colorButtonNormal">#E3EAF2</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:colorButtonNormal">#EDF3F9</item>
     </style>
     <style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
