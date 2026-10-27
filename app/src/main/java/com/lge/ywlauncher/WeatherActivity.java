@@ -295,6 +295,12 @@ public class WeatherActivity extends Activity {
     private void addCurrentSummary(JSONArray periods, JSONArray hourly) {
         JSONObject current = hourly.length() > 0 ? hourly.optJSONObject(0) : (periods.length() > 0 ? periods.optJSONObject(0) : null);
         if (current == null) return;
+        String currentDescription = current.optString("shortForecast", "Current conditions");
+        String currentTemperature = current.optString("temperature", "—") + "°" + current.optString("temperatureUnit", "F");
+        prefs().edit().putString("weather_widget_summary", currentDescription)
+            .putString("weather_widget_temperature", currentTemperature)
+            .putString("weather_widget_icon", weatherEmoji(currentDescription)).apply();
+        WeatherWidgetProvider.updateAll(this);
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(12), dp(14), dp(12));
