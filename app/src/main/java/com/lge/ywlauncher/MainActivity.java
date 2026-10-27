@@ -11,11 +11,13 @@ import android.widget.*;
 import java.util.*;
 
 public class MainActivity extends Activity {
-    private LinearLayout root, appsArea;
+    private LinearLayout root, appsArea, toolbar;
     private ScrollView scroll;
-    private ImageButton previousPage, nextPage, settingsButton;
-    private TextView pageIndicator;
+    private ImageButton settingsButton;
+    private TextView pageIndicator, selectionCount;
+    private Button hideSelected, uninstallSelected, cancelSelection;
     private final ArrayList<ResolveInfo> apps = new ArrayList<>();
+    private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
     private int currentPage = 0;
     private String appliedTheme;
     private int appliedAccent;
@@ -27,72 +29,75 @@ public class MainActivity extends Activity {
         appliedAccent = ThemeUtils.accent(this);
         build();
         loadApps();
-        // Re-render after the ScrollView is measured so custom row counts fit the screen.
-        scroll.post(() -> {
-            if (!isFinishing()) {
-                renderApps();
-                focusFirstApp();
-            }
-        });
+        scroll.post(() -> { if (!isFinishing()) { renderApps(); focusFirstApp(); } });
         postLaunchNotification();
     }
 
     private void build() {
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(4), dp(2), dp(4), dp(2));
+        root.setPadding(dp(2), dp(2), dp(2), dp(2));
         applyBackground();
 
-        LinearLayout toolbar = new LinearLayout(this);
+        toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
 
-        previousPage = createToolButton(android.R.drawable.ic_media_previous, "Previous page");
-        previousPage.setOnClickListener(v -> changePage(-1));
-        toolbar.addView(previousPage, new LinearLayout.LayoutParams(dp(44), dp(44)));
-
         pageIndicator = new TextView(this);
-        pageIndicator.setTextColor(ThemeUtils.text(this));
+        pageIndicator.setTextColor(ThemeUtils.secondaryText(this));
         pageIndicator.setTextSize(12);
         pageIndicator.setGravity(Gravity.CENTER);
-        toolbar.addView(pageIndicator, new LinearLayout.LayoutParams(dp(54), -1));
-
-        nextPage = createToolButton(android.R.drawable.ic_media_next, "Next page");
-        nextPage.setOnClickListener(v -> changePage(1));
-        toolbar.addView(nextPage, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        toolbar.addView(pageIndicator, new LinearLayout.LayoutParams(dp(58), -1));
 
         View spacer = new View(this);
         toolbar.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
 
-        settingsButton = createToolButton(android.R.drawable.ic_menu_preferences, "Settings");
+        selectionCount = new TextView(this);
+        selectionCount.setTextColor(ThemeUtils.text(this));
+        selectionCount.setTextSize(13);
+        toolbar.addView(selectionCount);
+
+        hideSelected = new Button(this);
+        hideSelected.setText("Hide");
+        hideSelected.setOnClickListener(v -> hideSelectedApps());
+        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+
+        uninstallSelected = new Button(this);
+        uninstallSelected.setText("Uninstall");
+        uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
+        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+
+        cancelSelection = new Button(this);
+        cancelSelection.setText("Cancel");
+        cancelSelection.setOnClickListener(v -> clearSelection());
+        toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(-2, dp(42)));
+
+        settingsButton = new ImageButton(this);
+        settingsButton.setImageResource(R.drawable.ic_settings_modern);
+        settingsButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        settingsButton.setPadding(dp(7), dp(7), dp(7), dp(7));
+        settingsButton.setContentDescription("Settings");
+        settingsButton.setBackground(ThemeUtils.focusBackground(this));
+        settingsButton.setColorFilter(ThemeUtils.text(this));
+        settingsButton.setFocusable(true);
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
-        toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(48), dp(44)));
-        root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(46)));
+        toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(54), dp(48)));
+        root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(48)));
 
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         appsArea = new LinearLayout(this);
         appsArea.setOrientation(LinearLayout.VERTICAL);
-        scroll.addView(appsArea, new ScrollView.LayoutParams(-1, -2));
+        scroll.addView(appsArea, new ScrollView.LayoutParams(-1, -1));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
-    }
-
-    private ImageButton createToolButton(int icon, String description) {
-        ImageButton button = new ImageButton(this);
-        button.setImageResource(icon);
-        button.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        button.setPadding(dp(10), dp(10), dp(10), dp(10));
-        button.setContentDescription(description);
-        button.setBackground(ThemeUtils.focusBackground(this));
-        button.setColorFilter(ThemeUtils.text(this));
-        button.setFocusable(true);
-        return button;
+        updateSelectionToolbar();
     }
 
     private void applyBackground() {
         int background = getSharedPreferences("launcher", 0).getInt("background", 0);
+        int custom = getSharedPreferences("launcher", 0).getInt("custom_background", Color.rgb(25, 35, 48));
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         if (background == 1) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
@@ -100,32 +105,30 @@ public class MainActivity extends Activity {
         } else if (background == 2) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.BLACK);
+        } else if (background == 3) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundColor(custom);
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
         }
     }
 
-    private int dp(float value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
+    private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private int clamp(int value, int low, int high) { return Math.max(low, Math.min(high, value)); }
 
     private ArrayList<ResolveInfo> queryApps() {
         Intent query = new Intent(Intent.ACTION_MAIN);
         query.addCategory(Intent.CATEGORY_LAUNCHER);
-        ArrayList<ResolveInfo> found = new ArrayList<>(getPackageManager().queryIntentActivities(query, 0));
-        ArrayList<ResolveInfo> result = new ArrayList<>();
-        for (ResolveInfo item : found) {
-            if (!MainActivity.class.getName().equals(item.activityInfo.name)) result.add(item);
-        }
+        ArrayList<ResolveInfo> result = new ArrayList<>(getPackageManager().queryIntentActivities(query, 0));
+        result.removeIf(item -> MainActivity.class.getName().equals(item.activityInfo.name));
         return result;
     }
 
     private Set<String> defaultIncludedActivities(List<ResolveInfo> available) {
         Set<String> names = new HashSet<>();
         for (ResolveInfo item : available) {
-            boolean system = (item.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-            if (!system) names.add(item.activityInfo.name);
+            if ((item.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) names.add(item.activityInfo.name);
         }
         return names;
     }
@@ -134,104 +137,97 @@ public class MainActivity extends Activity {
         if (saved == null) return defaultIncludedActivities(available);
         Set<String> result = new HashSet<>();
         for (ResolveInfo item : available) {
-            if (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName)) {
-                result.add(item.activityInfo.name);
-            }
+            if (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName)) result.add(item.activityInfo.name);
+        }
+        return result;
+    }
+
+    private Map<String, Integer> orderedPackageIndex() {
+        Map<String, Integer> result = new HashMap<>();
+        String raw = getSharedPreferences("launcher", 0).getString("ordered_apps", "");
+        if (raw != null) {
+            String[] values = raw.split("\\n");
+            for (int i = 0; i < values.length; i++) if (!values[i].trim().isEmpty() && !result.containsKey(values[i])) result.put(values[i], i);
         }
         return result;
     }
 
     private void loadApps() {
         List<ResolveInfo> found = queryApps();
-        final Map<String, Integer> order = orderedPackageIndex();
+        Map<String, Integer> order = orderedPackageIndex();
         Collections.sort(found, (a, b) -> {
-            Integer ai = order.get(a.activityInfo.name);
-            Integer bi = order.get(b.activityInfo.name);
+            Integer ai = order.get(a.activityInfo.name), bi = order.get(b.activityInfo.name);
             if (ai != null || bi != null) {
                 if (ai == null) return 1;
                 if (bi == null) return -1;
                 int compared = ai.compareTo(bi);
                 if (compared != 0) return compared;
             }
-            return String.CASE_INSENSITIVE_ORDER.compare(
-                a.loadLabel(getPackageManager()).toString(),
-                b.loadLabel(getPackageManager()).toString());
+            return String.CASE_INSENSITIVE_ORDER.compare(a.loadLabel(getPackageManager()).toString(), b.loadLabel(getPackageManager()).toString());
         });
-
-        Set<String> saved = getSharedPreferences("launcher", 0).getStringSet("included", null);
-        Set<String> included = normalizedIncludedActivities(saved, found);
+        Set<String> included = normalizedIncludedActivities(getSharedPreferences("launcher", 0).getStringSet("included", null), found);
         apps.clear();
-        for (ResolveInfo item : found) {
-            if (included.contains(item.activityInfo.name)) apps.add(item);
-        }
+        for (ResolveInfo app : found) if (included.contains(app.activityInfo.name)) apps.add(app);
+        selectedApps.retainAll(activityNames(apps));
         renderApps();
     }
 
+    private Set<String> activityNames(List<ResolveInfo> source) {
+        Set<String> names = new HashSet<>();
+        for (ResolveInfo app : source) names.add(app.activityInfo.name);
+        return names;
+    }
+
     private void renderApps() {
+        if (appsArea == null) return;
         appsArea.removeAllViews();
         boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
-        previousPage.setVisibility(grid ? View.VISIBLE : View.GONE);
-        nextPage.setVisibility(grid ? View.VISIBLE : View.GONE);
-        pageIndicator.setVisibility(grid ? View.VISIBLE : View.GONE);
-
+        pageIndicator.setVisibility(grid && selectedApps.isEmpty() ? View.VISIBLE : View.GONE);
         if (apps.isEmpty()) {
             TextView empty = new TextView(this);
             empty.setText("No apps selected. Open Settings to choose apps.");
-            empty.setTextSize(14);
-            empty.setTextColor(ThemeUtils.text(this));
-            empty.setGravity(Gravity.CENTER);
-            empty.setPadding(dp(12), dp(24), dp(12), dp(24));
-            appsArea.addView(empty, new LinearLayout.LayoutParams(-1, -2));
+            empty.setTextSize(14); empty.setTextColor(ThemeUtils.text(this)); empty.setGravity(Gravity.CENTER);
+            appsArea.addView(empty, new LinearLayout.LayoutParams(-1, -1));
             return;
         }
-
         if (!grid) {
             currentPage = 0;
             for (ResolveInfo app : apps) {
-                appsArea.addView(createAppItem(app, false, 60),
-                    new LinearLayout.LayoutParams(-1, dp(60)));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(60));
+                appsArea.addView(createAppItem(app, false, 60), lp);
             }
             return;
         }
-
         int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         int pageSize = rows * columns;
         int pageCount = Math.max(1, (apps.size() + pageSize - 1) / pageSize);
         currentPage = clamp(currentPage, 0, pageCount - 1);
         pageIndicator.setText((currentPage + 1) + " / " + pageCount);
-        previousPage.setEnabled(currentPage > 0);
-        nextPage.setEnabled(currentPage + 1 < pageCount);
-        previousPage.setAlpha(currentPage > 0 ? 1.0f : 0.30f);
-        nextPage.setAlpha(currentPage + 1 < pageCount ? 1.0f : 0.30f);
-
-        int cellHeightDp = 64;
-        if (scroll.getHeight() > 0) {
-            int availableHeightDp = Math.round(scroll.getHeight() / getResources().getDisplayMetrics().density);
-            cellHeightDp = clamp(availableHeightDp / rows, 28, 64);
-        }
         int first = currentPage * pageSize;
         int end = Math.min(apps.size(), first + pageSize);
-        int rowsToShow = Math.min(rows, (end - first + columns - 1) / columns);
+        int cellHeightDp = 64;
+        if (scroll.getHeight() > 0) {
+            int available = Math.round(scroll.getHeight() / getResources().getDisplayMetrics().density);
+            cellHeightDp = Math.max(28, available / rows);
+        }
         int index = first;
-        for (int rowIndex = 0; rowIndex < rowsToShow; rowIndex++) {
+        for (int rowIndex = 0; rowIndex < rows; rowIndex++) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setWeightSum(columns);
             for (int col = 0; col < columns; col++) {
                 if (index < end) {
                     LinearLayout item = createAppItem(apps.get(index++), true, cellHeightDp);
-                    row.addView(item, new LinearLayout.LayoutParams(0, dp(cellHeightDp), 1));
+                    row.addView(item, new LinearLayout.LayoutParams(0, 0, 1));
+                    ((LinearLayout.LayoutParams)item.getLayoutParams()).height = -1;
                 } else {
-                    row.addView(new View(this), new LinearLayout.LayoutParams(0, dp(cellHeightDp), 1));
+                    row.addView(new View(this), new LinearLayout.LayoutParams(0, -1, 1));
                 }
             }
-            appsArea.addView(row, new LinearLayout.LayoutParams(-1, dp(cellHeightDp)));
+            appsArea.addView(row, new LinearLayout.LayoutParams(-1, 0, 1));
         }
-    }
-
-    private int clamp(int value, int low, int high) {
-        return Math.max(low, Math.min(high, value));
     }
 
     private void focusFirstApp() {
@@ -241,76 +237,116 @@ public class MainActivity extends Activity {
             ViewGroup row = (ViewGroup) first;
             for (int i = 0; i < row.getChildCount(); i++) {
                 View candidate = row.getChildAt(i);
-                if (candidate.getVisibility() == View.VISIBLE && candidate.isFocusable() && candidate.isEnabled()) {
-                    candidate.requestFocus();
-                    return;
-                }
+                if (candidate.isFocusable() && candidate.isEnabled() && candidate.getVisibility() == View.VISIBLE) { candidate.requestFocus(); return; }
             }
-        } else if (first.isFocusable() && first.isEnabled()) {
-            first.requestFocus();
+        } else if (first.isFocusable()) first.requestFocus();
+    }
+
+    private void changePage(int delta, int targetColumn) {
+        currentPage = clamp(currentPage + delta, 0, pageCount() - 1);
+        renderApps();
+        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
+        int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+        int index = currentPage * rows * columns + clamp(targetColumn, 0, columns - 1);
+        if (appsArea.getChildCount() > 0 && appsArea.getChildAt(0) instanceof ViewGroup) {
+            ViewGroup firstRow = (ViewGroup) appsArea.getChildAt(0);
+            View target = null;
+            int rowIndex = Math.min(rows - 1, Math.max(0, (index - currentPage * rows * columns) / columns));
+            if (rowIndex < appsArea.getChildCount()) {
+                ViewGroup row = (ViewGroup) appsArea.getChildAt(rowIndex);
+                int col = Math.min(columns - 1, Math.max(0, index % columns));
+                if (col < row.getChildCount()) target = row.getChildAt(col);
+            }
+            if (target != null && target.isFocusable()) target.requestFocus(); else focusFirstApp();
         }
     }
 
-    private void changePage(int delta) {
-        currentPage += delta;
-        renderApps();
-        if (appsArea.getChildCount() > 0 && appsArea.getChildAt(0) instanceof ViewGroup) {
-            ViewGroup firstRow = (ViewGroup) appsArea.getChildAt(0);
-            if (firstRow.getChildCount() > 0) firstRow.getChildAt(0).requestFocus();
-        }
+    private int pageCount() {
+        int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6)
+            * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+        return Math.max(1, (apps.size() + size - 1) / size);
     }
 
     private LinearLayout createAppItem(ResolveInfo app, boolean grid, int cellHeightDp) {
         LinearLayout item = new LinearLayout(this);
-        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setGravity(Gravity.CENTER);
         item.setOrientation(grid ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         item.setPadding(dp(3), dp(2), dp(3), dp(2));
-        item.setFocusable(true);
-        item.setClickable(true);
+        item.setFocusable(true); item.setClickable(true);
         item.setBackground(ThemeUtils.focusBackground(this));
-
         int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", 40), 18, 56);
         boolean showLabel = !grid || cellHeightDp >= 42;
-        if (grid) iconSize = Math.min(iconSize, Math.max(18, cellHeightDp - (showLabel ? 18 : 4)));
+        if (grid) iconSize = Math.min(iconSize, Math.max(18, cellHeightDp - (showLabel ? 22 : 4)));
         ImageView icon = new ImageView(this);
-        try {
-            icon.setImageDrawable(app.loadIcon(getPackageManager()));
-        } catch (Exception ignored) {
-            icon.setImageResource(android.R.drawable.sym_def_app_icon);
-        }
+        try { icon.setImageDrawable(app.loadIcon(getPackageManager())); }
+        catch (Exception ignored) { icon.setImageResource(android.R.drawable.sym_def_app_icon); }
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams iconParams = grid
-            ? new LinearLayout.LayoutParams(dp(iconSize), dp(iconSize))
-            : new LinearLayout.LayoutParams(dp(Math.min(iconSize, 44)), dp(Math.min(iconSize, 44)));
-        if (grid) iconParams.gravity = Gravity.CENTER;
-        else iconParams.setMargins(dp(8), 0, dp(12), 0);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(grid ? iconSize : Math.min(iconSize, 44)), dp(grid ? iconSize : Math.min(iconSize, 44)));
+        if (!grid) iconParams.setMargins(dp(8), 0, dp(12), 0);
         item.addView(icon, iconParams);
-
         TextView label = new TextView(this);
         label.setText(app.loadLabel(getPackageManager()));
-        label.setTextColor(ThemeUtils.text(this));
-        label.setTextSize(grid ? 11 : 14);
-        label.setGravity(Gravity.CENTER_VERTICAL | (grid ? Gravity.CENTER_HORIZONTAL : Gravity.LEFT));
-        label.setSingleLine(true);
-        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        label.setTextColor(ThemeUtils.text(this)); label.setTextSize(grid ? 11 : 14);
+        label.setGravity(grid ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
+        label.setSingleLine(true); label.setEllipsize(android.text.TextUtils.TruncateAt.END);
         label.setPadding(dp(2), dp(1), dp(2), dp(1));
         if (!showLabel) label.setVisibility(View.GONE);
-        LinearLayout.LayoutParams labelParams = grid
-            ? new LinearLayout.LayoutParams(-1, -2)
-            : new LinearLayout.LayoutParams(0, -2, 1);
-        item.addView(label, labelParams);
-
-        item.setTag(app.activityInfo.name);
+        item.addView(label, grid ? new LinearLayout.LayoutParams(-1, -2) : new LinearLayout.LayoutParams(0, -2, 1));
+        String name = app.activityInfo.name;
+        item.setTag(name);
+        item.setSelected(selectedApps.contains(name));
         item.setOnFocusChangeListener((view, focused) -> {
-            label.setTextColor(focused ? ThemeUtils.onAccent(this) : ThemeUtils.text(this));
-            icon.setAlpha(focused ? 1.0f : 0.95f);
+            boolean selected = selectedApps.contains(name);
+            label.setTextColor(focused || selected ? ThemeUtils.onAccent(this) : ThemeUtils.text(this));
+            icon.setAlpha(focused || selected ? 1.0f : 0.94f);
+            if (selected) item.setBackground(ThemeUtils.selectedBackground(this));
         });
-        item.setOnClickListener(v -> launchApp(app));
-        item.setOnLongClickListener(v -> {
-            showAppOptions(app, item);
-            return true;
+        item.setOnClickListener(v -> {
+            if (!selectedApps.isEmpty()) toggleSelection(name);
+            else launchApp(app);
         });
+        item.setOnLongClickListener(v -> { toggleSelection(name); return true; });
+        if (selectedApps.contains(name)) item.setBackground(ThemeUtils.selectedBackground(this));
         return item;
+    }
+
+    private void toggleSelection(String name) {
+        if (selectedApps.contains(name)) selectedApps.remove(name); else selectedApps.add(name);
+        updateSelectionToolbar();
+        renderApps();
+    }
+
+    private void clearSelection() { selectedApps.clear(); updateSelectionToolbar(); renderApps(); }
+
+    private void updateSelectionToolbar() {
+        boolean selecting = !selectedApps.isEmpty();
+        if (selectionCount != null) {
+            selectionCount.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            selectionCount.setText(selectedApps.size() + " selected");
+        }
+        if (hideSelected != null) hideSelected.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        if (uninstallSelected != null) uninstallSelected.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        if (cancelSelection != null) cancelSelection.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        if (settingsButton != null) settingsButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
+    }
+
+    private void hideSelectedApps() {
+        Set<String> saved = getSharedPreferences("launcher", 0).getStringSet("included", null);
+        Set<String> included = normalizedIncludedActivities(saved, queryApps());
+        included.removeAll(selectedApps);
+        getSharedPreferences("launcher", 0).edit().putStringSet("included", included).apply();
+        selectedApps.clear(); currentPage = 0; loadApps(); updateSelectionToolbar();
+    }
+
+    private void uninstallSelectedApps() {
+        ArrayList<String> packages = new ArrayList<>();
+        for (ResolveInfo app : apps) if (selectedApps.contains(app.activityInfo.name) && !packages.contains(app.activityInfo.packageName)
+            && !app.activityInfo.packageName.equals(getPackageName())) packages.add(app.activityInfo.packageName);
+        if (packages.isEmpty()) { Toast.makeText(this, "The selected apps cannot be uninstalled from here.", Toast.LENGTH_LONG).show(); return; }
+        String first = packages.get(0);
+        if (packages.size() > 1) Toast.makeText(this, "Android will ask for confirmation one app at a time. Select the remaining apps after this one.", Toast.LENGTH_LONG).show();
+        clearSelection();
+        startActivity(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + first)));
     }
 
     private void launchApp(ResolveInfo app) {
@@ -320,104 +356,43 @@ public class MainActivity extends Activity {
             intent.setClassName(app.activityInfo.packageName, app.activityInfo.name);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Unable to launch app", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void showAppOptions(ResolveInfo app, View item) {
-        String[] options = {"Open", "Uninstall", "Hide from app list"};
-        new AlertDialog.Builder(this)
-            .setTitle(app.loadLabel(getPackageManager()))
-            .setItems(options, (dialog, which) -> {
-                if (which == 0) {
-                    launchApp(app);
-                } else if (which == 1) {
-                    if (app.activityInfo.packageName.equals(getPackageName())) {
-                        Toast.makeText(this, "This screen cannot uninstall itself.", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Intent uninstall = new Intent(Intent.ACTION_DELETE,
-                            android.net.Uri.parse("package:" + app.activityInfo.packageName));
-                        startActivity(uninstall);
-                    }
-                } else {
-                    SharedPreferences prefs = getSharedPreferences("launcher", 0);
-                    Set<String> saved = prefs.getStringSet("included", null);
-                    Set<String> included = normalizedIncludedActivities(saved, queryApps());
-                    included.remove(app.activityInfo.name);
-                    prefs.edit().putStringSet("included", included).apply();
-                    currentPage = 0;
-                    loadApps();
-                }
-            }).show();
-    }
-
-    private Map<String, Integer> orderedPackageIndex() {
-        Map<String, Integer> result = new HashMap<>();
-        String raw = getSharedPreferences("launcher", 0).getString("ordered_apps", "");
-        if (raw != null && !raw.isEmpty()) {
-            String[] values = raw.split("\\n");
-            for (int i = 0; i < values.length; i++) {
-                if (!values[i].trim().isEmpty() && !result.containsKey(values[i])) result.put(values[i], i);
-            }
-        }
-        return result;
+        } catch (Exception e) { Toast.makeText(this, "Unable to launch app", Toast.LENGTH_SHORT).show(); }
     }
 
     private void postLaunchNotification() {
         SharedPreferences prefs = getSharedPreferences("launcher", 0);
-        if (!prefs.getBoolean("notify", true)) {
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(42);
-            return;
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
-            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            manager.createNotificationChannel(new NotificationChannel("yw_launcher", "Launcher access", NotificationManager.IMPORTANCE_LOW));
-        }
-        Intent open = new Intent(this, MainActivity.class);
-        PendingIntent pending = PendingIntent.getActivity(this, 1, open,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder notification = android.os.Build.VERSION.SDK_INT >= 26
-            ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
+        NotificationManager manager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        if (!prefs.getBoolean("notify", true)) { manager.cancel(42); return; }
+        if (android.os.Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(new NotificationChannel("yw_launcher", "Launcher access", NotificationManager.IMPORTANCE_LOW));
+        PendingIntent pending = PendingIntent.getActivity(this, 1, new Intent(this, MainActivity.class),
+            PendingIntent.FLAG_UPDATE_CURRENT | (android.os.Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+        Notification.Builder notification = android.os.Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
         boolean showIcon = prefs.getBoolean("status_icon", false);
-        notification.setSmallIcon(showIcon ? android.R.drawable.ic_menu_view : R.drawable.ic_notification_hidden)
-            .setContentTitle("YW Launcher")
-            .setContentText("Press to open your app launcher")
-            .setContentIntent(pending)
-            .setAutoCancel(false)
-            .setOngoing(true);
+        notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
+            .setContentTitle("YW Launcher").setContentText("Press to open your app launcher")
+            .setContentIntent(pending).setAutoCancel(false).setOngoing(true);
         if (!showIcon) notification.setVisibility(Notification.VISIBILITY_SECRET);
-        ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(42, notification.build());
+        manager.notify(42, notification.build());
     }
 
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_MENU) {
-            startActivity(new Intent(this, SettingsActivity.class));
-            return true;
-        }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))) {
-            if (currentPage > 0 && isPageBoundaryItem(true)) { changePage(-1); return true; }
-        }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))) {
-            if (currentPage + 1 < pageCount() && isPageBoundaryItem(false)) { changePage(1); return true; }
+        if (keyCode == KeyEvent.KEYCODE_MENU) { startActivity(new Intent(this, SettingsActivity.class)); return true; }
+        if (selectedApps.isEmpty() && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
+            && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            View focused = getCurrentFocus();
+            if (focused != null && focused.getTag() instanceof String) {
+                int index = -1;
+                for (int i = 0; i < apps.size(); i++) if (apps.get(i).activityInfo.name.equals(focused.getTag())) { index = i; break; }
+                int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && index % columns == columns - 1 && currentPage + 1 < pageCount()) {
+                    changePage(1, 0); return true;
+                }
+                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0 && currentPage > 0) {
+                    changePage(-1, columns - 1); return true;
+                }
+            }
         }
         return super.onKeyDown(keyCode, event);
-    }
-
-    private boolean isPageBoundaryItem(boolean first) {
-        View focused = getCurrentFocus();
-        if (focused == null || !(focused.getTag() instanceof String)) return false;
-        int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6)
-            * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
-        int index = first ? currentPage * size : Math.min(apps.size(), (currentPage + 1) * size) - 1;
-        if (index < 0 || index >= apps.size()) return false;
-        return apps.get(index).activityInfo.name.equals(focused.getTag());
-    }
-
-    private int pageCount() {
-        int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6)
-            * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
-        return Math.max(1, (apps.size() + size - 1) / size);
     }
 
     @Override protected void onResume() {
@@ -425,12 +400,7 @@ public class MainActivity extends Activity {
         if (root == null) return;
         String mode = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         int accent = ThemeUtils.accent(this);
-        if (!Objects.equals(appliedTheme, mode) || appliedAccent != accent) {
-            recreate();
-            return;
-        }
-        applyBackground();
-        loadApps();
-        postLaunchNotification();
+        if (!Objects.equals(appliedTheme, mode) || appliedAccent != accent) { recreate(); return; }
+        applyBackground(); loadApps(); postLaunchNotification();
     }
 }
