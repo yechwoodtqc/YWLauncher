@@ -16,7 +16,7 @@ import java.util.*;
 public class SettingsActivity extends Activity {
     private LinearLayout content;
     private SharedPreferences prefs;
-    private static final int CREATE_LOG_FILE = 501;
+    private static final int CREATE_LOG_FILE = 501;\n    private static final int PICK_BACKGROUND_IMAGE = 502;
     private String pendingLogcat;
 
     @Override public void onCreate(Bundle state) {
@@ -256,11 +256,16 @@ public class SettingsActivity extends Activity {
     private void chooseBackground() {
         int selected = prefs.getInt("background", 0);
         new AlertDialog.Builder(this).setTitle("Background")
-            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color"}, Math.min(3, selected), (dialog, which) -> {
+            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color", "Custom image"}, Math.min(4, selected), (dialog, which) -> {
                 dialog.dismiss();
                 if (which == 3) {
                     prefs.edit().putInt("background", 3).apply();
                     choosePalette("Custom background color", "custom_background", Color.rgb(25, 35, 48));
+                } else if (which == 4) {
+                    Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    pick.addCategory(Intent.CATEGORY_OPENABLE);
+                    pick.setType("image/*");
+                    startActivityForResult(pick, PICK_BACKGROUND_IMAGE);
                 } else {
                     prefs.edit().putInt("background", which).apply();
                     recreate();
@@ -527,6 +532,17 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_BACKGROUND_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try {
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                prefs.edit().putString("custom_background_uri", uri.toString()).putInt("background", 4).apply();
+                recreate();
+            } catch (Exception e) {
+                showError("Could not use that image: " + e.getMessage());
+            }
+            return;
+        }
         if (requestCode == CREATE_LOG_FILE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             try {
                 Uri uri = data.getData();
