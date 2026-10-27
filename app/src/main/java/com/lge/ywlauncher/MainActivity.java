@@ -20,7 +20,10 @@ public class MainActivity extends Activity {
     private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
     private int currentPage = 0;
     private String appliedTheme;
-    private int appliedAccent;\n    private final ArrayList<String> uninstallQueue = new ArrayList<>();\n    private String currentUninstallPackage;\n    private boolean processingUninstalls;
+    private int appliedAccent;
+    private final ArrayList<String> uninstallQueue = new ArrayList<>();
+    private String currentUninstallPackage;
+    private boolean processingUninstalls;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
