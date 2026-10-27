@@ -22,7 +22,8 @@
         <activity
             android:name=".WeatherActivity"
             android:exported="true"
-            android:label="YW Weather">
+            android:label="YW Weather"
+            android:icon="@drawable/ic_weather">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
