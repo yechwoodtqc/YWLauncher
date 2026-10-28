@@ -39,6 +39,7 @@ public class WeatherActivity extends Activity {
     private JSONArray discussionProducts = new JSONArray();
     private int detailIndex = 0;
     private String currentPage = "forecast";
+    private String lastLocationQuery = "";
     private float fontScale = 1.0f;
     private final ArrayList<SavedPlace> savedPlaces = new ArrayList<>();
     private static class SavedPlace {
@@ -544,7 +545,7 @@ public class WeatherActivity extends Activity {
             @Override public void beforeTextChanged(CharSequence s,int start,int count,int after){}
             @Override public void onTextChanged(CharSequence s,int start,int before,int count){
                 if(pending[0]!=null)handler.removeCallbacks(pending[0]);
-                String q=s.toString().trim();suggestions.removeAllViews();
+                String q=s.toString().trim();lastLocationQuery=q;suggestions.removeAllViews();
                 if(q.length()<2){TextView hint=text("Type at least 2 characters.",12,false);suggestions.addView(hint);return;}
                 TextView searching=text("Searching suggestions…",12,false);suggestions.addView(searching);
                 pending[0]=()->searchLocationSuggestions(q,suggestions);
@@ -598,7 +599,7 @@ public class WeatherActivity extends Activity {
                 }
             }catch(Exception ignored){}
             handler.post(()->{
-                if(!"add-location".equals(currentPage))return;
+                if(!"add-location".equals(currentPage)||!query.equals(lastLocationQuery))return;
                 suggestions.removeAllViews();
                 if(found.isEmpty()){suggestions.addView(text("No suggestions found. Try a city and state or a 5-digit ZIP.",12,false));return;}
                 for(SavedPlace place:found){
