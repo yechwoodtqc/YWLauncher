@@ -120,7 +120,7 @@ public class WeatherActivity extends Activity {
         } else refreshButton = null;
         if (showSettings) {
             settingsButton = new ImageButton(this);
-            settingsButton.setImageResource(android.R.drawable.ic_menu_preferences);
+            settingsButton.setImageResource(R.drawable.ic_settings_modern);
             settingsButton.setColorFilter(ThemeUtils.accent(this));
             settingsButton.setContentDescription("Weather settings");
             settingsButton.setBackground(outlineFocusBackground());
