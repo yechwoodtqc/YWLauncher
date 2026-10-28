@@ -231,8 +231,11 @@ public class WeatherActivity extends Activity {
     private void refreshCurrentPage() {
         if ("settings".equals(currentPage)) { showWeatherSettings(); return; }
         if ("locations".equals(currentPage)) { showLocationsPage(); return; }
+        if ("discussion".equals(currentPage)) { SavedPlace p=selectedPlace(); if(p!=null)fetchForecastAt(p.lat,p.lon); return; }
         SavedPlace place = selectedPlace();
-        if (place != null) fetchForecastAt(place.lat, place.lon); else detectLocation();
+        if (place != null) fetchForecastAt(place.lat, place.lon);
+        else if (prefs().contains("weather_lat") && prefs().contains("weather_lon")) fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
+        else detectLocation();
     }
 
     private void fetchForecastAt(double latitude, double longitude) {
@@ -518,7 +521,7 @@ public class WeatherActivity extends Activity {
                 for(SavedPlace place:found){
                     LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),dp(10),dp(10),dp(10));row.setFocusable(true);row.setClickable(true);row.setBackground(ThemeUtils.focusBackground(this));
                     TextView name=text(place.name,13,true);row.addView(name,new LinearLayout.LayoutParams(0,-2,1));row.addView(text("＋",22,true));
-                    row.setOnClickListener(v->saveAndSelectLocation(place));row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this));
+                    row.setOnClickListener(v->saveAndSelectLocation(place));row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this)));
                     suggestions.addView(row,rowMargins());
                 }
             });
