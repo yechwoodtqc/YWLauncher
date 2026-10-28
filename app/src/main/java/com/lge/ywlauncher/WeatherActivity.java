@@ -54,7 +54,11 @@ public class WeatherActivity extends Activity {
         else {
             SavedPlace selected = selectedPlace();
             if (selected != null) fetchForecastAt(selected.lat, selected.lon);
-            else detectLocation();
+            else if (prefs().contains("weather_lat") && prefs().contains("weather_lon")
+                && !prefs().getString("weather_location", "").trim().isEmpty()
+                && !"Use current location".equals(prefs().getString("weather_location", ""))) {
+                fetchForecastAt(prefs().getFloat("weather_lat", 0), prefs().getFloat("weather_lon", 0));
+            } else detectLocation();
         }
     }
 
@@ -461,7 +465,7 @@ public class WeatherActivity extends Activity {
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),dp(10),dp(8),dp(10));row.setFocusable(true);row.setClickable(true);row.setBackground(ThemeUtils.focusBackground(this));
             LinearLayout textCol=new LinearLayout(this);textCol.setOrientation(LinearLayout.VERTICAL);textCol.addView(text(place.name,15,true));textCol.addView(text("Tap to use this forecast",11,false));row.addView(textCol,new LinearLayout.LayoutParams(0,-2,1));
             TextView check=text(place.name.equals(selectedPlaceName())?"✓":"›",22,true);check.setTextColor(ThemeUtils.accent(this));row.addView(check);
-            row.setOnClickListener(v->{prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name).putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();showForecastPage();fetchForecastAt(place.lat,place.lon);});
+            row.setOnClickListener(v->{prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name).putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();showForecastPage();});
             row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this)));
             forecastList.addView(row,rowMargins());
         }
@@ -542,7 +546,7 @@ public class WeatherActivity extends Activity {
     }
 
     private void showWeatherSettings() {
-        currentPage="settings";removeHeaderRows();rebuildToolbar("Weather settings",true,false);forecastList.removeAllViews();
+        currentPage="settings";removeHeaderRows();rebuildToolbar("Weather settings",false,false);forecastList.removeAllViews();
         addSetting("Choose location","Manage saved locations",()->showLocationsPage());
         addSetting("Font size",fontScaleLabel(),()->{
             String[] labels={"Small","Normal","Large","Extra large"};float[] values={0.85f,1f,1.15f,1.3f};
@@ -562,7 +566,7 @@ public class WeatherActivity extends Activity {
     private String refreshLabel(){int n=prefs().getInt("weather_refresh_minutes",15);return n==0?"Off":"Every "+n+" minutes";}
     private void addSetting(String title,String summary,Runnable action){
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));row.setBackground(ThemeUtils.focusBackground(this));row.setFocusable(true);row.setClickable(true);
-        row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?focusOutlineFocusBackground():ThemeUtils.focusBackground(this)));
+        row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?focusOutlineBackground():ThemeUtils.focusBackground(this)));
         forecastList.addView(row);View line=new View(this);line.setBackgroundColor(ThemeUtils.divider(this));forecastList.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
     }
 
