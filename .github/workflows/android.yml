@@ -1,10 +1,15 @@
 name: Android APK
+
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -51,3 +56,14 @@ jobs:
             app/build/reports/lint-results-debug.txt
             app/build/intermediates/lint_intermediate_text_report/debug/lint-results-debug.txt
           if-no-files-found: warn
+      - name: Publish latest YWLauncher release
+        if: success() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest YWLauncher
+          body: Automatically built from the latest successful main-branch build.
+          make_latest: true
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          files: app/build/outputs/apk/debug/*.apk
