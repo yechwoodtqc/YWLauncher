@@ -65,13 +65,19 @@ public class MainActivity extends Activity {
         toolbar.addView(selectionCount);
 
         hideSelected = new Button(this);
-        hideSelected.setText("Hide");\n        hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);\n        hideSelected.setCompoundDrawablePadding(dp(4));
-        hideSelected.setOnClickListener(v -> hideSelectedApps());\n        ThemeUtils.tint(hideSelected, this);
+        hideSelected.setText("Hide");
+        hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);
+        hideSelected.setCompoundDrawablePadding(dp(4));
+        hideSelected.setOnClickListener(v -> hideSelectedApps());
+        ThemeUtils.tint(hideSelected, this);
         toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
 
         uninstallSelected = new Button(this);
-        uninstallSelected.setText("Uninstall");\n        uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);\n        uninstallSelected.setCompoundDrawablePadding(dp(4));
-        uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());\n        ThemeUtils.tint(uninstallSelected, this);
+        uninstallSelected.setText("Uninstall");
+        uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);
+        uninstallSelected.setCompoundDrawablePadding(dp(4));
+        uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
+        ThemeUtils.tint(uninstallSelected, this);
         toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
 
         cancelSelection = new Button(this);
