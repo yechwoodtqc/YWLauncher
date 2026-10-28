@@ -65,13 +65,13 @@ public class MainActivity extends Activity {
         toolbar.addView(selectionCount);
 
         hideSelected = new Button(this);
-        hideSelected.setText("Hide");
-        hideSelected.setOnClickListener(v -> hideSelectedApps());
+        hideSelected.setText("Hide");\n        hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);\n        hideSelected.setCompoundDrawablePadding(dp(4));
+        hideSelected.setOnClickListener(v -> hideSelectedApps());\n        ThemeUtils.tint(hideSelected, this);
         toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
 
         uninstallSelected = new Button(this);
-        uninstallSelected.setText("Uninstall");
-        uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
+        uninstallSelected.setText("Uninstall");\n        uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);\n        uninstallSelected.setCompoundDrawablePadding(dp(4));
+        uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());\n        ThemeUtils.tint(uninstallSelected, this);
         toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
 
         cancelSelection = new Button(this);
@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
         settingsButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         settingsButton.setPadding(dp(7), dp(7), dp(7), dp(7));
         settingsButton.setContentDescription("Settings");
-        settingsButton.setBackground(ThemeUtils.focusBackground(this));
+        settingsButton.setBackground(ThemeUtils.focusOutlineBackground(this));
         settingsButton.setFocusable(true);
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(54), dp(48)));
@@ -339,21 +339,55 @@ public class MainActivity extends Activity {
             boolean selected = selectedApps.contains(name);
             label.setTextColor(focused || selected ? ThemeUtils.focusText(this) : ThemeUtils.text(this));
             icon.setAlpha(focused || selected ? 1.0f : 0.94f);
-            if (selected) item.setBackground(ThemeUtils.selectedBackground(this));
+            item.setBackground(appItemFocusBackground(focused, selected));
         });
         item.setOnClickListener(v -> {
             if (!selectedApps.isEmpty()) toggleSelection(name);
             else launchApp(app);
         });
         item.setOnLongClickListener(v -> { toggleSelection(name); return true; });
-        if (selectedApps.contains(name)) item.setBackground(ThemeUtils.selectedBackground(this));
+        if (selectedApps.contains(name)) item.setBackground(appItemFocusBackground(item.hasFocus(), true));
         return item;
     }
 
+    private android.graphics.drawable.Drawable appItemFocusBackground(boolean focused, boolean selected) {
+        if (!focused && !selected) return ThemeUtils.focusBackground(this);
+        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+        shape.setCornerRadius(dp(10));
+        boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false);
+        if (focused && outline) {
+            shape.setColor(selected ? 0x4426a7ff : Color.TRANSPARENT);
+            shape.setStroke(dp(3), selected ? Color.WHITE : ThemeUtils.accent(this));
+        } else if (focused) {
+            shape.setColor(ThemeUtils.accent(this));
+            shape.setStroke(dp(2), selected ? Color.WHITE : ThemeUtils.accent(this));
+        } else {
+            shape.setColor(0x6626a7ff);
+            shape.setStroke(dp(2), ThemeUtils.accent(this));
+        }
+        return shape;
+    }
+
     private void toggleSelection(String name) {
-        if (selectedApps.contains(name)) selectedApps.remove(name); else selectedApps.add(name);
+        selectedApps.contains(name) ? selectedApps.remove(name) : selectedApps.add(name);
         updateSelectionToolbar();
         renderApps();
+        appsArea.post(() -> {
+            View target = findAppItem(appsArea, name);
+            if (target != null) target.requestFocus();
+        });
+    }
+
+    private View findAppItem(ViewGroup parent, String name) {
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View child = parent.getChildAt(i);
+            if (name.equals(child.getTag())) return child;
+            if (child instanceof ViewGroup) {
+                View found = findAppItem((ViewGroup) child, name);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private void clearSelection() { selectedApps.clear(); updateSelectionToolbar(); renderApps(); }
