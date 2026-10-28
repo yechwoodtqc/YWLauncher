@@ -348,7 +348,7 @@ public class WeatherActivity extends Activity {
         TextView arrow=text("›",24,false);card.addView(arrow,new LinearLayout.LayoutParams(dp(22),-2));
         card.setOnClickListener(v->{detailIndex=index;showDayDetail(index);});
         card.setOnFocusChangeListener((v,focused)->{
-            card.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this));
+            card.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
             if(focused){icon.setTextColor(ThemeUtils.accent(this));}
             else icon.setTextColor(ThemeUtils.text(this));
         });
