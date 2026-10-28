@@ -73,7 +73,7 @@ public class WeatherActivity extends Activity {
         scheduleAutoRefresh();
     }
     @Override protected void onPause() {
-        handler.removeCallbacks(autoRefreshRunnable);
+        if(autoRefreshRunnable!=null)handler.removeCallbacks(autoRefreshRunnable);
         super.onPause();
     }
 
