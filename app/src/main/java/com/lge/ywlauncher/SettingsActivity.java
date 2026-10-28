@@ -75,12 +75,6 @@ public class SettingsActivity extends Activity {
         addSettingRow("Reorder apps", "Change the order of app icons.", this::reorderApps);
 
         section("Tools");
-        addSettingRow("Weather location", prefs.getString("weather_location", "Use current location"), () -> {
-            Intent intent = new Intent(this, WeatherActivity.class);
-            intent.putExtra("configure_location", true);
-            startActivity(intent);
-        });
-        addSettingRow("Weather", "Open the forecast.", () -> startActivity(new Intent(this, WeatherActivity.class)));
         addSettingRow("Widgets", "Date and weather widgets for the phone home screen.", () ->
             new AlertDialog.Builder(this)
                 .setMessage("YW Launcher provides English/Hebrew Date and Weather widgets. To add one, open the phone's existing home-screen widget picker and choose “English and Hebrew Date” or “YW Weather”. These widgets appear on the phone's current home app; YW Launcher itself remains a regular app, not the default Home app.")
