@@ -184,8 +184,8 @@ public class SettingsActivity extends Activity {
         row.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
         row.setOnClickListener(v -> toggle.setChecked(!toggle.isChecked()));
         row.setOnFocusChangeListener((view, focused) -> {
-            int primary = focused ? ThemeUtils.onAccent(this) : ThemeUtils.text(this);
-            int secondary = focused ? ThemeUtils.onAccent(this) : ThemeUtils.secondaryText(this);
+            int primary = focused ? ThemeUtils.focusText(this) : ThemeUtils.text(this);
+            int secondary = focused ? ThemeUtils.focusText(this) : ThemeUtils.secondaryText(this);
             title.setTextColor(primary);
             summary.setTextColor(secondary);
         });
@@ -433,8 +433,9 @@ public class SettingsActivity extends Activity {
         LinearLayout controls = new LinearLayout(this);
         Button up = new Button(this); up.setText("↑  Move up"); ThemeUtils.tint(up, this); up.setHeight(dp(48)); up.setTextSize(14);
         Button down = new Button(this); down.setText("↓  Move down"); ThemeUtils.tint(down, this); down.setHeight(dp(48)); down.setTextSize(14);
-        controls.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
-        controls.addView(down, new LinearLayout.LayoutParams(0, -2, 1));
+        controls.setGravity(Gravity.CENTER_VERTICAL);
+        controls.addView(up, new LinearLayout.LayoutParams(0, dp(48), 1));
+        controls.addView(down, new LinearLayout.LayoutParams(0, dp(48), 1));
         dialogLayout.addView(controls);
         dialogLayout.addView(list, new LinearLayout.LayoutParams(-1, dp(100)));
 
