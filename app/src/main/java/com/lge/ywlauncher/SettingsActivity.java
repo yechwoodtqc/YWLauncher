@@ -42,7 +42,8 @@ public class SettingsActivity extends Activity {
         title.setText("Settings");
         title.setTextSize(19);
         title.setTextColor(ThemeUtils.text(this));
-        title.setPadding(dp(4), 0, 0, 0);\n        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setPadding(dp(4), 0, 0, 0);
+        title.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
         page.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(50)));
 
