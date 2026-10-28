@@ -30,6 +30,11 @@ public class WeatherActivity extends Activity {
     private Runnable locationTimeout, autoRefreshRunnable;
     private boolean configureMode, loading, hourlyMode, detailMode;
     private JSONArray dailyPeriods = new JSONArray(), hourlyPeriods = new JSONArray();
+    private final ArrayList<DayForecast> dailyDays = new ArrayList<>();
+    private static class DayForecast {
+        String label;
+        JSONObject day, night;
+    }
     private JSONArray discussionProducts = new JSONArray();
     private int detailIndex = 0;
     private String currentPage = "forecast";
@@ -263,7 +268,7 @@ public class WeatherActivity extends Activity {
                 JSONArray finalHours = hours;
                 String finalGenerated = generated;
                 handler.post(() -> {
-                    dailyPeriods = days; hourlyPeriods = finalHours;
+                    dailyPeriods = days; hourlyPeriods = finalHours; buildDailyDays(days);
                     setLoading(false, null);
                     renderForecast();
                     String now = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date());
@@ -313,8 +318,8 @@ public class WeatherActivity extends Activity {
         } else {
             addCurrentSummary();
             addSectionTitle("Daily forecast · select a day for details");
-            int limit=Math.min(14,dailyPeriods.length());
-            for(int i=0;i<limit;i++) addDailyPeriod(dailyPeriods.optJSONObject(i),i);
+            int limit=Math.min(8,dailyDays.size());
+            for(int i=0;i<limit;i++) addDailyPeriod(dailyDays.get(i),i);
         }
         if (!hourlyMode) addDiscussionPreview();
     }
@@ -333,24 +338,49 @@ public class WeatherActivity extends Activity {
         forecastList.addView(card,rowMargins());
     }
 
-    private void addDailyPeriod(JSONObject period,int index) {
-        if(period==null)return;
-        LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.HORIZONTAL); card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(8),dp(7),dp(8),dp(7)); card.setBackground(ThemeUtils.focusBackground(this)); card.setFocusable(true); card.setClickable(true);
-        TextView icon=text(weatherEmoji(period.optString("shortForecast","")),26,true); icon.setGravity(Gravity.CENTER);
-        card.addView(icon,new LinearLayout.LayoutParams(dp(44),dp(46)));
+    private void buildDailyDays(JSONArray periods) {
+        dailyDays.clear();
+        for(int i=0;i<periods.length();i++) {
+            JSONObject period=periods.optJSONObject(i);
+            if(period==null)continue;
+            boolean daytime=period.optBoolean("isDaytime",true);
+            if(daytime) {
+                DayForecast group=new DayForecast();
+                group.day=period;group.label=period.optString("name","Day");
+                if(i+1<periods.length()) {
+                    JSONObject next=periods.optJSONObject(i+1);
+                    if(next!=null&&!next.optBoolean("isDaytime",true)){group.night=next;i++;}
+                }
+                dailyDays.add(group);
+            } else {
+                DayForecast group=new DayForecast();
+                group.night=period;group.label=period.optString("name","Tonight");
+                dailyDays.add(group);
+            }
+        }
+    }
+
+    private void addDailyPeriod(DayForecast day,int index) {
+        if(day==null)return;
+        JSONObject primary=day.day!=null?day.day:day.night;
+        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(8),dp(7),dp(8),dp(7));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
+        TextView icon=text(weatherEmoji(primary.optString("shortForecast","")),26,true);icon.setGravity(Gravity.CENTER);
+        card.addView(icon,new LinearLayout.LayoutParams(dp(44),dp(48)));
         LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(8),0,dp(3),0);
-        info.addView(text(period.optString("name","Forecast"),14,true));
-        info.addView(text(period.optString("temperature","—")+"°"+period.optString("temperatureUnit","F")+" · "+period.optString("shortForecast",""),12,false));
-        String precip="—";JSONObject pp=period.optJSONObject("probabilityOfPrecipitation");if(pp!=null&&!pp.isNull("value"))precip=pp.optString("value")+"%";
-        info.addView(text("Wind "+period.optString("windSpeed","—")+" "+period.optString("windDirection","")+" · Precip. "+precip,11,false));
+        info.addView(text(day.label,14,true));
+        if(day.day!=null) info.addView(text("High "+day.day.optString("temperature","—")+"°"+day.day.optString("temperatureUnit","F")+" · "+day.day.optString("shortForecast",""),12,false));
+        if(day.night!=null) info.addView(text("Low "+day.night.optString("temperature","—")+"°"+day.night.optString("temperatureUnit","F")+" · "+day.night.optString("shortForecast",""),12,false));
+        String wind=primary.optString("windSpeed","—")+" "+primary.optString("windDirection","");
+        JSONObject pp=primary.optJSONObject("probabilityOfPrecipitation");
+        String precip=pp==null||pp.isNull("value")?"—":pp.optString("value")+"%";
+        info.addView(text("Wind "+wind+" · Precip. "+precip,11,false));
         card.addView(info,new LinearLayout.LayoutParams(0,-2,1));
         TextView arrow=text("›",24,false);card.addView(arrow,new LinearLayout.LayoutParams(dp(22),-2));
         card.setOnClickListener(v->{detailIndex=index;showDayDetail(index);});
         card.setOnFocusChangeListener((v,focused)->{
             card.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
-            if(focused){icon.setTextColor(ThemeUtils.accent(this));}
-            else icon.setTextColor(ThemeUtils.text(this));
+            icon.setTextColor(focused?ThemeUtils.accent(this):ThemeUtils.text(this));
         });
         forecastList.addView(card,rowMargins());
     }
@@ -373,26 +403,37 @@ public class WeatherActivity extends Activity {
     }
 
     private void showDayDetail(int index) {
-        detailMode=true; currentPage="day-detail";
-        JSONObject p=dailyPeriods.optJSONObject(index); if(p==null)return;
+        if(index<0||index>=dailyDays.size())return;
+        detailMode=true;currentPage="day-detail";detailIndex=index;
+        DayForecast day=dailyDays.get(index);
         rebuildToolbar("Forecast details",false,false);
         forecastList.removeAllViews();
         LinearLayout navigation=new LinearLayout(this);navigation.setGravity(Gravity.CENTER_VERTICAL);
         Button previous=new Button(this);previous.setText("‹ Previous");ThemeUtils.tint(previous,this);
         Button next=new Button(this);next.setText("Next ›");ThemeUtils.tint(next,this);
-        navigation.addView(previous,new LinearLayout.LayoutParams(0,dp(44),1));navigation.addView(next,new LinearLayout.LayoutParams(0,dp(44),1));
-        previous.setEnabled(index>0);next.setEnabled(index<dailyPeriods.length()-1);
+        navigation.addView(previous,new LinearLayout.LayoutParams(0,dp(44),1));
+        navigation.addView(next,new LinearLayout.LayoutParams(0,dp(44),1));
+        previous.setEnabled(index>0);next.setEnabled(index<dailyDays.size()-1);
         previous.setOnClickListener(v->showDayDetail(Math.max(0,detailIndex-1)));
-        next.setOnClickListener(v->showDayDetail(Math.min(dailyPeriods.length()-1,detailIndex+1)));
+        next.setOnClickListener(v->showDayDetail(Math.min(dailyDays.size()-1,detailIndex+1)));
         forecastList.addView(navigation,rowMargins());
-        forecastList.addView(text(weatherEmoji(p.optString("shortForecast","")),52,true));
-        forecastList.addView(text(p.optString("name","Forecast"),22,true));
-        forecastList.addView(text(p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F")+" · "+p.optString("shortForecast",""),16,false));
-        forecastList.addView(text(p.optString("detailedForecast","No additional forecast details available."),textSize(15),false));
-        String precip="Not available";JSONObject pp=p.optJSONObject("probabilityOfPrecipitation");if(pp!=null&&!pp.isNull("value"))precip=pp.optString("value")+"%";
-        addDetailLine("Wind",p.optString("windSpeed","—")+" "+p.optString("windDirection",""));
-        addDetailLine("Precipitation chance",precip);
-        addDetailLine("Temperature",p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F"));
+        JSONObject primary=day.day!=null?day.day:day.night;
+        forecastList.addView(text(weatherEmoji(primary.optString("shortForecast","")),52,true));
+        forecastList.addView(text(day.label,22,true));
+        if(day.day!=null){
+            forecastList.addView(text("Day · "+day.day.optString("temperature","—")+"°"+day.day.optString("temperatureUnit","F")+" · "+day.day.optString("shortForecast",""),16,true));
+            forecastList.addView(text(day.day.optString("detailedForecast","No daytime details available."),textSize(14),false));
+            addDetailLine("Daytime wind",day.day.optString("windSpeed","—")+" "+day.day.optString("windDirection",""));
+            JSONObject pp=day.day.optJSONObject("probabilityOfPrecipitation");
+            addDetailLine("Daytime precipitation chance",pp==null||pp.isNull("value")?"Not available":pp.optString("value")+"%");
+        }
+        if(day.night!=null){
+            forecastList.addView(text("Night · "+day.night.optString("temperature","—")+"°"+day.night.optString("temperatureUnit","F")+" · "+day.night.optString("shortForecast",""),16,true));
+            forecastList.addView(text(day.night.optString("detailedForecast","No nighttime details available."),textSize(14),false));
+            addDetailLine("Nighttime wind",day.night.optString("windSpeed","—")+" "+day.night.optString("windDirection",""));
+            JSONObject pp=day.night.optJSONObject("probabilityOfPrecipitation");
+            addDetailLine("Nighttime precipitation chance",pp==null||pp.isNull("value")?"Not available":pp.optString("value")+"%");
+        }
         Button back=new Button(this);back.setText("Back to forecast");ThemeUtils.tint(back,this);back.setOnClickListener(v->{detailMode=false;currentPage="forecast";showForecastPage();});
         forecastList.addView(back,rowMargins());
     }
@@ -714,7 +755,7 @@ public class WeatherActivity extends Activity {
     @Override public boolean onKeyDown(int keyCode,KeyEvent event){
         if("day-detail".equals(currentPage)){
             if(keyCode==KeyEvent.KEYCODE_DPAD_LEFT){showDayDetail(Math.max(0,detailIndex-1));return true;}
-            if(keyCode==KeyEvent.KEYCODE_DPAD_RIGHT){showDayDetail(Math.min(dailyPeriods.length()-1,detailIndex+1));return true;}
+            if(keyCode==KeyEvent.KEYCODE_DPAD_RIGHT){showDayDetail(Math.min(dailyDays.size()-1,detailIndex+1));return true;}
             if(keyCode==KeyEvent.KEYCODE_BACK){showForecastPage();return true;}
         }
         if(keyCode==KeyEvent.KEYCODE_BACK){
