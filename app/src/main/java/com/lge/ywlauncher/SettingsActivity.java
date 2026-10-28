@@ -42,7 +42,7 @@ public class SettingsActivity extends Activity {
         title.setText("Settings");
         title.setTextSize(19);
         title.setTextColor(ThemeUtils.text(this));
-        title.setPadding(dp(4), 0, 0, 0);
+        title.setPadding(dp(4), 0, 0, 0);\n        title.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
         page.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(50)));
 
@@ -261,7 +261,8 @@ public class SettingsActivity extends Activity {
                     pick.addCategory(Intent.CATEGORY_OPENABLE);
                     pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                     pick.setType("image/*");
-                    startActivityForResult(pick, PICK_BACKGROUND_IMAGE);
+                    try { startActivityForResult(pick, PICK_BACKGROUND_IMAGE); }
+                    catch (Exception e) { showError("No image picker is available on this phone."); }
                 } else {
                     prefs.edit().putInt("background", which).apply();
                     recreate();
@@ -530,7 +531,8 @@ public class SettingsActivity extends Activity {
         if (requestCode == PICK_BACKGROUND_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
             try {
-                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+                catch (SecurityException ignored) {}
                 prefs.edit().putString("custom_background_uri", uri.toString()).putInt("background", 4).apply();
                 recreate();
             } catch (Exception e) {
