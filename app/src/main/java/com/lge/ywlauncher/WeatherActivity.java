@@ -368,7 +368,7 @@ public class WeatherActivity extends Activity {
         info.addView(text("Wind "+period.optString("windSpeed","—")+" "+period.optString("windDirection","")+" · Precip. "+(pp==null||pp.isNull("value")?"—":pp.optString("value")+"%"),11,false));
         card.addView(info,new LinearLayout.LayoutParams(0,-2,1));
         card.setOnClickListener(v->showHourDetail(index));
-        card.setOnFocusChangeListener((v,focused)->card.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this)));
+        card.setOnFocusChangeListener((v,focused)->card.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
         forecastList.addView(card,rowMargins());
     }
 
@@ -478,7 +478,7 @@ public class WeatherActivity extends Activity {
                 dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();
                 showForecastPage();
             });
-            row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this)));
+            row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
             forecastList.addView(row,rowMargins());
         }
         Button current=new Button(this);current.setText("Use current location");ThemeUtils.tint(current,this);current.setOnClickListener(v->{
@@ -547,7 +547,7 @@ public class WeatherActivity extends Activity {
                 for(SavedPlace place:found){
                     LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),dp(10),dp(10),dp(10));row.setFocusable(true);row.setClickable(true);row.setBackground(ThemeUtils.focusBackground(this));
                     TextView name=text(place.name,13,true);row.addView(name,new LinearLayout.LayoutParams(0,-2,1));row.addView(text("＋",22,true));
-                    row.setOnClickListener(v->saveAndSelectLocation(place));row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this)));
+                    row.setOnClickListener(v->saveAndSelectLocation(place));row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
                     suggestions.addView(row,rowMargins());
                 }
             });
@@ -591,7 +591,7 @@ public class WeatherActivity extends Activity {
     private String refreshLabel(){int n=prefs().getInt("weather_refresh_minutes",15);return n==0?"Off":"Every "+n+" minutes";}
     private void addSetting(String title,String summary,Runnable action){
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));row.setBackground(ThemeUtils.focusBackground(this));row.setFocusable(true);row.setClickable(true);
-        row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?focusOutlineBackground():ThemeUtils.focusBackground(this)));
+        row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
         forecastList.addView(row);View line=new View(this);line.setBackgroundColor(ThemeUtils.divider(this));forecastList.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
     }
 
