@@ -57,6 +57,22 @@ public final class ThemeUtils {
         return states;
     }
 
+    public static StateListDrawable focusOutlineBackground(Context context) {
+        StateListDrawable states = new StateListDrawable();
+        GradientDrawable focused = new GradientDrawable();
+        focused.setColor(Color.TRANSPARENT);
+        focused.setCornerRadius(10 * context.getResources().getDisplayMetrics().density);
+        focused.setStroke(Math.max(2, Math.round(2 * context.getResources().getDisplayMetrics().density)), accent(context));
+        states.addState(new int[]{android.R.attr.state_focused}, focused);
+        GradientDrawable pressed = new GradientDrawable();
+        pressed.setColor(withAlpha(accent(context), 35));
+        pressed.setCornerRadius(10 * context.getResources().getDisplayMetrics().density);
+        pressed.setStroke(Math.max(1, Math.round(context.getResources().getDisplayMetrics().density)), accent(context));
+        states.addState(new int[]{android.R.attr.state_pressed}, pressed);
+        states.addState(new int[]{}, new ColorDrawable(Color.TRANSPARENT));
+        return states;
+    }
+
     public static StateListDrawable selectedBackground(Context context) {
         StateListDrawable states = new StateListDrawable();
         states.addState(new int[]{}, focusShape(context, false));
