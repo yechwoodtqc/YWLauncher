@@ -369,7 +369,7 @@ public class MainActivity extends Activity {
     }
 
     private void toggleSelection(String name) {
-        selectedApps.contains(name) ? selectedApps.remove(name) : selectedApps.add(name);
+        if (selectedApps.contains(name)) selectedApps.remove(name); else selectedApps.add(name);
         updateSelectionToolbar();
         renderApps();
         appsArea.post(() -> {
