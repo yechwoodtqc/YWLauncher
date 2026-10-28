@@ -1,6 +1,7 @@
 package com.lge.ywlauncher;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.*;
 import android.content.*;
 import android.content.pm.PackageManager;
@@ -276,8 +277,10 @@ public class WeatherActivity extends Activity {
                     String forecastTime = finalGenerated;
                     if (!forecastTime.isEmpty()) {
                         try {
-                            java.text.SimpleDateFormat input = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
-                            Date date = input.parse(forecastTime);
+                            String normalizedTime = forecastTime.replaceFirst("([+-]\\d{2}):(\\d{2})$", "$1$2").replaceFirst("Z$", "+0000");
+                            normalizedTime = normalizedTime.replaceFirst("\\.\\d+(?=[+-]\\d{4}$)", "");
+                            java.text.SimpleDateFormat input = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
+                            Date date = input.parse(normalizedTime);
                             forecastTime = date == null ? forecastTime : new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(date);
                         } catch (Exception ignored) {}
                     }
@@ -677,7 +680,14 @@ public class WeatherActivity extends Activity {
         if(requestCode==LOCATION_PERMISSION_REQUEST){boolean granted=false;for(int r:grantResults)if(r==PackageManager.PERMISSION_GRANTED)granted=true;if(granted)findCurrentLocation();else fallbackIpLocation();}
     }
 
+    @SuppressLint("MissingPermission")
     private void findCurrentLocation(){
+        if(android.os.Build.VERSION.SDK_INT>=23
+            && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED
+            && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED) {
+            fallbackIpLocation();
+            return;
+        }
         setLoading(true,"Finding your location…");
         try{
             LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);Location best=null;
