@@ -577,7 +577,20 @@ public class WeatherActivity extends Activity {
                     if(found.isEmpty()){
                         String osm="https://nominatim.openstreetmap.org/search?q="+URLEncoder.encode(query,"UTF-8")+"&format=jsonv2&limit=5&countrycodes=us&addressdetails=1";
                         JSONArray matches=new JSONArray(getText(osm));
-                        for(int i=0;i<matches.length();i++){JSONObject p=matches.optJSONObject(i);String name=p.optString("display_name",query);found.add(new SavedPlace(name,Double.parseDouble(p.getString("lat")),Double.parseDouble(p.getString("lon"))));}
+                        for(int i=0;i<matches.length();i++){
+                            JSONObject p=matches.optJSONObject(i);
+                            JSONObject address=p.optJSONObject("address");
+                            String city="";
+                            if(address!=null){
+                                city=address.optString("city","");
+                                if(city.isEmpty())city=address.optString("town","");
+                                if(city.isEmpty())city=address.optString("village","");
+                                if(city.isEmpty())city=address.optString("suburb","");
+                            }
+                            String state=address==null?"":address.optString("state","");
+                            String name=!city.isEmpty()&&!state.isEmpty()?city+", "+state:p.optString("display_name",query);
+                            found.add(new SavedPlace(name,Double.parseDouble(p.getString("lat")),Double.parseDouble(p.getString("lon"))));
+                        }
                     }
                 }
             }catch(Exception ignored){}
