@@ -449,7 +449,9 @@ public class WeatherActivity extends Activity {
         SavedPlace place=selectedPlace();
         setSelectedPlaceTitle();
         if(dailyPeriods.length()==0 && hourlyPeriods.length()==0) {
-            if(place!=null) fetchForecastAt(place.lat,place.lon);
+            String savedLocation=prefs().getString("weather_location","");
+            if("Use current location".equals(savedLocation) || (!prefs().contains("weather_lat") && place==null)) detectLocation();
+            else if(place!=null) fetchForecastAt(place.lat,place.lon);
             else if(prefs().contains("weather_lat") && prefs().contains("weather_lon")) fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
             else detectLocation();
         }
@@ -470,11 +472,19 @@ public class WeatherActivity extends Activity {
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),dp(10),dp(8),dp(10));row.setFocusable(true);row.setClickable(true);row.setBackground(ThemeUtils.focusBackground(this));
             LinearLayout textCol=new LinearLayout(this);textCol.setOrientation(LinearLayout.VERTICAL);textCol.addView(text(place.name,15,true));textCol.addView(text("Tap to use this forecast",11,false));row.addView(textCol,new LinearLayout.LayoutParams(0,-2,1));
             TextView check=text(place.name.equals(selectedPlaceName())?"✓":"›",22,true);check.setTextColor(ThemeUtils.accent(this));row.addView(check);
-            row.setOnClickListener(v->{prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name).putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();showForecastPage();fetchForecastAt(place.lat,place.lon);});
+            row.setOnClickListener(v->{
+                prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name)
+                    .putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();
+                dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();
+                showForecastPage();
+            });
             row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?focusOutlineBackground():ThemeUtils.focusBackground(this)));
             forecastList.addView(row,rowMargins());
         }
-        Button current=new Button(this);current.setText("Use current location");ThemeUtils.tint(current,this);current.setOnClickListener(v->{prefs().edit().putString("weather_selected_location","").putString("weather_location","Use current location").apply();showForecastPage();detectLocation();});forecastList.addView(current,rowMargins());
+        Button current=new Button(this);current.setText("Use current location");ThemeUtils.tint(current,this);current.setOnClickListener(v->{
+            prefs().edit().putString("weather_selected_location","").putString("weather_location","Use current location").apply();
+            dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();showForecastPage();
+        });forecastList.addView(current,rowMargins());
         Button back=new Button(this);back.setText("Back to forecast");ThemeUtils.tint(back,this);back.setOnClickListener(v->showForecastPage());forecastList.addView(back,rowMargins());
     }
 
@@ -498,7 +508,10 @@ public class WeatherActivity extends Activity {
             }
             @Override public void afterTextChanged(Editable e){}
         });
-        Button current=new Button(this);current.setText("Use current location");ThemeUtils.tint(current,this);current.setOnClickListener(v->{prefs().edit().putString("weather_location","Use current location").putString("weather_selected_location","").apply();showForecastPage();detectLocation();});forecastList.addView(current,rowMargins());
+        Button current=new Button(this);current.setText("Use current location");ThemeUtils.tint(current,this);current.setOnClickListener(v->{
+            prefs().edit().putString("weather_location","Use current location").putString("weather_selected_location","").apply();
+            dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();showForecastPage();
+        });forecastList.addView(current,rowMargins());
         Button cancel=new Button(this);cancel.setText("Cancel");ThemeUtils.tint(cancel,this);cancel.setOnClickListener(v->showLocationsPage());forecastList.addView(cancel,rowMargins());
         input.requestFocus();
     }
@@ -547,7 +560,8 @@ public class WeatherActivity extends Activity {
         persistSavedPlaces();
         prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name)
             .putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();
-        showForecastPage();fetchForecastAt(place.lat,place.lon);
+        dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();
+        showForecastPage();
     }
 
     private void showWeatherSettings() {
