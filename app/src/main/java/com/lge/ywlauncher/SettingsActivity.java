@@ -32,17 +32,17 @@ public class SettingsActivity extends Activity {
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         ImageButton back = new ImageButton(this);
-        back.setImageResource(android.R.drawable.ic_media_previous);
+        back.setImageResource(R.drawable.ic_back_modern);
         back.setColorFilter(ThemeUtils.text(this));
         back.setContentDescription("Back");
-        back.setBackground(ThemeUtils.focusBackground(this));
+        back.setBackground(ThemeUtils.focusOutlineBackground(this));
         back.setOnClickListener(v -> finish());
         toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
         TextView title = new TextView(this);
         title.setText("Settings");
         title.setTextSize(19);
         title.setTextColor(ThemeUtils.text(this));
-        title.setPadding(dp(8), 0, 0, 0);
+        title.setPadding(dp(4), 0, 0, 0);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
         page.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(50)));
 
@@ -431,8 +431,8 @@ public class SettingsActivity extends Activity {
         list.setAdapter(adapter);
         list.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
         LinearLayout controls = new LinearLayout(this);
-        Button up = new Button(this); up.setText("↑  Move up"); ThemeUtils.tint(up, this); up.setMinimumHeight(dp(48)); up.setTextSize(14);
-        Button down = new Button(this); down.setText("↓  Move down"); ThemeUtils.tint(down, this); down.setMinimumHeight(dp(48)); down.setTextSize(14);
+        Button up = new Button(this); up.setText("↑  Move up"); ThemeUtils.tint(up, this); up.setHeight(dp(48)); up.setTextSize(14);
+        Button down = new Button(this); down.setText("↓  Move down"); ThemeUtils.tint(down, this); down.setHeight(dp(48)); down.setTextSize(14);
         controls.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
         controls.addView(down, new LinearLayout.LayoutParams(0, -2, 1));
         dialogLayout.addView(controls);
