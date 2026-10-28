@@ -149,7 +149,7 @@ public class MainActivity extends Activity {
                             }
                         }
                     }
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
             }
             if (!applied) root.setBackgroundColor(custom);
         } else {
