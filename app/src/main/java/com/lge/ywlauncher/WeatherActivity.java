@@ -103,6 +103,17 @@ public class WeatherActivity extends Activity {
 
     private void rebuildToolbar(String titleText, boolean showRefresh, boolean showSettings) {
         toolbar.removeAllViews();
+        if (!"forecast".equals(currentPage)) {
+            ImageButton back = new ImageButton(this);
+            back.setImageResource(R.drawable.ic_back_modern);
+            back.setColorFilter(ThemeUtils.text(this));
+            back.setContentDescription("Back");
+            back.setBackground(outlineFocusBackground());
+            back.setPadding(dp(8),dp(8),dp(8),dp(8));
+            back.setFocusable(true);
+            back.setOnClickListener(v -> { if ("add-location".equals(currentPage)) showLocationsPage(); else showForecastPage(); });
+            toolbar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(44)));
+        }
         TextView title = new TextView(this);
         title.setText(titleText);
         title.setTextColor(ThemeUtils.text(this));
@@ -307,27 +318,38 @@ public class WeatherActivity extends Activity {
         forecastList.removeAllViews();
         LinearLayout tabs = new LinearLayout(this);
         tabs.setOrientation(LinearLayout.HORIZONTAL);
-        Button daily = new Button(this); daily.setText("Daily");
         Button hourly = new Button(this); hourly.setText("Hourly");
+        Button daily = new Button(this); daily.setText("Daily");
         ThemeUtils.tint(daily, this); ThemeUtils.tint(hourly, this);
         daily.setTextSize(textSize(12)); hourly.setTextSize(textSize(12));
-        daily.setAlpha(hourlyMode ? 0.65f : 1f); hourly.setAlpha(hourlyMode ? 1f : 0.65f);
-        tabs.addView(daily,new LinearLayout.LayoutParams(0,dp(42),1));
-        tabs.addView(hourly,new LinearLayout.LayoutParams(0,dp(42),1));
-        daily.setOnClickListener(v->{hourlyMode=false;renderForecast();});
-        hourly.setOnClickListener(v->{hourlyMode=true;renderForecast();});
+        daily.setTypeface(null,android.graphics.Typeface.BOLD); hourly.setTypeface(null,android.graphics.Typeface.BOLD);
+        daily.setBackground(ThemeUtils.focusBackground(this)); hourly.setBackground(ThemeUtils.focusBackground(this));
+        daily.setOnFocusChangeListener((v,f)->daily.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
+        hourly.setOnFocusChangeListener((v,f)->hourly.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
+        tabs.addView(hourly,new LinearLayout.LayoutParams(0,dp(44),1));
+        tabs.addView(daily,new LinearLayout.LayoutParams(0,dp(44),1));
+        daily.setOnClickListener(v->{hourlyMode=false;if(forecastScroller!=null)forecastScroller.smoothScrollTo(0,dp(180));});
+        hourly.setOnClickListener(v->{hourlyMode=true;if(forecastScroller!=null)forecastScroller.smoothScrollTo(0,0);});
         forecastList.addView(tabs,rowMargins());
-        if (hourlyMode) {
-            addSectionTitle("Next hours");
-            int limit=Math.min(24,hourlyPeriods.length());
-            for(int i=0;i<limit;i++) addHourlyPeriod(hourlyPeriods.optJSONObject(i),i);
-        } else {
-            addCurrentSummary();
-            addSectionTitle("Daily forecast · select a day for details");
-            int limit=Math.min(8,dailyDays.size());
-            for(int i=0;i<limit;i++) addDailyPeriod(dailyDays.get(i),i);
+        addCurrentSummary();
+        addSectionTitle("Hourly forecast");
+        HorizontalScrollView strip=new HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);
+        LinearLayout hours=new LinearLayout(this);hours.setOrientation(LinearLayout.HORIZONTAL);
+        for(int i=0;i<Math.min(18,hourlyPeriods.length());i++) {
+            JSONObject period=hourlyPeriods.optJSONObject(i);if(period==null)continue;final int hourIndex=i;
+            LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
+            card.setPadding(dp(9),dp(8),dp(9),dp(8));card.setMinimumWidth(dp(82));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
+            String start=period.optString("startTime","");String time=start.length()>=16?start.substring(11,16):"Hour";
+            card.addView(text(time,12,true));card.addView(text(weatherEmoji(period.optString("shortForecast","")),24,true));
+            card.addView(text(period.optString("temperature","—")+"°",15,true));
+            card.setOnClickListener(v->showHourDetail(hourIndex));
+            card.setOnFocusChangeListener((v,f)->card.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
+            hours.addView(card,new LinearLayout.LayoutParams(-2,dp(106)));
         }
-        if (!hourlyMode) addDiscussionPreview();
+        strip.addView(hours);forecastList.addView(strip,rowMargins());
+        addSectionTitle("Daily forecast · select a day for details");
+        for(int i=0;i<Math.min(8,dailyDays.size());i++)addDailyPeriod(dailyDays.get(i),i);
+        addDiscussionPreview();
     }
 
     private void addCurrentSummary() {
