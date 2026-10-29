@@ -20,22 +20,6 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:name=".WeatherActivity"
-            android:exported="true"
-            android:label="YW Weather"
-            android:icon="@drawable/ic_weather">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="false"
-            android:label="Settings" />
-
-        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="YW Launcher">
@@ -66,6 +50,17 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="www.ywlauncher.go" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".WeatherActivity"
+            android:exported="true"
+            android:label="YW Weather"
+            android:icon="@drawable/ic_weather">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
