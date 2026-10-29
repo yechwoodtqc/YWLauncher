@@ -593,9 +593,21 @@ public class SettingsActivity extends Activity {
         if (requestCode == PICK_BACKGROUND_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
             try {
-                try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
-                catch (SecurityException ignored) {}
-                prefs.edit().putString("custom_background_uri", uri.toString()).putInt("background", 4).apply();
+                java.io.File saved = new java.io.File(getFilesDir(), "launcher_background_image");
+                java.io.InputStream input = getContentResolver().openInputStream(uri);
+                if (input == null) throw new IOException("The selected image could not be opened.");
+                java.io.FileOutputStream output = new java.io.FileOutputStream(saved);
+                try {
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                    output.flush();
+                } finally {
+                    try { input.close(); } catch (Exception ignored) {}
+                    try { output.close(); } catch (Exception ignored) {}
+                }
+                prefs.edit().putString("custom_background_path", saved.getAbsolutePath())
+                    .remove("custom_background_uri").putInt("background", 4).apply();
                 recreate();
             } catch (Exception e) {
                 showError("Could not use that image: " + e.getMessage());
