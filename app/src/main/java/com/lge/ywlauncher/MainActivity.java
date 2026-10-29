@@ -19,6 +19,7 @@ public class MainActivity extends Activity {
     private ScrollView scroll;
     private ImageButton settingsButton;
     private TextView pageIndicator, selectionCount;
+    private LinearLayout pageDots;
     private Button hideSelected, uninstallSelected, cancelSelection;
     private final ArrayList<ResolveInfo> apps = new ArrayList<>();
     private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
@@ -103,6 +104,11 @@ public class MainActivity extends Activity {
         appsArea.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(appsArea, new ScrollView.LayoutParams(-1, -1));
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        pageDots = new LinearLayout(this);
+        pageDots.setGravity(Gravity.CENTER);
+        pageDots.setOrientation(LinearLayout.HORIZONTAL);
+        pageDots.setPadding(0, dp(3), 0, dp(3));
+        root.addView(pageDots, new LinearLayout.LayoutParams(-1, dp(18)));
         setContentView(root);
         updateSelectionToolbar();
     }
@@ -214,7 +220,18 @@ public class MainActivity extends Activity {
             }
             return String.CASE_INSENSITIVE_ORDER.compare(a.loadLabel(getPackageManager()).toString(), b.loadLabel(getPackageManager()).toString());
         });
-        Set<String> included = normalizedIncludedActivities(getSharedPreferences("launcher", 0).getStringSet("included", null), found);
+        android.content.SharedPreferences appPrefs = getSharedPreferences("launcher", 0);
+        Set<String> savedIncluded = appPrefs.getStringSet("included", null);
+        Set<String> included = normalizedIncludedActivities(savedIncluded, found);
+        Set<String> known = new HashSet<>(appPrefs.getStringSet("known_apps", new HashSet<String>()));
+        boolean changed = false;
+        for (ResolveInfo app : found) {
+            String name = app.activityInfo.name;
+            if (savedIncluded == null || !known.contains(name)) { included.add(name); changed = true; }
+            known.add(name);
+        }
+        if (changed || savedIncluded == null) appPrefs.edit().putStringSet("included", new HashSet<>(included)).apply();
+        appPrefs.edit().putStringSet("known_apps", known).apply();
         apps.clear();
         for (ResolveInfo app : found) if (included.contains(app.activityInfo.name)) apps.add(app);
         selectedApps.retainAll(activityNames(apps));
@@ -231,7 +248,7 @@ public class MainActivity extends Activity {
         if (appsArea == null) return;
         appsArea.removeAllViews();
         boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
-        pageIndicator.setVisibility(grid && selectedApps.isEmpty() ? View.VISIBLE : View.GONE);
+        pageIndicator.setVisibility(View.GONE);
         if (apps.isEmpty()) {
             TextView empty = new TextView(this);
             empty.setText("No apps selected. Open Settings to choose apps.");
@@ -252,7 +269,8 @@ public class MainActivity extends Activity {
         int pageSize = rows * columns;
         int pageCount = Math.max(1, (apps.size() + pageSize - 1) / pageSize);
         currentPage = clamp(currentPage, 0, pageCount - 1);
-        pageIndicator.setText((currentPage + 1) + " / " + pageCount);
+        pageIndicator.setText("");
+        renderPageDots(pageCount);
         int first = currentPage * pageSize;
         int end = Math.min(apps.size(), first + pageSize);
         int cellHeightDp = 64;
@@ -279,6 +297,30 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void renderPageDots(int count) {
+        if (pageDots == null) return;
+        pageDots.removeAllViews();
+        boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
+        pageDots.setVisibility(grid && count > 1 ? View.VISIBLE : View.GONE);
+        if (!grid || count <= 1) return;
+        for (int i = 0; i < count; i++) {
+            final int page = i;
+            TextView dot = new TextView(this);
+            dot.setText(i == currentPage ? "●" : "•");
+            dot.setTextSize(i == currentPage ? 12 : 10);
+            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
+            dot.setGravity(Gravity.CENTER);
+            dot.setContentDescription("Page " + (i + 1));
+            dot.setFocusable(false);
+            dot.setPadding(dp(4), 0, dp(4), 0);
+            dot.setOnClickListener(v -> {
+                int delta = page - currentPage;
+                if (delta != 0) changePage(delta, 0);
+            });
+            pageDots.addView(dot, new LinearLayout.LayoutParams(-2, -1));
+        }
+    }
+
     private void focusFirstApp() {
         if (appsArea.getChildCount() == 0) return;
         View first = appsArea.getChildAt(0);
@@ -293,7 +335,13 @@ public class MainActivity extends Activity {
 
     private void changePage(int delta, int targetColumn) {
         currentPage = clamp(currentPage + delta, 0, pageCount() - 1);
+        if (appsArea != null) {
+            appsArea.animate().cancel();
+            appsArea.setAlpha(0.72f);
+            appsArea.setTranslationX(delta > 0 ? dp(14) : -dp(14));
+        }
         renderApps();
+        if (appsArea != null) appsArea.animate().alpha(1f).translationX(0f).setDuration(180).start();
         int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         int index = currentPage * rows * columns + clamp(targetColumn, 0, columns - 1);
@@ -492,7 +540,7 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
         }
         if (keyCode == KeyEvent.KEYCODE_MENU) { startActivity(new Intent(this, SettingsActivity.class)); return true; }
-        if (selectedApps.isEmpty() && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
+        if ("grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
             && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
             View focused = getCurrentFocus();
             if (focused != null && focused.getTag() instanceof String) {
