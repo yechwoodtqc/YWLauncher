@@ -903,15 +903,15 @@ public class WeatherActivity extends Activity {
                 canvas.drawCircle(25,32,10,paint);canvas.drawCircle(38,29,12,paint);canvas.drawCircle(48,37,7,paint);
                 canvas.drawRoundRect(18,34,53,43,5,5,paint);
             }
-            if (rain) {
+            if (thunder) {
+                paint.setStyle(Paint.Style.FILL);paint.setColor(0xffffc247);
+                Path bolt=new Path();bolt.moveTo(36,42);bolt.lineTo(27,53);bolt.lineTo(34,53);bolt.lineTo(30,62);bolt.lineTo(43,48);bolt.lineTo(36,48);bolt.close();canvas.drawPath(bolt,paint);
+            } else if (rain) {
                 paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff42a5f5);
                 for(int i=0;i<3;i++)canvas.drawLine(25+i*10,49,21+i*10,56,paint);
             } else if (snow) {
                 paint.setStyle(Paint.Style.FILL);paint.setColor(0xff65c7f7);
                 canvas.drawCircle(23,53,2.6f,paint);canvas.drawCircle(36,55,2.6f,paint);canvas.drawCircle(48,52,2.6f,paint);
-            } else if (thunder) {
-                paint.setStyle(Paint.Style.FILL);paint.setColor(0xffffc247);
-                Path bolt=new Path();bolt.moveTo(36,42);bolt.lineTo(27,53);bolt.lineTo(34,53);bolt.lineTo(30,62);bolt.lineTo(43,48);bolt.lineTo(36,48);bolt.close();canvas.drawPath(bolt,paint);
             } else if (fog) {
                 paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2.5f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff90a4ae);
                 canvas.drawLine(13,51,52,51,paint);canvas.drawLine(19,57,46,57,paint);
