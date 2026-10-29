@@ -211,7 +211,7 @@ public class SettingsActivity extends Activity {
 
     private String backgroundSummary() {
         int value = prefs.getInt("background", 0);
-        return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : "System wallpaper")));
+        return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : (value == 5 ? "Exalt gradient" : "System wallpaper"))));
     }
 
     private String themeSummary() {
@@ -258,7 +258,7 @@ public class SettingsActivity extends Activity {
     private void chooseBackground() {
         int selected = prefs.getInt("background", 0);
         new AlertDialog.Builder(this).setTitle("Background")
-            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color", "Custom image"}, Math.min(4, selected), (dialog, which) -> {
+            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color", "Custom image", "Exalt gradient"}, Math.min(5, selected), (dialog, which) -> {
                 dialog.dismiss();
                 if (which == 3) {
                     prefs.edit().putInt("background", 3).apply();
