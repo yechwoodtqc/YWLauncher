@@ -101,7 +101,7 @@ public class ReorderAppsActivity extends Activity {
         list.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_activated_1, labels);
         list.setAdapter(adapter);
-        list.setItemChecked(0, true);
+        if (!order.isEmpty()) list.setItemChecked(0, true);
         list.setOnItemClickListener((parent, view, position, id) -> selected = position);
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
 
