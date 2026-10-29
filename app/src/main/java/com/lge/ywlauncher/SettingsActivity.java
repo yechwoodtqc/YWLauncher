@@ -467,9 +467,22 @@ public class SettingsActivity extends Activity {
                 list.setItemChecked(selected[0], true);
             }
         });
-        new AlertDialog.Builder(this).setTitle("App order").setView(dialogLayout)
+        AlertDialog reorderDialog = new AlertDialog.Builder(this).setTitle("App order")
+            .setView(dialogLayout)
             .setPositiveButton("Save", (dialog, which) -> prefs.edit().putString("ordered_apps", joinLines(order)).apply())
-            .setNegativeButton("Cancel", null).show();
+            .setNegativeButton("Cancel", null).create();
+        reorderDialog.setOnShowListener(dialog -> {
+            if (reorderDialog.getWindow() != null) {
+                reorderDialog.getWindow().setLayout(-1, -1);
+                reorderDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            }
+        });
+        up.setBackground(ThemeUtils.focusBackground(this));
+        down.setBackground(ThemeUtils.focusBackground(this));
+        up.setOnFocusChangeListener((v, focused) -> up.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
+        down.setOnFocusChangeListener((v, focused) -> down.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
+        reorderDialog.show();
+        if (list.getCount() > 0) { list.setItemChecked(0, true); list.requestFocus(); }
     }
 
     private String labelFor(ResolveInfo app) {
