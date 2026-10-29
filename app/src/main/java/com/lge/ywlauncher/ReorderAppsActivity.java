@@ -130,7 +130,7 @@ public class ReorderAppsActivity extends Activity {
         down.setOnClickListener(v -> move(1));
         save.setOnClickListener(v -> {
             StringBuilder value = new StringBuilder();
-            for (String name : order) { if (value.length() > 0) value.append('\\n'); value.append(name); }
+            for (String name : order) { if (value.length() > 0) value.append('\n'); value.append(name); }
             prefs.edit().putString("ordered_apps", value.toString()).apply();
             Toast.makeText(this, "App order saved", Toast.LENGTH_SHORT).show();
             finish();
