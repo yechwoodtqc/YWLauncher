@@ -381,7 +381,7 @@ public class WeatherActivity extends Activity {
             LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
             card.setPadding(dp(9),dp(8),dp(9),dp(8));card.setMinimumWidth(dp(82));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
             String start=period.optString("startTime","");String time=start.length()>=16?start.substring(11,16):"Hour";
-            card.addView(text(time,12,true));card.addView(text(weatherEmoji(period.optString("shortForecast","")),24,true));
+            card.addView(text(time,12,true));card.addView(weatherIcon(period.optString("shortForecast",""),40),new LinearLayout.LayoutParams(dp(52),dp(46)));
             card.addView(text(period.optString("temperature","—")+"°",15,true));
             card.setOnClickListener(v->showHourDetail(hourIndex));
             card.setOnFocusChangeListener((v,f)->card.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
@@ -397,8 +397,12 @@ public class WeatherActivity extends Activity {
         JSONObject current = hourlyPeriods.length()>0 ? hourlyPeriods.optJSONObject(0) : (dailyPeriods.length()>0 ? dailyPeriods.optJSONObject(0) : null);
         if(current==null)return;
         LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(14),dp(12),dp(14),dp(12)); card.setBackground(cardBackground());
-        TextView heading = text("NOW  "+weatherEmoji(current.optString("shortForecast",""))+"  "+current.optString("temperature","—")+"°"+current.optString("temperatureUnit","F"),22,true);
-        card.addView(heading);
+        LinearLayout nowRow = new LinearLayout(this);
+        nowRow.setGravity(Gravity.CENTER_VERTICAL);
+        nowRow.addView(weatherIcon(current.optString("shortForecast",""),48),new LinearLayout.LayoutParams(dp(58),dp(58)));
+        TextView heading = text("NOW  "+current.optString("temperature","—")+"°"+current.optString("temperatureUnit","F"),22,true);
+        nowRow.addView(heading,new LinearLayout.LayoutParams(0,-2,1));
+        card.addView(nowRow);
         card.addView(text(current.optString("shortForecast","Current conditions"),14,false));
         String humidity="—",precip="—";
         JSONObject hum=current.optJSONObject("relativeHumidity"); if(hum!=null&&!hum.isNull("value"))humidity=hum.optString("value")+"%";
@@ -434,8 +438,8 @@ public class WeatherActivity extends Activity {
         JSONObject primary=day.day!=null?day.day:day.night;
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(8),dp(7),dp(8),dp(7));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
-        TextView icon=text(weatherEmoji(primary.optString("shortForecast","")),26,true);icon.setGravity(Gravity.CENTER);
-        card.addView(icon,new LinearLayout.LayoutParams(dp(44),dp(48)));
+        View icon=weatherIcon(primary.optString("shortForecast",""),40);
+        card.addView(icon,new LinearLayout.LayoutParams(dp(48),dp(48)));
         LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(8),0,dp(3),0);
         info.addView(text(day.label,14,true));
         if(day.day!=null) info.addView(text("High "+day.day.optString("temperature","—")+"°"+day.day.optString("temperatureUnit","F")+" · "+day.day.optString("shortForecast",""),12,false));
@@ -449,7 +453,7 @@ public class WeatherActivity extends Activity {
         card.setOnClickListener(v->{detailIndex=index;showDayDetail(index);});
         card.setOnFocusChangeListener((v,focused)->{
             card.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
-            icon.setTextColor(focused?ThemeUtils.accent(this):ThemeUtils.text(this));
+            
         });
         forecastList.addView(card,rowMargins());
     }
@@ -484,9 +488,7 @@ public class WeatherActivity extends Activity {
         hero.setGravity(Gravity.CENTER);
         hero.setPadding(dp(14),dp(18),dp(14),dp(18));
         hero.setBackground(cardBackground());
-        TextView weatherArt = text(weatherEmoji(primary.optString("shortForecast","")),48,true);
-        weatherArt.setGravity(Gravity.CENTER);
-        hero.addView(weatherArt);
+        hero.addView(weatherIcon(primary.optString("shortForecast",""),76),new LinearLayout.LayoutParams(dp(90),dp(86)));
         TextView dayTitle = text(day.label,22,true);
         dayTitle.setGravity(Gravity.CENTER);
         hero.addView(dayTitle);
@@ -856,6 +858,67 @@ public class WeatherActivity extends Activity {
     private void addSectionTitle(String value){TextView t=text(value,13,true);t.setTextColor(ThemeUtils.accent(this));t.setPadding(dp(4),dp(13),dp(4),dp(5));forecastList.addView(t);}
     private LinearLayout.LayoutParams rowMargins(){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(7);return p;}
     private GradientDrawable cardBackground(){GradientDrawable d=new GradientDrawable();d.setColor(ThemeUtils.isDark(this)?0xff18232f:0xfff5f8fc);d.setCornerRadius(dp(10));d.setStroke(dp(1),ThemeUtils.divider(this));return d;}
+
+    private View weatherIcon(String forecast, int sizeDp) {
+        return new WeatherIconView(this, forecast, sizeDp);
+    }
+
+    private final class WeatherIconView extends View {
+        private final String condition;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int size;
+        WeatherIconView(Context context, String forecast, int sizeDp) {
+            super(context);
+            condition = forecast == null ? "" : forecast.toLowerCase(Locale.US);
+            size = sizeDp;
+            setContentDescription(forecast);
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+            int target = dp(size);
+            setMeasuredDimension(resolveSize(target, widthSpec), resolveSize(target, heightSpec));
+        }
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float scale = Math.min(getWidth(), getHeight()) / 64f;
+            canvas.save();
+            canvas.translate((getWidth()-64f*scale)/2f,(getHeight()-64f*scale)/2f);
+            canvas.scale(scale,scale);
+            boolean thunder=condition.contains("thunder");
+            boolean rain=condition.contains("rain")||condition.contains("shower")||condition.contains("drizzle")||thunder;
+            boolean snow=condition.contains("snow")||condition.contains("sleet")||condition.contains("ice")||condition.contains("blizzard");
+            boolean fog=condition.contains("fog")||condition.contains("haze")||condition.contains("smoke");
+            boolean cloudy=condition.contains("cloud")||condition.contains("overcast")||condition.contains("partly")||condition.contains("mostly")||rain||snow||fog;
+            boolean sunny=condition.contains("sun")||condition.contains("clear")||condition.contains("partly")||condition.contains("mostly");
+            if (sunny) {
+                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xffffb83d);
+                for(int i=0;i<8;i++){double a=Math.PI*i/4;float x=(float)Math.cos(a),y=(float)Math.sin(a);canvas.drawLine(23+x*14,23+y*14,23+x*19,23+y*19,paint);}
+                paint.setStyle(Paint.Style.FILL);canvas.drawCircle(23,23,11,paint);
+            }
+            if (cloudy || !sunny) {
+                paint.setStyle(Paint.Style.FILL);paint.setColor(0xff9baec2);
+                canvas.drawCircle(25,35,13,paint);canvas.drawCircle(39,32,15,paint);canvas.drawCircle(49,39,9,paint);
+                canvas.drawRoundRect(15,34,55,47,7,7,paint);
+                paint.setColor(0xffdce6ef);
+                canvas.drawCircle(25,32,10,paint);canvas.drawCircle(38,29,12,paint);canvas.drawCircle(48,37,7,paint);
+                canvas.drawRoundRect(18,34,53,43,5,5,paint);
+            }
+            if (rain) {
+                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff42a5f5);
+                for(int i=0;i<3;i++)canvas.drawLine(25+i*10,49,21+i*10,56,paint);
+            } else if (snow) {
+                paint.setStyle(Paint.Style.FILL);paint.setColor(0xff65c7f7);
+                canvas.drawCircle(23,53,2.6f,paint);canvas.drawCircle(36,55,2.6f,paint);canvas.drawCircle(48,52,2.6f,paint);
+            } else if (thunder) {
+                paint.setStyle(Paint.Style.FILL);paint.setColor(0xffffc247);
+                Path bolt=new Path();bolt.moveTo(36,42);bolt.lineTo(27,53);bolt.lineTo(34,53);bolt.lineTo(30,62);bolt.lineTo(43,48);bolt.lineTo(36,48);bolt.close();canvas.drawPath(bolt,paint);
+            } else if (fog) {
+                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2.5f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff90a4ae);
+                canvas.drawLine(13,51,52,51,paint);canvas.drawLine(19,57,46,57,paint);
+            }
+            canvas.restore();
+        }
+    }
 
     private String weatherEmoji(String f){
         String v=f==null?"":f.toLowerCase(Locale.US);
