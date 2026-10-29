@@ -246,6 +246,7 @@ public class MainActivity extends Activity {
 
     private void renderApps() {
         if (appsArea == null) return;
+        if (pageDots != null) pageDots.setVisibility(View.GONE);
         appsArea.removeAllViews();
         boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
         pageIndicator.setVisibility(View.GONE);
