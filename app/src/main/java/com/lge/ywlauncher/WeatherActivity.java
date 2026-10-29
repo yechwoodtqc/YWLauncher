@@ -720,6 +720,22 @@ public class WeatherActivity extends Activity {
         if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED&&checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},LOCATION_PERMISSION_REQUEST);return;
         }
+        LocationManager lm = (LocationManager)getSystemService(LOCATION_SERVICE);
+        boolean enabled = false;
+        try { enabled = lm != null && (lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)); }
+        catch (Exception ignored) { }
+        if (!enabled) {
+            setLoading(false, null);
+            new AlertDialog.Builder(this).setTitle("Turn on device location")
+                .setMessage("Location is turned off. Enable it in Android settings for a more accurate forecast. Network-based location can be approximate.")
+                .setPositiveButton("Open settings", (d,w) -> {
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
+                    catch (Exception e) { fallbackIpLocation(); }
+                })
+                .setNegativeButton("Use approximate location", (d,w) -> fallbackIpLocation())
+                .show();
+            return;
+        }
         findCurrentLocation();
     }
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
