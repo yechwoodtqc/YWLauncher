@@ -325,7 +325,7 @@ public class MainActivity extends Activity {
         if (pageDots == null) return;
         pageDots.removeAllViews();
         boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
-        pageDots.setVisibility(grid && count > 1 ? View.VISIBLE : View.GONE);
+        pageDots.setVisibility(grid ? View.VISIBLE : View.GONE);
         if (!grid || count <= 1) return;
         for (int i = 0; i < count; i++) {
             final int page = i;
