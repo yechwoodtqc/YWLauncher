@@ -75,12 +75,45 @@ public class SettingsActivity extends Activity {
         addSettingRow("Choose apps", "Choose which installed apps appear in the app grid.", this::chooseApps);
         addSettingRow("Reorder apps", "Change the order of app icons.", this::reorderApps);
 
+        section("Tweaks");
+        addSwitchRow("Keep wallpaper", "Save the current wallpaper and try to restore it after restart. Enable this after setting your preferred wallpaper.", "keep_wallpaper", false, this::updateKeptWallpaper);
+
         section("Tools");
         addSettingRow("Widgets", "Date and weather widgets for the phone home screen.", () ->
             new AlertDialog.Builder(this)
                 .setMessage("YW Launcher provides English/Hebrew Date and Weather widgets. To add one, open the phone's existing home-screen widget picker and choose “English and Hebrew Date” or “YW Weather”. These widgets appear on the phone's current home app; YW Launcher itself remains a regular app, not the default Home app.")
                 .setPositiveButton("OK", null).show());
         addSettingRow("Export logcat", "Save recent Android log messages to a text file.", this::exportLogcat);
+    }
+
+    private void updateKeptWallpaper() {
+        boolean enabled = prefs.getBoolean("keep_wallpaper", false);
+        if (!enabled) return;
+        try {
+            android.app.WallpaperManager manager = android.app.WallpaperManager.getInstance(this);
+            android.graphics.drawable.Drawable drawable = manager.getDrawable();
+            if (drawable == null) throw new IllegalStateException("No current wallpaper is available.");
+            int width = Math.max(1, drawable.getIntrinsicWidth());
+            int height = Math.max(1, drawable.getIntrinsicHeight());
+            if (width > 4096 || height > 4096) {
+                float scale = Math.min(4096f / width, 4096f / height);
+                width = Math.max(1, Math.round(width * scale));
+                height = Math.max(1, Math.round(height * scale));
+            }
+            android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+            drawable.setBounds(0, 0, width, height);
+            drawable.draw(canvas);
+            java.io.File file = new java.io.File(getFilesDir(), "kept_wallpaper.png");
+            java.io.FileOutputStream out = new java.io.FileOutputStream(file);
+            try { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out); out.flush(); }
+            finally { out.close(); bitmap.recycle(); }
+            Toast.makeText(this, "Current wallpaper saved for restart restoration.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            prefs.edit().putBoolean("keep_wallpaper", false).apply();
+            showError("Could not save the current wallpaper: " + e.getMessage());
+            recreate();
+        }
     }
 
     private int dp(float value) {
