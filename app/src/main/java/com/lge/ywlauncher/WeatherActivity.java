@@ -436,15 +436,7 @@ public class WeatherActivity extends Activity {
         DayForecast day=dailyDays.get(index);
         rebuildToolbar("Forecast details",false,false);
         forecastList.removeAllViews();
-        LinearLayout navigation=new LinearLayout(this);navigation.setGravity(Gravity.CENTER_VERTICAL);
-        Button previous=new Button(this);previous.setText("‹ Previous");ThemeUtils.tint(previous,this);
-        Button next=new Button(this);next.setText("Next ›");ThemeUtils.tint(next,this);
-        navigation.addView(previous,new LinearLayout.LayoutParams(0,dp(44),1));
-        navigation.addView(next,new LinearLayout.LayoutParams(0,dp(44),1));
-        previous.setEnabled(index>0);next.setEnabled(index<dailyDays.size()-1);
-        previous.setOnClickListener(v->showDayDetail(Math.max(0,detailIndex-1)));
-        next.setOnClickListener(v->showDayDetail(Math.min(dailyDays.size()-1,detailIndex+1)));
-        forecastList.addView(navigation,rowMargins());
+
         JSONObject primary=day.day!=null?day.day:day.night;
         forecastList.addView(text(weatherEmoji(primary.optString("shortForecast","")),52,true));
         forecastList.addView(text(day.label,22,true));
