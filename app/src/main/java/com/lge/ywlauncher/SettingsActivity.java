@@ -198,8 +198,14 @@ public class SettingsActivity extends Activity {
         return "list".equals(prefs.getString("layout_mode", "grid")) ? "List" : "Grid";
     }
 
+    private int defaultIconSize() {
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        if (model.contains("exalt") || model.contains("lg-ax")) return 48;
+        return 40;
+    }
+
     private String iconSizeSummary() {
-        int size = prefs.getInt("icon_size", 40);
+        int size = prefs.getInt("icon_size", defaultIconSize());
         return size <= 32 ? "Small" : (size >= 48 ? "Large" : "Medium");
     }
 
@@ -239,7 +245,7 @@ public class SettingsActivity extends Activity {
     private void chooseIconSize() {
         String[] labels = {"Small", "Medium", "Large"};
         int[] sizes = {32, 40, 48};
-        int current = prefs.getInt("icon_size", 40);
+        int current = prefs.getInt("icon_size", defaultIconSize());
         int selected = current <= 32 ? 0 : (current >= 48 ? 2 : 1);
         new AlertDialog.Builder(this).setTitle("Icon size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
