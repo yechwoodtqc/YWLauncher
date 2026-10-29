@@ -475,12 +475,25 @@ public class WeatherActivity extends Activity {
         if(index<0||index>=dailyDays.size())return;
         detailMode=true;currentPage="day-detail";detailIndex=index;
         DayForecast day=dailyDays.get(index);
-        rebuildToolbar("Forecast details",false,false);
+        rebuildToolbar(day.label,false,false);
         forecastList.removeAllViews();
 
         JSONObject primary=day.day!=null?day.day:day.night;
-        forecastList.addView(text(weatherEmoji(primary.optString("shortForecast","")),52,true));
-        forecastList.addView(text(day.label,22,true));
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER);
+        hero.setPadding(dp(14),dp(18),dp(14),dp(18));
+        hero.setBackground(cardBackground());
+        TextView weatherArt = text(weatherEmoji(primary.optString("shortForecast","")),48,true);
+        weatherArt.setGravity(Gravity.CENTER);
+        hero.addView(weatherArt);
+        TextView dayTitle = text(day.label,22,true);
+        dayTitle.setGravity(Gravity.CENTER);
+        hero.addView(dayTitle);
+        TextView summary = text(primary.optString("shortForecast","Forecast details"),14,false);
+        summary.setGravity(Gravity.CENTER);
+        hero.addView(summary);
+        forecastList.addView(hero,rowMargins());
         if(day.day!=null){
             forecastList.addView(text("Day · "+day.day.optString("temperature","—")+"°"+day.day.optString("temperatureUnit","F")+" · "+day.day.optString("shortForecast",""),16,true));
             forecastList.addView(text(day.day.optString("detailedForecast","No daytime details available."),textSize(14),false));
@@ -495,8 +508,7 @@ public class WeatherActivity extends Activity {
             JSONObject pp=day.night.optJSONObject("probabilityOfPrecipitation");
             addDetailLine("Nighttime precipitation chance",pp==null||pp.isNull("value")?"Not available":pp.optString("value")+"%");
         }
-        Button back=new Button(this);back.setText("Back to forecast");ThemeUtils.tint(back,this);back.setOnClickListener(v->{detailMode=false;currentPage="forecast";showForecastPage();});
-        forecastList.addView(back,rowMargins());
+
     }
 
     private void showHourDetail(int index) {
