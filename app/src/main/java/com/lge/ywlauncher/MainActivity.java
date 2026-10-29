@@ -129,8 +129,29 @@ public class MainActivity extends Activity {
         } else if (background == 4) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             boolean applied = false;
+            String imagePath = getSharedPreferences("launcher", 0).getString("custom_background_path", "");
+            if (imagePath != null && !imagePath.isEmpty()) {
+                try {
+                    BitmapFactory.Options bounds = new BitmapFactory.Options();
+                    bounds.inJustDecodeBounds = true;
+                    BitmapFactory.decodeFile(imagePath, bounds);
+                    int targetW = Math.max(1, getResources().getDisplayMetrics().widthPixels);
+                    int targetH = Math.max(1, getResources().getDisplayMetrics().heightPixels);
+                    int sample = 1;
+                    while (bounds.outWidth > 0 && bounds.outHeight > 0 && (bounds.outWidth / sample > targetW * 2 || bounds.outHeight / sample > targetH * 2)) sample *= 2;
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inSampleSize = sample;
+                    Bitmap bitmap = BitmapFactory.decodeFile(imagePath, options);
+                    if (bitmap != null) {
+                        BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
+                        drawable.setGravity(Gravity.FILL);
+                        root.setBackground(drawable);
+                        applied = true;
+                    }
+                } catch (Throwable ignored) { }
+            }
             String imageUri = getSharedPreferences("launcher", 0).getString("custom_background_uri", "");
-            if (imageUri != null && !imageUri.isEmpty()) {
+            if (!applied && imageUri != null && !imageUri.isEmpty()) {
                 try {
                     Uri uri = Uri.parse(imageUri);
                     BitmapFactory.Options bounds = new BitmapFactory.Options();
