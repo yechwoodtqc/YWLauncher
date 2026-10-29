@@ -135,14 +135,13 @@ public class WeatherActivity extends Activity {
         if (showSettings) {
             settingsButton = new ImageButton(this);
             settingsButton.setImageResource(R.drawable.ic_settings_modern);
-            settingsButton.setColorFilter(ThemeUtils.accent(this));
             settingsButton.setContentDescription("Weather settings");
             settingsButton.setBackground(outlineFocusBackground());
             settingsButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
             settingsButton.setPadding(dp(7), dp(7), dp(7), dp(7));
             settingsButton.setFocusable(true);
             settingsButton.setOnClickListener(v -> showWeatherSettings());
-            toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(46), dp(46)));
+            toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(54), dp(48)));
         } else settingsButton = null;
     }
 
