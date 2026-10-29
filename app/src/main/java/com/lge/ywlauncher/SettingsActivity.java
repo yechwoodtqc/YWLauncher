@@ -225,7 +225,7 @@ public class SettingsActivity extends Activity {
 
     private int defaultIconSize() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
-        if (model.contains("exalt") || model.contains("lg-ax")) return 48;
+        if (model.contains("exalt") || model.contains("vn220") || model.contains("lg-ax")) return 48;
         return 40;
     }
 
