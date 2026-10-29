@@ -26,6 +26,7 @@ public class WeatherActivity extends Activity {
     private final Handler handler = new Handler();
     private TextView locationTitle, updated, forecasted;
     private LinearLayout forecastList, root, toolbar;
+    private ScrollView forecastScroller;
     private ImageButton refreshButton, settingsButton;
     private LocationListener pendingLocationListener;
     private Runnable locationTimeout, autoRefreshRunnable;
@@ -90,12 +91,13 @@ public class WeatherActivity extends Activity {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(48)));
 
-        ScrollView scroller = new ScrollView(this);
-        scroller.setFillViewport(true);
+        forecastScroller = new ScrollView(this);
+        forecastScroller.setFillViewport(true);
+        forecastScroller.setSmoothScrollingEnabled(true);
         forecastList = new LinearLayout(this);
         forecastList.setOrientation(LinearLayout.VERTICAL);
-        scroller.addView(forecastList, new ScrollView.LayoutParams(-1, -2));
-        root.addView(scroller, new LinearLayout.LayoutParams(-1, 0, 1));
+        forecastScroller.addView(forecastList, new ScrollView.LayoutParams(-1, -2));
+        root.addView(forecastScroller, new LinearLayout.LayoutParams(-1, 0, 1));
         showForecastPageHeader();
     }
 
@@ -285,7 +287,7 @@ public class WeatherActivity extends Activity {
                             forecastTime = date == null ? forecastTime : new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(date);
                         } catch (Exception ignored) {}
                     }
-                    forecasted.setText("Forecast issued: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
+                    forecasted.setText("Forecast generated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
                     prefs().edit().putString("weather_widget_summary", days.optJSONObject(0)==null?"Forecast ready":days.optJSONObject(0).optString("shortForecast","Forecast ready"))
                         .putString("weather_widget_temperature", days.optJSONObject(0)==null?"—":days.optJSONObject(0).optString("temperature","—")+"°"+(days.optJSONObject(0)==null?"F":days.optJSONObject(0).optString("temperatureUnit","F")))
                         .putString("weather_widget_icon", days.optJSONObject(0)==null?"🌤️":weatherEmoji(days.optJSONObject(0).optString("shortForecast","")))
@@ -443,6 +445,7 @@ public class WeatherActivity extends Activity {
     }
 
     private void showHourDetail(int index) {
+        if (index < 0 || index >= hourlyPeriods.length()) return;
         JSONObject p=hourlyPeriods.optJSONObject(index); if(p==null)return;
         new AlertDialog.Builder(this).setTitle(weatherEmoji(p.optString("shortForecast",""))+" "+p.optString("shortForecast","Hourly details"))
             .setMessage(p.optString("startTime","")+"\n"+p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F")+"\nWind: "+p.optString("windSpeed","—")+" "+p.optString("windDirection","")+"\n"+p.optString("detailedForecast",""))
@@ -450,11 +453,13 @@ public class WeatherActivity extends Activity {
     }
 
     private void addDiscussionPreview() {
-        TextView title=text("Forecast discussion",14,true);title.setPadding(dp(4),dp(14),dp(4),dp(4));forecastList.addView(title);
-        TextView preview=text("Loading local forecast discussion…",12,false);preview.setPadding(dp(6),dp(3),dp(6),dp(8));forecastList.addView(preview);
-        title.setFocusable(true);title.setClickable(true);title.setOnClickListener(v->showDiscussionPage());
+        TextView title=text("FORECAST DISCUSSION",13,true);title.setPadding(dp(10),dp(14),dp(10),dp(4));forecastList.addView(title);
+        TextView preview=text(discussionProducts.length()>0 ? "Read the latest forecast discussion  ›" : "Discussion is loading…",13,true);
+        preview.setPadding(dp(12),dp(12),dp(12),dp(12));preview.setBackground(ThemeUtils.focusBackground(this));
+        preview.setFocusable(true);preview.setClickable(true);
+        preview.setOnFocusChangeListener((v,f)->preview.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
+        forecastList.addView(preview,rowMargins());
         preview.setOnClickListener(v->showDiscussionPage());
-        if(discussionProducts.length()>0) preview.setText(discussionProducts.optJSONObject(0)==null?"Open discussion":discussionProducts.optJSONObject(0).optString("preview","Open latest forecast discussion"));
     }
 
     private void fetchDiscussion(String office) {
@@ -480,10 +485,10 @@ public class WeatherActivity extends Activity {
     }
 
     private void showDiscussionPage() {
-        currentPage="discussion";rebuildToolbar("Forecast discussion",true,false);forecastList.removeAllViews();
+        currentPage="discussion";rebuildToolbar("Forecast discussion",false,false);forecastList.removeAllViews();
         String body=discussionProducts.length()>0?discussionProducts.optJSONObject(0).optString("text","No discussion available."):"Forecast discussion is not available yet. Refresh the forecast and try again.";
-        TextView content=text(body,textSize(13),false);content.setPadding(dp(6),dp(6),dp(6),dp(20));forecastList.addView(content);
-        Button back=new Button(this);back.setText("Back to forecast");ThemeUtils.tint(back,this);back.setOnClickListener(v->showForecastPage());forecastList.addView(back,rowMargins());
+        TextView content=text(body,textSize(13),false);content.setPadding(dp(6),dp(8),dp(6),dp(24));content.setFocusable(false);content.setTextIsSelectable(false);forecastList.addView(content,new LinearLayout.LayoutParams(-1,-2));
+        TextView footer=text("End of forecast discussion",11,false);footer.setGravity(Gravity.CENTER);footer.setPadding(0,dp(18),0,dp(24));forecastList.addView(footer);
     }
 
     private void showForecastPage() {
@@ -502,6 +507,14 @@ public class WeatherActivity extends Activity {
         }
     }
 
+    @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if ("discussion".equals(currentPage) && forecastScroller != null) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(64)); return true; }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { forecastScroller.smoothScrollBy(0, -dp(64)); return true; }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
     private void addDetailLine(String label,String value) {
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(8),dp(7),dp(8),dp(7));
         row.addView(text(label,12,true));row.addView(text(value,14,false));forecastList.addView(row);View divider=new View(this);divider.setBackgroundColor(ThemeUtils.divider(this));forecastList.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));
@@ -517,6 +530,17 @@ public class WeatherActivity extends Activity {
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),dp(10),dp(8),dp(10));row.setFocusable(true);row.setClickable(true);row.setBackground(ThemeUtils.focusBackground(this));
             LinearLayout textCol=new LinearLayout(this);textCol.setOrientation(LinearLayout.VERTICAL);textCol.addView(text(place.name,15,true));textCol.addView(text("Tap to use this forecast",11,false));row.addView(textCol,new LinearLayout.LayoutParams(0,-2,1));
             TextView check=text(place.name.equals(selectedPlaceName())?"✓":"›",22,true);check.setTextColor(ThemeUtils.accent(this));row.addView(check);
+            row.setOnLongClickListener(v -> {
+                new AlertDialog.Builder(this).setTitle("Remove saved location?")
+                    .setMessage("Remove " + place.name + " from saved locations?")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Remove", (d,w) -> {
+                        savedPlaces.remove(place); persistSavedPlaces();
+                        if (place.name.equals(selectedPlaceName())) prefs().edit().putString("weather_selected_location","").apply();
+                        showLocationsPage();
+                    }).show();
+                return true;
+            });
             row.setOnClickListener(v->{
                 prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name)
                     .putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();
@@ -530,7 +554,7 @@ public class WeatherActivity extends Activity {
             prefs().edit().putString("weather_selected_location","").putString("weather_location","Use current location").apply();
             dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();dailyDays.clear();showForecastPage();
         });forecastList.addView(current,rowMargins());
-        Button back=new Button(this);back.setText("Back to forecast");ThemeUtils.tint(back,this);back.setOnClickListener(v->showForecastPage());forecastList.addView(back,rowMargins());
+        
     }
 
     private void showAddLocationPage(String query) {
