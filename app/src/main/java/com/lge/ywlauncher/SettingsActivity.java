@@ -73,7 +73,7 @@ public class SettingsActivity extends Activity {
 
         section("Apps");
         addSettingRow("Choose apps", "Choose which installed apps appear in the app grid.", this::chooseApps);
-        addSettingRow("Reorder apps", "Change the order of app icons.", this::reorderApps);
+        addSettingRow("Reorder apps", "Change the order of app icons.", () -> startActivity(new Intent(this, ReorderAppsActivity.class)));
 
         section("Tweaks");
         addSwitchRow("Keep wallpaper", "Save the current wallpaper and try to restore it after restart. Enable this after setting your preferred wallpaper.", "keep_wallpaper", false, this::updateKeptWallpaper);
