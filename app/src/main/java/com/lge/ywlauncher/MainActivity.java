@@ -152,6 +152,9 @@ public class MainActivity extends Activity {
                 } catch (Throwable ignored) {}
             }
             if (!applied) root.setBackgroundColor(custom);
+        } else if (background == 5) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundResource(R.drawable.bg_exalt_gradient);
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
