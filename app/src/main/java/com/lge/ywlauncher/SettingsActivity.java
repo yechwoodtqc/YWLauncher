@@ -18,6 +18,7 @@ public class SettingsActivity extends Activity {
     private SharedPreferences prefs;
     private static final int CREATE_LOG_FILE = 501;
     private static final int PICK_BACKGROUND_IMAGE = 502;
+    private static final int PICK_KEPT_WALLPAPER = 503;
     private String pendingLogcat;
 
     @Override public void onCreate(Bundle state) {
@@ -76,7 +77,7 @@ public class SettingsActivity extends Activity {
         addSettingRow("Reorder apps", "Change the order of app icons.", () -> startActivity(new Intent(this, ReorderAppsActivity.class)));
 
         section("Tweaks");
-        addSwitchRow("Keep wallpaper", "Save the current wallpaper and try to restore it after restart. Enable this after setting your preferred wallpaper.", "keep_wallpaper", false, this::updateKeptWallpaper);
+        addSwitchRow("Keep wallpaper", "Choose the wallpaper image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
 
         section("Tools");
         addSettingRow("Widgets", "Date and weather widgets for the phone home screen.", () ->
@@ -87,32 +88,23 @@ public class SettingsActivity extends Activity {
     }
 
     private void updateKeptWallpaper() {
-        boolean enabled = prefs.getBoolean("keep_wallpaper", false);
-        if (!enabled) return;
+        if (!prefs.getBoolean("keep_wallpaper", false)) return;
         try {
-            android.app.WallpaperManager manager = android.app.WallpaperManager.getInstance(this);
-            android.graphics.drawable.Drawable drawable = manager.getDrawable();
-            if (drawable == null) throw new IllegalStateException("No current wallpaper is available.");
-            int width = Math.max(1, drawable.getIntrinsicWidth());
-            int height = Math.max(1, drawable.getIntrinsicHeight());
-            if (width > 4096 || height > 4096) {
-                float scale = Math.min(4096f / width, 4096f / height);
-                width = Math.max(1, Math.round(width * scale));
-                height = Math.max(1, Math.round(height * scale));
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("image/*");
+            startActivityForResult(pick, PICK_KEPT_WALLPAPER);
+        } catch (Exception first) {
+            try {
+                Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
+                pick.addCategory(Intent.CATEGORY_OPENABLE);
+                pick.setType("image/*");
+                startActivityForResult(pick, PICK_KEPT_WALLPAPER);
+            } catch (Exception second) {
+                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                showError("No image picker is available. Please enable a Gallery or Files app and try again.");
+                recreate();
             }
-            android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888);
-            android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
-            drawable.setBounds(0, 0, width, height);
-            drawable.draw(canvas);
-            java.io.File file = new java.io.File(getFilesDir(), "kept_wallpaper.png");
-            java.io.FileOutputStream out = new java.io.FileOutputStream(file);
-            try { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out); out.flush(); }
-            finally { out.close(); bitmap.recycle(); }
-            Toast.makeText(this, "Current wallpaper saved for restart restoration.", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            prefs.edit().putBoolean("keep_wallpaper", false).apply();
-            showError("Could not save the current wallpaper: " + e.getMessage());
-            recreate();
         }
     }
 
@@ -590,6 +582,33 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_KEPT_WALLPAPER) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    java.io.File saved = new java.io.File(getFilesDir(), "kept_wallpaper.png");
+                    java.io.InputStream input = getContentResolver().openInputStream(data.getData());
+                    if (input == null) throw new IOException("The selected image could not be opened.");
+                    java.io.FileOutputStream output = new java.io.FileOutputStream(saved);
+                    try {
+                        byte[] buffer = new byte[8192];
+                        int count;
+                        while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                        output.flush();
+                    } finally {
+                        try { input.close(); } catch (Exception ignored) {}
+                        try { output.close(); } catch (Exception ignored) {}
+                    }
+                    Toast.makeText(this, "Wallpaper image saved for restoration after restart.", Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                    showError("Could not save that wallpaper image: " + e.getMessage());
+                }
+            } else {
+                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+            }
+            recreate();
+            return;
+        }
         if (requestCode == PICK_BACKGROUND_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
             try {
