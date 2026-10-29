@@ -269,7 +269,16 @@ public class SettingsActivity extends Activity {
                     pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                     pick.setType("image/*");
                     try { startActivityForResult(pick, PICK_BACKGROUND_IMAGE); }
-                    catch (Exception e) { showError("No image picker is available on this phone."); }
+                    catch (Exception first) {
+                        try {
+                            Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
+                            fallback.addCategory(Intent.CATEGORY_OPENABLE);
+                            fallback.setType("image/*");
+                            startActivityForResult(fallback, PICK_BACKGROUND_IMAGE);
+                        } catch (Exception second) {
+                            showError("This phone has no available image picker. Install or enable a Gallery/Files app, then try again.");
+                        }
+                    }
                 } else {
                     prefs.edit().putInt("background", which).apply();
                     recreate();
