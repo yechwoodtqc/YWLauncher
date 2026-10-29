@@ -738,8 +738,9 @@ public class WeatherActivity extends Activity {
         setLoading(true,"Finding your location…");
         try{
             LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);Location best=null;
-            for(String provider:manager.getProviders(true))try{Location l=manager.getLastKnownLocation(provider);if(l!=null&&(best==null||l.getTime()>best.getTime()))best=l;}catch(Exception ignored){}
-            if(best!=null&&System.currentTimeMillis()-best.getTime()<6L*60L*60L*1000L){onCurrentLocation(best);return;}
+            long now=System.currentTimeMillis();
+            for(String provider:manager.getProviders(true))try{Location l=manager.getLastKnownLocation(provider);if(l!=null&&now-l.getTime()>=0&&now-l.getTime()<15L*60L*1000L&&(!l.hasAccuracy()||l.getAccuracy()<=10000f)&&(best==null||l.getTime()>best.getTime()))best=l;}catch(Exception ignored){}
+            if(best!=null){onCurrentLocation(best);return;}
             List<String> providers=manager.getProviders(true);
             if(pendingLocationListener!=null)try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
             if(providers.isEmpty()){fallbackIpLocation();return;}
