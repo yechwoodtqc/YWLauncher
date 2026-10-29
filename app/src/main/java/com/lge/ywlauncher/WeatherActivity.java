@@ -794,13 +794,13 @@ public class WeatherActivity extends Activity {
         try{
             LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);Location best=null;
             long now=System.currentTimeMillis();
-            for(String provider:manager.getProviders(true))try{Location l=manager.getLastKnownLocation(provider);if(l!=null&&now-l.getTime()>=0&&now-l.getTime()<15L*60L*1000L&&(!l.hasAccuracy()||l.getAccuracy()<=10000f)&&(best==null||l.getTime()>best.getTime()))best=l;}catch(Exception ignored){}
+            for(String provider:manager.getProviders(true))try{Location l=manager.getLastKnownLocation(provider);if(l!=null&&now-l.getTime()>=0&&now-l.getTime()<5L*60L*1000L&&(!l.hasAccuracy()||l.getAccuracy()<=2000f)&&(best==null||(!l.hasAccuracy()&&best.hasAccuracy())||(l.hasAccuracy()&&best.hasAccuracy()&&l.getAccuracy()<best.getAccuracy())||l.getTime()>best.getTime()))best=l;}catch(Exception ignored){}
             if(best!=null){onCurrentLocation(best);return;}
             List<String> providers=manager.getProviders(true);
             if(pendingLocationListener!=null)try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
             if(providers.isEmpty()){fallbackIpLocation();return;}
             pendingLocationListener=new LocationListener(){
-                @Override public void onLocationChanged(Location l){if(pendingLocationListener==null)return;try{manager.removeUpdates(this);}catch(Exception ignored){}pendingLocationListener=null;if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);onCurrentLocation(l);}
+                @Override public void onLocationChanged(Location l){if(pendingLocationListener==null||l==null)return;if(l.hasAccuracy()&&l.getAccuracy()>5000f)return;try{manager.removeUpdates(this);}catch(Exception ignored){}pendingLocationListener=null;if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);onCurrentLocation(l);}
                 @Override public void onStatusChanged(String p,int s,Bundle b){}
                 @Override public void onProviderEnabled(String p){}
                 @Override public void onProviderDisabled(String p){}
