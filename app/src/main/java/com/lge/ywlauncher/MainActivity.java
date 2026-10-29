@@ -480,6 +480,14 @@ public class MainActivity extends Activity {
     }
 
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
+            try {
+                Intent dial = new Intent(Intent.ACTION_DIAL);
+                dial.setData(Uri.parse("tel:"));
+                startActivity(dial);
+                return true;
+            } catch (Exception ignored) { }
+        }
         if (keyCode == KeyEvent.KEYCODE_MENU) { startActivity(new Intent(this, SettingsActivity.class)); return true; }
         if (selectedApps.isEmpty() && "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
             && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
