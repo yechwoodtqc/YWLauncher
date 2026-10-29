@@ -31,7 +31,7 @@ public class WeatherActivity extends Activity {
     private LocationListener pendingLocationListener;
     private Runnable locationTimeout, autoRefreshRunnable;
     private boolean configureMode, loading, hourlyMode, detailMode;
-    private JSONArray dailyPeriods = new JSONArray(), hourlyPeriods = new JSONArray();
+    private JSONArray dailyPeriods = new JSONArray(), hourlyPeriods = new JSONArray(), activeAlerts = new JSONArray();
     private final ArrayList<DayForecast> dailyDays = new ArrayList<>();
     private static class DayForecast {
         String label;
@@ -279,11 +279,20 @@ public class WeatherActivity extends Activity {
                 if (!hourlyUrl.isEmpty()) hours = getJson(hourlyUrl).getJSONObject("properties").getJSONArray("periods");
                 String generated = daily.getJSONObject("properties").optString("generatedAt", "");
                 String office = properties.optString("cwa", "");
-                String pointName = properties.optString("relativeLocation", "");
+                JSONArray alerts = new JSONArray();
+                try {
+                    JSONArray features = getJson("https://api.weather.gov/alerts/active?point=" + latitude + "," + longitude).optJSONArray("features");
+                    if (features != null) for (int i = 0; i < features.length(); i++) {
+                        JSONObject feature = features.optJSONObject(i);
+                        JSONObject alert = feature == null ? null : feature.optJSONObject("properties");
+                        if (alert != null) alerts.put(alert);
+                    }
+                } catch (Exception ignored) { }
+                JSONArray finalAlerts = alerts;
                 JSONArray finalHours = hours;
                 String finalGenerated = generated;
                 handler.post(() -> {
-                    dailyPeriods = days; hourlyPeriods = finalHours; buildDailyDays(days);
+                    dailyPeriods = days; hourlyPeriods = finalHours; activeAlerts = finalAlerts; buildDailyDays(days);
                     setLoading(false, null);
                     renderForecast();
                     String now = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date());
@@ -331,6 +340,38 @@ public class WeatherActivity extends Activity {
         daily.setOnClickListener(v->{hourlyMode=false;if(forecastScroller!=null)forecastScroller.smoothScrollTo(0,dp(180));});
         hourly.setOnClickListener(v->{hourlyMode=true;if(forecastScroller!=null)forecastScroller.smoothScrollTo(0,0);});
         forecastList.addView(tabs,rowMargins());
+        if (activeAlerts.length() > 0) {
+            addSectionTitle("ACTIVE WEATHER ALERTS");
+            for (int i = 0; i < Math.min(4, activeAlerts.length()); i++) {
+                JSONObject alert = activeAlerts.optJSONObject(i);
+                if (alert == null) continue;
+                String event = alert.optString("event", "Weather alert");
+                String headline = alert.optString("headline", alert.optString("description", "See alert details"));
+                String severity = alert.optString("severity", "Alert");
+                LinearLayout warning = new LinearLayout(this);
+                warning.setOrientation(LinearLayout.VERTICAL);
+                warning.setPadding(dp(12), dp(10), dp(12), dp(10));
+                GradientDrawable warningBg = new GradientDrawable();
+                warningBg.setColor(ThemeUtils.isDark(this) ? 0xff40231f : 0xfffff0ed);
+                warningBg.setCornerRadius(dp(9));
+                warningBg.setStroke(dp(2), 0xffd94b3d);
+                warning.setBackground(warningBg);
+                warning.setFocusable(true); warning.setClickable(true);
+                TextView eventText = text("⚠ " + event + " · " + severity, 14, true);
+                eventText.setTextColor(ThemeUtils.isDark(this) ? 0xffffb3a9 : 0xff9e241a);
+                warning.addView(eventText);
+                TextView headlineText = text(headline, 12, false);
+                headlineText.setPadding(0, dp(4), 0, 0);
+                warning.addView(headlineText);
+                final JSONObject selectedAlert = alert;
+                warning.setOnClickListener(v -> new AlertDialog.Builder(this)
+                    .setTitle(selectedAlert.optString("event", "Weather alert"))
+                    .setMessage(selectedAlert.optString("headline", "") + "\n\n" + selectedAlert.optString("description", ""))
+                    .setPositiveButton("Close", null).show());
+                warning.setOnFocusChangeListener((v, focused) -> warning.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : warningBg));
+                forecastList.addView(warning, rowMargins());
+            }
+        }
         addCurrentSummary();
         addSectionTitle("Hourly forecast");
         HorizontalScrollView strip=new HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);
