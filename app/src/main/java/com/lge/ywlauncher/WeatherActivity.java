@@ -276,7 +276,7 @@ public class WeatherActivity extends Activity {
                 JSONArray days = daily.getJSONObject("properties").getJSONArray("periods");
                 JSONArray hours = new JSONArray();
                 if (!hourlyUrl.isEmpty()) hours = getJson(hourlyUrl).getJSONObject("properties").getJSONArray("periods");
-                String generated = daily.getJSONObject("properties").optString("generatedAt", "");
+                String generated = daily.getJSONObject("properties").optString("updateTime", daily.getJSONObject("properties").optString("generatedAt", ""));
                 String office = properties.optString("cwa", "");
                 JSONArray alerts = new JSONArray();
                 try {
@@ -306,7 +306,7 @@ public class WeatherActivity extends Activity {
                             forecastTime = date == null ? forecastTime : new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(date);
                         } catch (Exception ignored) {}
                     }
-                    forecasted.setText("Forecast generated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
+                    forecasted.setText("Forecast issued/updated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
                     prefs().edit().putString("weather_widget_summary", days.optJSONObject(0)==null?"Forecast ready":days.optJSONObject(0).optString("shortForecast","Forecast ready"))
                         .putString("weather_widget_temperature", days.optJSONObject(0)==null?"—":days.optJSONObject(0).optString("temperature","—")+"°"+(days.optJSONObject(0)==null?"F":days.optJSONObject(0).optString("temperatureUnit","F")))
                         .putString("weather_widget_icon", days.optJSONObject(0)==null?"🌤️":weatherEmoji(days.optJSONObject(0).optString("shortForecast","")))
