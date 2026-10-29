@@ -223,11 +223,13 @@ public class MainActivity extends Activity {
         android.content.SharedPreferences appPrefs = getSharedPreferences("launcher", 0);
         Set<String> savedIncluded = appPrefs.getStringSet("included", null);
         Set<String> included = normalizedIncludedActivities(savedIncluded, found);
+        boolean hadKnownApps = appPrefs.contains("known_apps");
         Set<String> known = new HashSet<>(appPrefs.getStringSet("known_apps", new HashSet<String>()));
         boolean changed = false;
         for (ResolveInfo app : found) {
             String name = app.activityInfo.name;
-            if (savedIncluded == null || !known.contains(name)) { included.add(name); changed = true; }
+            if (savedIncluded == null) { included.add(name); changed = true; }
+            else if (hadKnownApps && !known.contains(name)) { included.add(name); changed = true; }
             known.add(name);
         }
         if (changed || savedIncluded == null) appPrefs.edit().putStringSet("included", new HashSet<>(included)).apply();
@@ -310,6 +312,7 @@ public class MainActivity extends Activity {
             dot.setText(i == currentPage ? "●" : "•");
             dot.setTextSize(i == currentPage ? 12 : 10);
             dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
+            if (i == currentPage) dot.setTypeface(null, android.graphics.Typeface.BOLD);
             dot.setGravity(Gravity.CENTER);
             dot.setContentDescription("Page " + (i + 1));
             dot.setFocusable(false);
