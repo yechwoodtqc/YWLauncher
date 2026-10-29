@@ -529,14 +529,6 @@ public class WeatherActivity extends Activity {
         }
     }
 
-    @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if ("discussion".equals(currentPage) && forecastScroller != null) {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(64)); return true; }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { forecastScroller.smoothScrollBy(0, -dp(64)); return true; }
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
     private void addDetailLine(String label,String value) {
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(8),dp(7),dp(8),dp(7));
         row.addView(text(label,12,true));row.addView(text(value,14,false));forecastList.addView(row);View divider=new View(this);divider.setBackgroundColor(ThemeUtils.divider(this));forecastList.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));
@@ -839,6 +831,10 @@ public class WeatherActivity extends Activity {
     }
 
     @Override public boolean onKeyDown(int keyCode,KeyEvent event){
+        if ("discussion".equals(currentPage) && forecastScroller != null) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(64)); return true; }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { forecastScroller.smoothScrollBy(0, -dp(64)); return true; }
+        }
         if("day-detail".equals(currentPage)){
             if(keyCode==KeyEvent.KEYCODE_DPAD_LEFT){showDayDetail(Math.max(0,detailIndex-1));return true;}
             if(keyCode==KeyEvent.KEYCODE_DPAD_RIGHT){showDayDetail(Math.min(dailyDays.size()-1,detailIndex+1));return true;}
