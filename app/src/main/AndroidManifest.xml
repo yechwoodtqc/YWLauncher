@@ -54,6 +54,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ReorderAppsActivity" android:exported="false" android:label="Reorder apps" />
+
         <activity
             android:name=".WeatherActivity"
             android:exported="true"
