@@ -366,11 +366,19 @@ public class MainActivity extends Activity {
         currentPage = clamp(currentPage + delta, 0, pageCount() - 1);
         if (appsArea != null) {
             appsArea.animate().cancel();
-            appsArea.setAlpha(0.72f);
-            appsArea.setTranslationX(delta > 0 ? dp(14) : -dp(14));
+            // Slide the incoming page horizontally in the direction of travel.
+            // Keep it fully opaque so the grid feels like one continuous page.
+            appsArea.setAlpha(1f);
+            appsArea.setTranslationX(delta > 0 ? dp(44) : -dp(44));
         }
         renderApps();
-        if (appsArea != null) appsArea.animate().alpha(1f).translationX(0f).setDuration(180).start();
+        if (appsArea != null) {
+            appsArea.animate()
+                .translationX(0f)
+                .setDuration(240)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                .start();
+        }
         int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         int index = currentPage * rows * columns + clamp(targetColumn, 0, columns - 1);
