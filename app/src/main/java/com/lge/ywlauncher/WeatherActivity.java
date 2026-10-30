@@ -449,7 +449,7 @@ public class WeatherActivity extends Activity {
     private String formatForecastTime(String iso) {
         if(iso==null||iso.length()<16)return "Hour";
         try {
-            String value=iso.replaceFirst("([+-]\\\\d{2}):(\\\\d{2})$","$1$2").replaceFirst("Z$","+0000");
+            String value=iso.replaceFirst("([+-]\\d{2}):(\\d{2})$","$1$2").replaceFirst("Z$","+0000");
             java.text.SimpleDateFormat input=new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ",Locale.US);
             Date date=input.parse(value);
             return date==null?iso.substring(11,16):new java.text.SimpleDateFormat("h:mm a",Locale.getDefault()).format(date);
@@ -515,8 +515,10 @@ public class WeatherActivity extends Activity {
     private void showHourDetail(int index) {
         if (index < 0 || index >= hourlyPeriods.length()) return;
         JSONObject p=hourlyPeriods.optJSONObject(index); if(p==null)return;
+        JSONObject chance=p.optJSONObject("probabilityOfPrecipitation");
+        String rain=chance==null||chance.isNull("value")?"Not available":chance.optString("value")+"%";
         new AlertDialog.Builder(this).setTitle(weatherEmoji(p.optString("shortForecast",""))+" "+p.optString("shortForecast","Hourly details"))
-            .setMessage(p.optString("startTime","")+"\n"+p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F")+"\nWind: "+p.optString("windSpeed","—")+" "+p.optString("windDirection","")+"\n"+p.optString("detailedForecast",""))
+            .setMessage(formatForecastTime(p.optString("startTime",""))+"\n"+p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F")+"\nPrecipitation chance: "+rain+"\nWind: "+p.optString("windSpeed","—")+" "+p.optString("windDirection","")+"\n"+p.optString("detailedForecast",""))
             .setPositiveButton("OK",null).show();
     }
 
