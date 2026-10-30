@@ -62,6 +62,7 @@ public class WeatherActivity extends Activity {
         else {
             SavedPlace selected = selectedPlace();
             if (selected != null) fetchForecastAt(selected.lat, selected.lon);
+            else if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
             else if (prefs().contains("weather_lat") && prefs().contains("weather_lon")
                 && !prefs().getString("weather_location", "").trim().isEmpty()
                 && !"Use current location".equals(prefs().getString("weather_location", ""))) {
@@ -602,7 +603,7 @@ public class WeatherActivity extends Activity {
                 return true;
             });
             row.setOnClickListener(v->{
-                prefs().edit().putString("weather_selected_location",place.name).putString("weather_location",place.name)
+                prefs().edit().putString("weather_selected_location",place.name).putString("weather_location_source","saved").putString("weather_location",place.name)
                     .putFloat("weather_lat",(float)place.lat).putFloat("weather_lon",(float)place.lon).apply();
                 dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();dailyDays.clear();
                 showForecastPage();
@@ -638,7 +639,7 @@ public class WeatherActivity extends Activity {
             @Override public void afterTextChanged(Editable e){}
         });
         Button current=new Button(this);current.setText("Use current location");ThemeUtils.tint(current,this);current.setOnClickListener(v->{
-            prefs().edit().putString("weather_location","Use current location").putString("weather_selected_location","").apply();
+            prefs().edit().putString("weather_location","Use current location").putString("weather_selected_location","").putString("weather_location_source","current").apply();
             dailyPeriods=new JSONArray();hourlyPeriods=new JSONArray();dailyDays.clear();showForecastPage();
         });forecastList.addView(current,rowMargins());
         Button cancel=new Button(this);cancel.setText("Cancel");ThemeUtils.tint(cancel,this);cancel.setOnClickListener(v->showLocationsPage());forecastList.addView(cancel,rowMargins());
@@ -833,7 +834,7 @@ public class WeatherActivity extends Activity {
     }
 
     private void useCurrentCoordinates(double lat,double lon,String label){
-        prefs().edit().putString("weather_location",label).putString("weather_selected_location","").putFloat("weather_lat",(float)lat).putFloat("weather_lon",(float)lon).apply();
+        prefs().edit().putString("weather_location",label).putString("weather_selected_location","").putString("weather_location_source","current").putFloat("weather_lat",(float)lat).putFloat("weather_lon",(float)lon).apply();
         if(locationTitle!=null)locationTitle.setText(label+"  ▾");
         fetchForecastAt(lat,lon);
     }
