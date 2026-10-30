@@ -792,25 +792,97 @@ public class WeatherActivity extends Activity {
             fallbackIpLocation();
             return;
         }
-        setLoading(true,"Finding your location…");
+        final LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);
+        if(manager==null){fallbackIpLocation();return;}
+        setLoading(true,"Getting a fresh GPS/network fix…");
+        if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);
+        if(pendingLocationListener!=null)try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
+        pendingLocationListener=null;
+
+        final Location[] best={null};
+        final long requestStarted=System.currentTimeMillis();
+
+        // Only trust a cached fix when it is genuinely recent and precise.
+        // Older/coarse cached fixes can easily point to a neighboring state.
         try{
-            LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);Location best=null;
-            long now=System.currentTimeMillis();
-            for(String provider:manager.getProviders(true))try{Location l=manager.getLastKnownLocation(provider);if(l!=null&&now-l.getTime()>=0&&now-l.getTime()<5L*60L*1000L&&(!l.hasAccuracy()||l.getAccuracy()<=2000f)&&(best==null||(!l.hasAccuracy()&&best.hasAccuracy())||(l.hasAccuracy()&&best.hasAccuracy()&&l.getAccuracy()<best.getAccuracy())||l.getTime()>best.getTime()))best=l;}catch(Exception ignored){}
-            if(best!=null){onCurrentLocation(best);return;}
-            List<String> providers=manager.getProviders(true);
-            if(pendingLocationListener!=null)try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
-            if(providers.isEmpty()){fallbackIpLocation();return;}
-            pendingLocationListener=new LocationListener(){
-                @Override public void onLocationChanged(Location l){if(pendingLocationListener==null||l==null)return;if(l.hasAccuracy()&&l.getAccuracy()>5000f)return;try{manager.removeUpdates(this);}catch(Exception ignored){}pendingLocationListener=null;if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);onCurrentLocation(l);}
-                @Override public void onStatusChanged(String p,int s,Bundle b){}
-                @Override public void onProviderEnabled(String p){}
-                @Override public void onProviderDisabled(String p){}
-            };
-            for(String p:providers)try{manager.requestLocationUpdates(p,1000L,0f,pendingLocationListener,Looper.getMainLooper());}catch(Exception ignored){}
-            locationTimeout=()->{if(pendingLocationListener!=null){try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}pendingLocationListener=null;fallbackIpLocation();}};
-            handler.postDelayed(locationTimeout,12000);
-        }catch(Exception e){fallbackIpLocation();}
+            for(String provider:manager.getProviders(true)){
+                try{
+                    Location cached=manager.getLastKnownLocation(provider);
+                    if(cached==null)continue;
+                    long age=requestStarted-cached.getTime();
+                    if(age>=0&&age<=30000L&&cached.hasAccuracy()&&cached.getAccuracy()<=100f)
+                        best[0]=betterLocation(best[0],cached);
+                }catch(SecurityException|IllegalArgumentException ignored){}
+            }
+        }catch(Exception ignored){}
+        if(best[0]!=null){onCurrentLocation(best[0]);return;}
+
+        final boolean[] finished={false};
+        pendingLocationListener=new LocationListener(){
+            @Override public void onLocationChanged(Location location){
+                if(finished[0]||location==null)return;
+                long age=System.currentTimeMillis()-location.getTime();
+                if(age<0||age>30000L)return;
+                if(location.hasAccuracy()&&location.getAccuracy()>1500f)return;
+                best[0]=betterLocation(best[0],location);
+                // Prefer a genuinely accurate fix. Do not immediately accept
+                // the first coarse network estimate while GPS is still resolving.
+                if(location.hasAccuracy()&&location.getAccuracy()<=100f){
+                    finished[0]=true;
+                    stopLocationUpdates(manager);
+                    onCurrentLocation(location);
+                }
+            }
+            @Override public void onStatusChanged(String provider,int status,Bundle extras){}
+            @Override public void onProviderEnabled(String provider){}
+            @Override public void onProviderDisabled(String provider){}
+        };
+        boolean requested=false;
+        try{
+            for(String provider:manager.getProviders(true)){
+                try{
+                    manager.requestLocationUpdates(provider,1000L,0f,pendingLocationListener,Looper.getMainLooper());
+                    requested=true;
+                }catch(SecurityException|IllegalArgumentException ignored){}
+            }
+        }catch(Exception ignored){}
+        if(!requested){
+            stopLocationUpdates(manager);
+            fallbackIpLocation();
+            return;
+        }
+        locationTimeout=()->{
+            if(finished[0])return;
+            finished[0]=true;
+            stopLocationUpdates(manager);
+            Location result=best[0];
+            // A fresh fix within 1.5 km is usable as a last resort; otherwise
+            // IP geolocation is more honest than presenting a bad GPS result.
+            if(result!=null&&result.hasAccuracy()&&result.getAccuracy()<=1500f)
+                onCurrentLocation(result);
+            else fallbackIpLocation();
+        };
+        handler.postDelayed(locationTimeout,20000L);
+    }
+
+    private Location betterLocation(Location oldLocation,Location newLocation){
+        if(oldLocation==null)return newLocation;
+        if(newLocation==null)return oldLocation;
+        if(newLocation.hasAccuracy()&&!oldLocation.hasAccuracy())return newLocation;
+        if(!newLocation.hasAccuracy()&&oldLocation.hasAccuracy())return oldLocation;
+        if(newLocation.hasAccuracy()&&oldLocation.hasAccuracy()){
+            if(newLocation.getAccuracy()<oldLocation.getAccuracy())return newLocation;
+            if(newLocation.getAccuracy()>oldLocation.getAccuracy())return oldLocation;
+        }
+        return newLocation.getTime()>oldLocation.getTime()?newLocation:oldLocation;
+    }
+
+    private void stopLocationUpdates(LocationManager manager){
+        if(locationTimeout!=null){handler.removeCallbacks(locationTimeout);locationTimeout=null;}
+        if(pendingLocationListener!=null){
+            try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
+            pendingLocationListener=null;
+        }
     }
 
     private void onCurrentLocation(Location location){
