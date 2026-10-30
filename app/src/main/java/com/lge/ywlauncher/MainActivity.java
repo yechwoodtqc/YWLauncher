@@ -70,7 +70,9 @@ public class MainActivity extends Activity {
         hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);
         hideSelected.setCompoundDrawablePadding(dp(4));
         hideSelected.setOnClickListener(v -> hideSelectedApps());
-        ThemeUtils.tint(hideSelected, this);
+        hideSelected.setBackgroundColor(Color.TRANSPARENT);
+        hideSelected.setPadding(dp(8), 0, dp(8), 0);
+        hideSelected.setOnFocusChangeListener((v, focused) -> hideSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
         toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
 
         uninstallSelected = new Button(this);
@@ -78,7 +80,9 @@ public class MainActivity extends Activity {
         uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);
         uninstallSelected.setCompoundDrawablePadding(dp(4));
         uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
-        ThemeUtils.tint(uninstallSelected, this);
+        uninstallSelected.setBackgroundColor(Color.TRANSPARENT);
+        uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
+        uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
         toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
 
         cancelSelection = new Button(this);
@@ -114,7 +118,7 @@ public class MainActivity extends Activity {
     }
 
     private void applyBackground() {
-        int background = getSharedPreferences("launcher", 0).getInt("background", 0);
+        int background = getSharedPreferences("launcher", 0).getInt("background", 5);
         int custom = getSharedPreferences("launcher", 0).getInt("custom_background", Color.rgb(25, 35, 48));
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         if (background == 1) {
@@ -332,7 +336,7 @@ public class MainActivity extends Activity {
             TextView dot = new TextView(this);
             dot.setText(i == currentPage ? "●" : "•");
             dot.setTextSize(i == currentPage ? 12 : 10);
-            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
+            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : (ThemeUtils.isDark(this) ? 0xffc4cbd3 : 0xff66717e));
             if (i == currentPage) dot.setTypeface(null, android.graphics.Typeface.BOLD);
             dot.setGravity(Gravity.CENTER);
             dot.setContentDescription("Page " + (i + 1));
