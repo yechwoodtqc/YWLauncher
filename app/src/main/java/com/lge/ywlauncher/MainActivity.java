@@ -217,7 +217,8 @@ public class MainActivity extends Activity {
         if (saved == null) return defaultIncludedActivities(available);
         Set<String> result = new HashSet<>();
         for (ResolveInfo item : available) {
-            if (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName)) result.add(item.activityInfo.name);
+            if ((item.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0
+                && (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName))) result.add(item.activityInfo.name);
         }
         return result;
     }
@@ -254,7 +255,8 @@ public class MainActivity extends Activity {
         for (ResolveInfo app : found) {
             String name = app.activityInfo.name;
             if (savedIncluded == null) { changed = true; }
-            else if (hadKnownApps && !known.contains(name)) { included.add(name); changed = true; }
+            else if (hadKnownApps && !known.contains(name)
+                && (app.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) { included.add(name); changed = true; }
             known.add(name);
         }
         if (changed || savedIncluded == null) appPrefs.edit().putStringSet("included", new HashSet<>(included)).apply();
