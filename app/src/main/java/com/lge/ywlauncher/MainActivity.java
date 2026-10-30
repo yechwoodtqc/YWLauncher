@@ -253,7 +253,7 @@ public class MainActivity extends Activity {
         boolean changed = false;
         for (ResolveInfo app : found) {
             String name = app.activityInfo.name;
-            if (savedIncluded == null) { included.add(name); changed = true; }
+            if (savedIncluded == null) { changed = true; }
             else if (hadKnownApps && !known.contains(name)) { included.add(name); changed = true; }
             known.add(name);
         }
