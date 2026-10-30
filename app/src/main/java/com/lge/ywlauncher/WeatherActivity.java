@@ -963,6 +963,14 @@ public class WeatherActivity extends Activity {
             boolean fog=condition.contains("fog")||condition.contains("haze")||condition.contains("smoke");
             boolean cloudy=condition.contains("cloud")||condition.contains("overcast")||condition.contains("partly")||condition.contains("mostly")||rain||snow||fog;
             boolean sunny=condition.contains("sun")||condition.contains("clear")||condition.contains("partly")||condition.contains("mostly");
+            // Soft tinted medallion gives the forecast art a more polished,
+            // illustrated look while keeping the artwork crisp at small sizes.
+            paint.setStyle(Paint.Style.FILL);
+            int halo = thunder ? 0x333f51b5 : (rain || snow || fog ? 0x332196f3 : 0x33ffb74d);
+            paint.setColor(halo);
+            canvas.drawCircle(32,32,30,paint);
+            paint.setColor(0x22ffffff);
+            canvas.drawCircle(22,18,12,paint);
             if (sunny) {
                 paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xffffb83d);
                 for(int i=0;i<8;i++){double a=Math.PI*i/4;float x=(float)Math.cos(a),y=(float)Math.sin(a);canvas.drawLine(23+x*14,23+y*14,23+x*19,23+y*19,paint);}
