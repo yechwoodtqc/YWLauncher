@@ -59,10 +59,12 @@ public class WeatherActivity extends Activity {
         loadSavedPlaces();
         buildScreen();
         if (getIntent().getBooleanExtra("configure_location", false)) showLocationsPage();
-        else {
+        else if ("current".equals(prefs().getString("weather_location_source", ""))) {
+            // Current-location coordinates are a cache only, never a saved-place selection.
+            detectLocation();
+        } else {
             SavedPlace selected = selectedPlace();
             if (selected != null) fetchForecastAt(selected.lat, selected.lon);
-            else if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
             else if (prefs().contains("weather_lat") && prefs().contains("weather_lon")
                 && !prefs().getString("weather_location", "").trim().isEmpty()
                 && !"Use current location".equals(prefs().getString("weather_location", ""))) {
@@ -744,7 +746,7 @@ public class WeatherActivity extends Activity {
         savedPlaces.clear();
         String raw=prefs().getString("weather_saved_locations","");
         if(!raw.isEmpty())try{JSONArray a=new JSONArray(raw);for(int i=0;i<a.length();i++){JSONObject o=a.optJSONObject(i);if(o!=null)savedPlaces.add(new SavedPlace(o.optString("name","Saved location"),o.optDouble("lat"),o.optDouble("lon")));}}catch(Exception ignored){}
-        if(savedPlaces.isEmpty()&&prefs().contains("weather_lat")&&prefs().contains("weather_lon")){
+        if(savedPlaces.isEmpty()&&!"current".equals(prefs().getString("weather_location_source",""))&&prefs().contains("weather_lat")&&prefs().contains("weather_lon")){
             String name=prefs().getString("weather_location","");if(!name.isEmpty()&&!"Use current location".equals(name)&&!"Current location".equals(name))savedPlaces.add(new SavedPlace(name,prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0)));
             persistSavedPlaces();
         }
@@ -752,6 +754,7 @@ public class WeatherActivity extends Activity {
     private void persistSavedPlaces(){JSONArray a=new JSONArray();for(SavedPlace p:savedPlaces)try{a.put(p.json());}catch(Exception ignored){}prefs().edit().putString("weather_saved_locations",a.toString()).apply();}
     private String selectedPlaceName(){return prefs().getString("weather_selected_location",prefs().getString("weather_location",""));}
     private SavedPlace selectedPlace(){
+        if ("current".equals(prefs().getString("weather_location_source", ""))) return null;
         String name=selectedPlaceName();for(SavedPlace p:savedPlaces)if(p.name.equalsIgnoreCase(name))return p;
         if(prefs().contains("weather_lat")&&prefs().contains("weather_lon")&&!name.isEmpty()&&!"Use current location".equals(name)&&!"Current location".equals(name))return new SavedPlace(name,prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
         return null;
@@ -916,7 +919,10 @@ public class WeatherActivity extends Activity {
         if(autoRefreshRunnable!=null)handler.removeCallbacks(autoRefreshRunnable);
         int minutes=prefs().getInt("weather_refresh_minutes",15);
         if(minutes<=0||isFinishing())return;
-        autoRefreshRunnable=()->{if("forecast".equals(currentPage)){SavedPlace p=selectedPlace();if(p!=null)fetchForecastAt(p.lat,p.lon);else if(prefs().contains("weather_lat"))fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));}scheduleAutoRefresh();};
+        autoRefreshRunnable=()->{if("forecast".equals(currentPage)){
+            if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
+            else {SavedPlace p=selectedPlace();if(p!=null)fetchForecastAt(p.lat,p.lon);else if(prefs().contains("weather_lat"))fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));}
+        }scheduleAutoRefresh();};
         handler.postDelayed(autoRefreshRunnable,minutes*60L*1000L);
     }
 
