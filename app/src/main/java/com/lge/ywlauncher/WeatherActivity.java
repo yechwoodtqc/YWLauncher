@@ -726,10 +726,13 @@ public class WeatherActivity extends Activity {
         });
         addSetting("Refresh now","Update forecast immediately",()->{
             currentPage="forecast";removeHeaderRows();showForecastPageHeader();
-            SavedPlace p=selectedPlace();
-            if(p!=null)fetchForecastAt(p.lat,p.lon);
-            else if(prefs().contains("weather_lat")&&prefs().contains("weather_lon"))fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
-            else detectLocation();
+            if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
+            else {
+                SavedPlace p=selectedPlace();
+                if(p!=null)fetchForecastAt(p.lat,p.lon);
+                else if(prefs().contains("weather_lat")&&prefs().contains("weather_lon"))fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
+                else detectLocation();
+            }
         });
         addSetting("Back to forecast","Return to the forecast",()->showForecastPage());
     }
@@ -945,6 +948,7 @@ public class WeatherActivity extends Activity {
     private final class WeatherIconView extends View {
         private final String condition;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path boltPath = new Path();
         private final int size;
         WeatherIconView(Context context, String forecast, int sizeDp) {
             super(context);
@@ -992,7 +996,7 @@ public class WeatherActivity extends Activity {
             }
             if (thunder) {
                 paint.setStyle(Paint.Style.FILL);paint.setColor(0xffffc247);
-                Path bolt=new Path();bolt.moveTo(36,42);bolt.lineTo(27,53);bolt.lineTo(34,53);bolt.lineTo(30,62);bolt.lineTo(43,48);bolt.lineTo(36,48);bolt.close();canvas.drawPath(bolt,paint);
+                boltPath.reset();boltPath.moveTo(36,42);boltPath.lineTo(27,53);boltPath.lineTo(34,53);boltPath.lineTo(30,62);boltPath.lineTo(43,48);boltPath.lineTo(36,48);boltPath.close();canvas.drawPath(boltPath,paint);
             } else if (rain) {
                 paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff42a5f5);
                 for(int i=0;i<3;i++)canvas.drawLine(25+i*10,49,21+i*10,56,paint);
