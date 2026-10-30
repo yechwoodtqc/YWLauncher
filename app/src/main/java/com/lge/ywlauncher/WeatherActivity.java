@@ -324,21 +324,6 @@ public class WeatherActivity extends Activity {
     private void renderForecast() {
         if (!"forecast".equals(currentPage)) return;
         forecastList.removeAllViews();
-        LinearLayout tabs = new LinearLayout(this);
-        tabs.setOrientation(LinearLayout.HORIZONTAL);
-        Button hourly = new Button(this); hourly.setText("Hourly");
-        Button daily = new Button(this); daily.setText("Daily");
-        ThemeUtils.tint(daily, this); ThemeUtils.tint(hourly, this);
-        daily.setTextSize(textSize(12)); hourly.setTextSize(textSize(12));
-        daily.setTypeface(null,android.graphics.Typeface.BOLD); hourly.setTypeface(null,android.graphics.Typeface.BOLD);
-        daily.setBackground(ThemeUtils.focusBackground(this)); hourly.setBackground(ThemeUtils.focusBackground(this));
-        daily.setOnFocusChangeListener((v,f)->daily.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
-        hourly.setOnFocusChangeListener((v,f)->hourly.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
-        tabs.addView(hourly,new LinearLayout.LayoutParams(0,dp(44),1));
-        tabs.addView(daily,new LinearLayout.LayoutParams(0,dp(44),1));
-        daily.setOnClickListener(v->{hourlyMode=false;if(forecastScroller!=null)forecastScroller.smoothScrollTo(0,dp(180));});
-        hourly.setOnClickListener(v->{hourlyMode=true;if(forecastScroller!=null)forecastScroller.smoothScrollTo(0,0);});
-        forecastList.addView(tabs,rowMargins());
         if (activeAlerts.length() > 0) {
             addSectionTitle("ACTIVE WEATHER ALERTS");
             for (int i = 0; i < Math.min(4, activeAlerts.length()); i++) {
@@ -379,9 +364,11 @@ public class WeatherActivity extends Activity {
             JSONObject period=hourlyPeriods.optJSONObject(i);if(period==null)continue;final int hourIndex=i;
             LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
             card.setPadding(dp(9),dp(8),dp(9),dp(8));card.setMinimumWidth(dp(82));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
-            String start=period.optString("startTime","");String time=start.length()>=16?start.substring(11,16):"Hour";
+            String start=period.optString("startTime","");String time=formatForecastTime(start);
             card.addView(text(time,12,true));card.addView(weatherIcon(period.optString("shortForecast",""),40),new LinearLayout.LayoutParams(dp(52),dp(46)));
             card.addView(text(period.optString("temperature","—")+"°",15,true));
+            JSONObject hourlyChance=period.optJSONObject("probabilityOfPrecipitation");
+            card.addView(text("Rain "+(hourlyChance==null||hourlyChance.isNull("value")?"—":hourlyChance.optString("value")+"%"),11,false));
             card.setOnClickListener(v->showHourDetail(hourIndex));
             card.setOnFocusChangeListener((v,f)->card.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
             hours.addView(card,new LinearLayout.LayoutParams(-2,dp(106)));
@@ -457,13 +444,23 @@ public class WeatherActivity extends Activity {
         forecastList.addView(card,rowMargins());
     }
 
+    private String formatForecastTime(String iso) {
+        if(iso==null||iso.length()<16)return "Hour";
+        try {
+            String value=iso.replaceFirst("([+-]\\\\d{2}):(\\\\d{2})$","$1$2").replaceFirst("Z$","+0000");
+            java.text.SimpleDateFormat input=new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ",Locale.US);
+            Date date=input.parse(value);
+            return date==null?iso.substring(11,16):new java.text.SimpleDateFormat("h:mm a",Locale.getDefault()).format(date);
+        } catch(Exception e) { return iso.substring(11,16); }
+    }
+
     private void addHourlyPeriod(JSONObject period,int index) {
         if(period==null)return;
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
         card.addView(text(weatherEmoji(period.optString("shortForecast","")),25,true),new LinearLayout.LayoutParams(dp(42),dp(44)));
         LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(7),0,0,0);
-        String time=period.optString("startTime",""); if(time.length()>=16)time=time.substring(5,10)+" "+time.substring(11,16);
+        String time=formatForecastTime(period.optString("startTime",""));
         info.addView(text(time+" · "+period.optString("temperature","—")+"°"+period.optString("temperatureUnit","F"),14,true));
         info.addView(text(period.optString("shortForecast",""),12,false));
         JSONObject pp=period.optJSONObject("probabilityOfPrecipitation");
@@ -477,6 +474,7 @@ public class WeatherActivity extends Activity {
     private void showDayDetail(int index) {
         if(index<0||index>=dailyDays.size())return;
         detailMode=true;currentPage="day-detail";detailIndex=index;
+        if(forecastScroller!=null)forecastScroller.post(()->forecastScroller.scrollTo(0,0));
         DayForecast day=dailyDays.get(index);
         rebuildToolbar(day.label,false,false);
         forecastList.removeAllViews();
@@ -554,8 +552,9 @@ public class WeatherActivity extends Activity {
 
     private void showDiscussionPage() {
         currentPage="discussion";rebuildToolbar("Forecast discussion",false,false);forecastList.removeAllViews();
+        if(forecastScroller!=null)forecastScroller.post(()->forecastScroller.scrollTo(0,0));
         String body=discussionProducts.length()>0?discussionProducts.optJSONObject(0).optString("text","No discussion available."):"Forecast discussion is not available yet. Refresh the forecast and try again.";
-        TextView content=text(body,textSize(13),false);content.setPadding(dp(6),dp(8),dp(6),dp(24));content.setFocusable(false);content.setTextIsSelectable(false);forecastList.addView(content,new LinearLayout.LayoutParams(-1,-2));
+        TextView content=text(body,textSize(13),false);content.setPadding(dp(6),dp(8),dp(6),dp(24));content.setFocusable(false);content.setTextIsSelectable(false);content.setLineSpacing(dp(3),1.08f);forecastList.addView(content,new LinearLayout.LayoutParams(-1,-2));
         TextView footer=text("End of forecast discussion",11,false);footer.setGravity(Gravity.CENTER);footer.setPadding(0,dp(18),0,dp(24));forecastList.addView(footer);
     }
 
