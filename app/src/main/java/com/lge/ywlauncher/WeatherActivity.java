@@ -802,20 +802,19 @@ public class WeatherActivity extends Activity {
         final Location[] best={null};
         final long requestStarted=System.currentTimeMillis();
 
-        // Only trust a cached fix when it is genuinely recent and precise.
-        // Older/coarse cached fixes can easily point to a neighboring state.
+        // Keep a recent cached fix only as a timeout fallback. Always request
+        // a new provider update first; a cached fix can still point to the wrong area.
         try{
             for(String provider:manager.getProviders(true)){
                 try{
                     Location cached=manager.getLastKnownLocation(provider);
                     if(cached==null)continue;
                     long age=requestStarted-cached.getTime();
-                    if(age>=0&&age<=30000L&&cached.hasAccuracy()&&cached.getAccuracy()<=100f)
+                    if(age>=0&&age<=30000L&&cached.hasAccuracy()&&cached.getAccuracy()<=1500f)
                         best[0]=betterLocation(best[0],cached);
                 }catch(SecurityException|IllegalArgumentException ignored){}
             }
         }catch(Exception ignored){}
-        if(best[0]!=null){onCurrentLocation(best[0]);return;}
 
         final boolean[] finished={false};
         pendingLocationListener=new LocationListener(){
