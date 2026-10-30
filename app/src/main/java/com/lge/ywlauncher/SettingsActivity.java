@@ -235,7 +235,7 @@ public class SettingsActivity extends Activity {
     }
 
     private String backgroundSummary() {
-        int value = prefs.getInt("background", 0);
+        int value = prefs.getInt("background", 5);
         return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : (value == 5 ? "Exalt gradient" : "System wallpaper"))));
     }
 
