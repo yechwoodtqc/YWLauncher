@@ -276,7 +276,8 @@ public class WeatherActivity extends Activity {
                 JSONArray days = daily.getJSONObject("properties").getJSONArray("periods");
                 JSONArray hours = new JSONArray();
                 if (!hourlyUrl.isEmpty()) hours = getJson(hourlyUrl).getJSONObject("properties").getJSONArray("periods");
-                String generated = daily.getJSONObject("properties").optString("updateTime", daily.getJSONObject("properties").optString("generatedAt", ""));
+                String generated = daily.getJSONObject("properties").optString("updateTime", "");
+                if (generated.trim().isEmpty()) generated = daily.getJSONObject("properties").optString("generatedAt", "");
                 String office = properties.optString("cwa", "");
                 JSONArray alerts = new JSONArray();
                 try {
@@ -295,7 +296,7 @@ public class WeatherActivity extends Activity {
                     setLoading(false, null);
                     renderForecast();
                     String now = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date());
-                    updated.setText("Last updated: " + now);
+                    if (updated != null) updated.setText("Last updated: " + now);
                     String forecastTime = finalGenerated;
                     if (!forecastTime.isEmpty()) {
                         try {
@@ -306,7 +307,7 @@ public class WeatherActivity extends Activity {
                             forecastTime = date == null ? forecastTime : new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(date);
                         } catch (Exception ignored) {}
                     }
-                    forecasted.setText("Forecast issued/updated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
+                    if (forecasted != null) forecasted.setText("Forecast issued/updated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
                     prefs().edit().putString("weather_widget_summary", days.optJSONObject(0)==null?"Forecast ready":days.optJSONObject(0).optString("shortForecast","Forecast ready"))
                         .putString("weather_widget_temperature", days.optJSONObject(0)==null?"—":days.optJSONObject(0).optString("temperature","—")+"°"+(days.optJSONObject(0)==null?"F":days.optJSONObject(0).optString("temperatureUnit","F")))
                         .putString("weather_widget_icon", days.optJSONObject(0)==null?"🌤️":weatherEmoji(days.optJSONObject(0).optString("shortForecast","")))
@@ -937,10 +938,18 @@ public class WeatherActivity extends Activity {
         }finally{conn.disconnect();}
     }
 
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if ("discussion".equals(currentPage) && event.getAction() == KeyEvent.ACTION_DOWN && forecastScroller != null) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(42)); return true; }
+            if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP) { forecastScroller.smoothScrollBy(0, -dp(42)); return true; }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
     @Override public boolean onKeyDown(int keyCode,KeyEvent event){
         if ("discussion".equals(currentPage) && forecastScroller != null) {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(64)); return true; }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { forecastScroller.smoothScrollBy(0, -dp(64)); return true; }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(42)); return true; }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { forecastScroller.smoothScrollBy(0, -dp(42)); return true; }
         }
         if("day-detail".equals(currentPage)){
             if(keyCode==KeyEvent.KEYCODE_DPAD_LEFT){showDayDetail(Math.max(0,detailIndex-1));return true;}
