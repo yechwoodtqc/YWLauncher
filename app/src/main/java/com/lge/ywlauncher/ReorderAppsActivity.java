@@ -115,8 +115,12 @@ public class ReorderAppsActivity extends Activity {
         controls.setGravity(Gravity.CENTER_VERTICAL);
         Button up = new Button(this); up.setText("↑  Move up"); ThemeUtils.tint(up, this);
         Button down = new Button(this); down.setText("↓  Move down"); ThemeUtils.tint(down, this);
-        up.setBackground(ThemeUtils.focusBackground(this));
-        down.setBackground(ThemeUtils.focusBackground(this));
+        // ThemeUtils.focusBackground is transparent when unfocused. Keep the
+        // labels legible and draw an outline only while the button owns focus.
+        up.setTextColor(ThemeUtils.text(this));
+        down.setTextColor(ThemeUtils.text(this));
+        up.setBackground(ThemeUtils.focusOutlineBackground(this));
+        down.setBackground(ThemeUtils.focusOutlineBackground(this));
         up.setOnFocusChangeListener((v,f)->up.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
         down.setOnFocusChangeListener((v,f)->down.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
         controls.addView(up, new LinearLayout.LayoutParams(0, dp(50), 1));
@@ -127,6 +131,10 @@ public class ReorderAppsActivity extends Activity {
         footer.setPadding(dp(8), dp(4), dp(8), dp(10));
         Button save = new Button(this); save.setText("Save order"); ThemeUtils.tint(save, this);
         Button cancel = new Button(this); cancel.setText("Cancel"); ThemeUtils.tint(cancel, this);
+        save.setTextColor(ThemeUtils.text(this));
+        cancel.setTextColor(ThemeUtils.text(this));
+        save.setBackground(ThemeUtils.focusOutlineBackground(this));
+        cancel.setBackground(ThemeUtils.focusOutlineBackground(this));
         footer.addView(save, new LinearLayout.LayoutParams(0, dp(48), 1));
         footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1));
         root.addView(footer);
@@ -146,6 +154,7 @@ public class ReorderAppsActivity extends Activity {
     }
 
     private void move(int direction) {
+        View moveControl = getCurrentFocus();
         int target = selected + direction;
         if (target < 0 || target >= order.size()) return;
         Collections.swap(order, selected, target);
@@ -155,5 +164,6 @@ public class ReorderAppsActivity extends Activity {
         list.setItemChecked(selected, true);
         list.setSelection(selected);
         // Keep keyboard focus on the Move Up/Move Down control for repeated presses.
+        if (moveControl != null) moveControl.requestFocus();
     }
 }
