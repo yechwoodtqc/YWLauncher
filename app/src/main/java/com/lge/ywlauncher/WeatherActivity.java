@@ -882,7 +882,8 @@ public class WeatherActivity extends Activity {
                 long age = System.currentTimeMillis() - fixTime;
                 if (fixTime < requestStarted - 2000L || age < 0 || age > 30000L) return;
                 if (!location.hasAccuracy() || location.getAccuracy() > 1000f) return;
-                if (!Double.isFinite(location.getLatitude()) || !Double.isFinite(location.getLongitude())) return;
+                if (Double.isNaN(location.getLatitude()) || Double.isInfinite(location.getLatitude())
+                    || Double.isNaN(location.getLongitude()) || Double.isInfinite(location.getLongitude())) return;
 
                 best[0] = betterLocation(best[0], location);
                 if (location.getAccuracy() <= 250f) {
