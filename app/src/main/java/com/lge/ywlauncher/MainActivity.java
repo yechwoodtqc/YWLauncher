@@ -130,6 +130,10 @@ public class MainActivity extends Activity {
 
     private void applyBackground() {
         int background = getSharedPreferences("launcher", 0).getInt("background", defaultBackgroundForDevice());
+        // Treat the legacy value 0 as "device default". Older builds saved 0
+        // for the initial wallpaper setting, preventing model-specific LG
+        // Classic/Exalt defaults from ever being applied after an upgrade.
+        if (background == 0) background = defaultBackgroundForDevice();
         int custom = getSharedPreferences("launcher", 0).getInt("custom_background", Color.rgb(25, 35, 48));
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         if (background == 1) {
