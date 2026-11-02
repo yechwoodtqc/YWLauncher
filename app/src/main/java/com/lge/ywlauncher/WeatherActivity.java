@@ -172,9 +172,9 @@ public class WeatherActivity extends Activity {
         rebuildToolbar("Weather", true, true);
         locationTitle = new TextView(this);
         locationTitle.setTextColor(ThemeUtils.accent(this));
-        locationTitle.setTextSize(textSize(16));
+        locationTitle.setTextSize(textSize(15));
         locationTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        locationTitle.setPadding(dp(4), dp(3), dp(4), dp(3));
+        locationTitle.setPadding(dp(2), 0, dp(2), dp(1));
         locationTitle.setFocusable(true);
         locationTitle.setClickable(true);
         locationTitle.setOnClickListener(v -> showLocationsPage());
@@ -1016,6 +1016,16 @@ public class WeatherActivity extends Activity {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path cloudPath = new Path();
         private final Path detailPath = new Path();
+        private final Shader sunGradient = new RadialGradient(24, 25, 18,
+            new int[]{0xfffff9d9, 0xffffc45a, 0xfff58e38}, null, Shader.TileMode.CLAMP);
+        private final Shader moonGradient = new RadialGradient(27, 20, 20,
+            new int[]{0xfffff2c6, 0xffe0d9af, 0xffb4b8d0}, null, Shader.TileMode.CLAMP);
+        private final Shader cloudGradient = new LinearGradient(17, 17, 59, 58,
+            new int[]{0xffffffff, 0xffe5eff8, 0xffa8bed3}, null, Shader.TileMode.CLAMP);
+        private final Shader dropGradient = new LinearGradient(22, 61, 27, 73,
+            0xffa5e3ff, 0xff2688db, Shader.TileMode.CLAMP);
+        private final Shader boltGradient = new LinearGradient(37, 48, 51, 72,
+            0xfffff1a5, 0xffffb83f, Shader.TileMode.CLAMP);
         private final int size;
 
         WeatherIconView(Context context, String forecast, int sizeDp) {
@@ -1045,8 +1055,7 @@ public class WeatherActivity extends Activity {
                     cx + dx * (radius + 10), cy + dy * (radius + 10), paint);
             }
             paint.setStyle(Paint.Style.FILL);
-            paint.setShader(new RadialGradient(cx - radius * .28f, cy - radius * .32f, radius * 1.45f,
-                new int[]{0xfffff9d9, 0xffffc45a, 0xfff58e38}, null, Shader.TileMode.CLAMP));
+            paint.setShader(sunGradient);
             canvas.drawCircle(cx, cy, radius, paint);
             paint.setShader(null);
             paint.setColor(0x66ffffff);
@@ -1075,8 +1084,7 @@ public class WeatherActivity extends Activity {
             canvas.drawPath(cloudPath, paint);
             canvas.restore();
 
-            paint.setShader(new LinearGradient(17, 17, 59, 58,
-                new int[]{0xffffffff, 0xffe5eff8, 0xffa8bed3}, null, Shader.TileMode.CLAMP));
+            paint.setShader(cloudGradient);
             canvas.drawPath(cloudPath, paint);
             paint.setShader(null);
 
@@ -1099,8 +1107,7 @@ public class WeatherActivity extends Activity {
             detailPath.cubicTo(x + 1, y + 8, x - 3, y + 7, x - 4, y + 4);
             detailPath.cubicTo(x - 5, y + 1, x - 2, y - 3, x, y - 5);
             detailPath.close();
-            paint.setShader(new LinearGradient(x - 2, y - 5, x + 3, y + 7,
-                0xffa5e3ff, 0xff2688db, Shader.TileMode.CLAMP));
+            paint.setShader(dropGradient);
             canvas.drawPath(detailPath, paint);
             paint.setShader(null);
         }
@@ -1146,8 +1153,7 @@ public class WeatherActivity extends Activity {
             canvas.drawCircle(28, 22, 14, paint);
 
             if (night) {
-                paint.setShader(new RadialGradient(27, 20, 20,
-                    new int[]{0xfffff2c6, 0xffe0d9af, 0xffb4b8d0}, null, Shader.TileMode.CLAMP));
+                paint.setShader(moonGradient);
                 canvas.drawCircle(34, 28, 14, paint);
                 paint.setShader(null);
                 paint.setColor(halo);
@@ -1170,8 +1176,7 @@ public class WeatherActivity extends Activity {
                 detailPath.lineTo(54, 55);
                 detailPath.lineTo(46, 55);
                 detailPath.close();
-                paint.setShader(new LinearGradient(37, 48, 51, 72,
-                    0xfffff1a5, 0xffffb83f, Shader.TileMode.CLAMP));
+                paint.setShader(boltGradient);
                 canvas.drawPath(detailPath, paint);
                 paint.setShader(null);
             } else if (rain) {
