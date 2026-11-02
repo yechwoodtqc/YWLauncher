@@ -256,8 +256,10 @@ public class SettingsActivity extends Activity {
 
     private String backgroundSummary() {
         int value = prefs.getInt("background", defaultBackgroundForDevice());
+        if (value == 0) value = defaultBackgroundForDevice();
         if (value == 6) return "LG Classic menu";
         if (value == 5) return "Exalt gradient";
+        if (value == 7) return "System wallpaper";
         return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : "System wallpaper")));
     }
 
@@ -303,14 +305,20 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseBackground() {
-        int selected = prefs.getInt("background", defaultBackgroundForDevice());
+        int[] values = {0, 7, 1, 2, 3, 4, 5, 6};
+        String[] labels = {"Device default", "System wallpaper", "Blue", "Black", "Custom color", "Custom image", "Exalt gradient", "LG Classic menu"};
+        int current = prefs.getInt("background", defaultBackgroundForDevice());
+        if (current == 0) current = defaultBackgroundForDevice();
+        int selected = 0;
+        for (int i = 0; i < values.length; i++) if (values[i] == current) selected = i;
         new AlertDialog.Builder(this).setTitle("Background")
-            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color", "Custom image", "Exalt gradient", "LG Classic menu"}, Math.max(0, Math.min(6, selected)), (dialog, which) -> {
+            .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                int value = values[which];
                 dialog.dismiss();
-                if (which == 3) {
+                if (value == 3) {
                     prefs.edit().putInt("background", 3).apply();
                     choosePalette("Custom background color", "custom_background", Color.rgb(25, 35, 48));
-                } else if (which == 4) {
+                } else if (value == 4) {
                     Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     pick.addCategory(Intent.CATEGORY_OPENABLE);
                     pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
@@ -327,7 +335,7 @@ public class SettingsActivity extends Activity {
                         }
                     }
                 } else {
-                    prefs.edit().putInt("background", which).apply();
+                    prefs.edit().putInt("background", value).apply();
                     recreate();
                 }
             }).setNegativeButton("Cancel", null).show();
