@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write
 
+# APK publication writes back to main; serialize builds to avoid concurrent
+# workflow runs racing while updating release/YWLauncher.apk.
+concurrency:
+  group: ywlauncher-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -72,14 +78,29 @@ jobs:
         if: success() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
         shell: bash
         run: |
-          mkdir -p release
-          cp app/build/outputs/apk/debug/app-debug.apk release/YWLauncher.apk
-          git add release/YWLauncher.apk
-          if git diff --cached --quiet -- release/YWLauncher.apk; then
-            echo "Repository APK is already up to date."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+users.noreply.github.com"
+
+          # Refresh from the current main tip before publishing. Retry if an
+          # unrelated push lands between fetch and push.
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p release
+            cp app/build/outputs/apk/debug/app-debug.apk release/YWLauncher.apk
+            git add release/YWLauncher.apk
+
+            if git diff --cached --quiet -- release/YWLauncher.apk; then
+              echo "Repository APK is already up to date."
+              exit 0
+            fi
+
             git commit -m "Update latest built YWLauncher APK"
-            git push
-          fi
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "APK publication push failed on attempt $attempt; retrying from the latest main."
+          done
+
+          echo "Could not publish the APK after five attempts."
+          exit 1
