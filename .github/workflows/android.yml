@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           # Refresh from the current main tip before publishing. Retry if an
           # unrelated push lands between fetch and push.
