@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
+    <uses-permission android:name="android.permission.WRITE_USER_DICTIONARY" />
 
     <queries>
         <intent>
@@ -61,7 +63,9 @@
             android:name=".WeatherActivity"
             android:exported="true"
             android:label="YW Weather"
-            android:icon="@drawable/ic_weather">
+            android:icon="@drawable/ic_weather"
+            android:taskAffinity="com.lge.ywlauncher.weather"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -76,6 +80,12 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <provider
+            android:name=".VCardProvider"
+            android:authorities="com.lge.ywlauncher.vcard"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <receiver
             android:name=".WeatherWidgetProvider"

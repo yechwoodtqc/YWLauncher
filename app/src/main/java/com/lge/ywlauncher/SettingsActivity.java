@@ -234,9 +234,18 @@ public class SettingsActivity extends Activity {
         return size <= 32 ? "Small" : (size >= 48 ? "Large" : "Medium");
     }
 
+    private int defaultBackgroundForDevice() {
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 6;
+        if (model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax")) return 5;
+        return 0;
+    }
+
     private String backgroundSummary() {
-        int value = prefs.getInt("background", 5);
-        return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : (value == 5 ? "Exalt gradient" : "System wallpaper"))));
+        int value = prefs.getInt("background", defaultBackgroundForDevice());
+        if (value == 6) return "LG Classic menu";
+        if (value == 5) return "Exalt gradient";
+        return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : "System wallpaper")));
     }
 
     private String themeSummary() {
@@ -281,9 +290,9 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseBackground() {
-        int selected = prefs.getInt("background", 0);
+        int selected = prefs.getInt("background", defaultBackgroundForDevice());
         new AlertDialog.Builder(this).setTitle("Background")
-            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color", "Custom image", "Exalt gradient"}, Math.min(5, selected), (dialog, which) -> {
+            .setSingleChoiceItems(new String[]{"System wallpaper", "Blue", "Black", "Custom color", "Custom image", "Exalt gradient", "LG Classic menu"}, Math.max(0, Math.min(6, selected)), (dialog, which) -> {
                 dialog.dismiss();
                 if (which == 3) {
                     prefs.edit().putInt("background", 3).apply();

@@ -20,7 +20,8 @@ public class MainActivity extends Activity {
     private ImageButton settingsButton;
     private TextView pageIndicator, selectionCount;
     private LinearLayout pageDots;
-    private Button hideSelected, uninstallSelected, cancelSelection;
+    private ImageButton hideSelected, uninstallSelected;
+    private Button cancelSelection;
     private final ArrayList<ResolveInfo> apps = new ArrayList<>();
     private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
     private int currentPage = 0;
@@ -65,25 +66,13 @@ public class MainActivity extends Activity {
         selectionCount.setTextSize(13);
         toolbar.addView(selectionCount);
 
-        hideSelected = new Button(this);
-        hideSelected.setText("Hide");
-        hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);
-        hideSelected.setCompoundDrawablePadding(dp(4));
-        hideSelected.setOnClickListener(v -> hideSelectedApps());
-        hideSelected.setBackgroundColor(Color.TRANSPARENT);
-        hideSelected.setPadding(dp(8), 0, dp(8), 0);
-        hideSelected.setOnFocusChangeListener((v, focused) -> hideSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+        hideSelected = new ImageButton(this);
+        configureSelectionAction(hideSelected, R.drawable.ic_hide_modern, "Hide selected apps", this::hideSelectedApps);
+        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-        uninstallSelected = new Button(this);
-        uninstallSelected.setText("Uninstall");
-        uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);
-        uninstallSelected.setCompoundDrawablePadding(dp(4));
-        uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
-        uninstallSelected.setBackgroundColor(Color.TRANSPARENT);
-        uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
-        uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+        uninstallSelected = new ImageButton(this);
+        configureSelectionAction(uninstallSelected, R.drawable.ic_uninstall_modern, "Uninstall selected apps", this::uninstallSelectedApps);
+        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         cancelSelection = new Button(this);
         cancelSelection.setText("Cancel");
@@ -117,8 +106,28 @@ public class MainActivity extends Activity {
         updateSelectionToolbar();
     }
 
+    private int defaultBackgroundForDevice() {
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 6;
+        if (model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax")) return 5;
+        return 0;
+    }
+
+    private void configureSelectionAction(ImageButton button, int icon, String description, Runnable action) {
+        button.setImageResource(icon);
+        button.setColorFilter(ThemeUtils.text(this));
+        button.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        button.setPadding(dp(7), dp(7), dp(7), dp(7));
+        button.setContentDescription(description);
+        button.setFocusable(true);
+        button.setBackground(new ColorDrawable(Color.TRANSPARENT));
+        button.setOnFocusChangeListener((v, focused) ->
+            button.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
+        button.setOnClickListener(v -> action.run());
+    }
+
     private void applyBackground() {
-        int background = getSharedPreferences("launcher", 0).getInt("background", 5);
+        int background = getSharedPreferences("launcher", 0).getInt("background", defaultBackgroundForDevice());
         int custom = getSharedPreferences("launcher", 0).getInt("custom_background", Color.rgb(25, 35, 48));
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         if (background == 1) {
@@ -186,6 +195,9 @@ public class MainActivity extends Activity {
         } else if (background == 5) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundResource(R.drawable.bg_exalt_gradient);
+        } else if (background == 6) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundResource(R.drawable.bg_lg_classic_menu);
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
@@ -216,9 +228,10 @@ public class MainActivity extends Activity {
     private Set<String> normalizedIncludedActivities(Set<String> saved, List<ResolveInfo> available) {
         if (saved == null) return defaultIncludedActivities(available);
         Set<String> result = new HashSet<>();
+        // Default apps are filtered separately; explicit selections may include system apps.
         for (ResolveInfo item : available) {
-            if ((item.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0
-                && (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName))) result.add(item.activityInfo.name);
+            if (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName))
+                result.add(item.activityInfo.name);
         }
         return result;
     }

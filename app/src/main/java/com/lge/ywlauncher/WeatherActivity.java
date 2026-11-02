@@ -19,6 +19,7 @@ import java.io.*;
 import java.net.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class WeatherActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 71;
@@ -261,7 +262,15 @@ public class WeatherActivity extends Activity {
     private void refreshCurrentPage() {
         if ("settings".equals(currentPage)) { showWeatherSettings(); return; }
         if ("locations".equals(currentPage)) { showLocationsPage(); return; }
-        if ("discussion".equals(currentPage)) { SavedPlace p=selectedPlace(); if(p!=null)fetchForecastAt(p.lat,p.lon); return; }
+        if ("discussion".equals(currentPage)) {
+            if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
+            else { SavedPlace p=selectedPlace(); if(p!=null)fetchForecastAt(p.lat,p.lon); }
+            return;
+        }
+        if ("current".equals(prefs().getString("weather_location_source", ""))) {
+            detectLocation();
+            return;
+        }
         SavedPlace place = selectedPlace();
         if (place != null) fetchForecastAt(place.lat, place.lon);
         else if (prefs().contains("weather_lat") && prefs().contains("weather_lon")) fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
@@ -269,33 +278,70 @@ public class WeatherActivity extends Activity {
     }
 
     private void fetchForecastAt(double latitude, double longitude) {
-        setLoading(true, "Checking the sky…");
+        setLoading(true, "Loading forecast…");
         new Thread(() -> {
+            ExecutorService requests = Executors.newFixedThreadPool(3);
             try {
-                JSONObject point = getJson("https://api.weather.gov/points/" + latitude + "," + longitude);
-                JSONObject properties = point.getJSONObject("properties");
-                JSONObject daily = getJson(properties.getString("forecast"));
-                String hourlyUrl = properties.optString("forecastHourly", "");
+                SharedPreferences p = prefs();
+                String dailyUrl = "";
+                String hourlyUrl = "";
+                String office = "";
+                boolean cacheValid = p.contains("nws_cache_lat") && p.contains("nws_cache_lon")
+                    && Math.abs(p.getFloat("nws_cache_lat", 999f) - latitude) < 0.03d
+                    && Math.abs(p.getFloat("nws_cache_lon", 999f) - longitude) < 0.03d;
+                if (cacheValid) {
+                    dailyUrl = p.getString("nws_forecast_url", "");
+                    hourlyUrl = p.getString("nws_hourly_url", "");
+                    office = p.getString("nws_office", "");
+                }
+                if (dailyUrl.isEmpty()) {
+                    JSONObject point = getJson("https://api.weather.gov/points/" + latitude + "," + longitude);
+                    JSONObject properties = point.getJSONObject("properties");
+                    dailyUrl = properties.getString("forecast");
+                    hourlyUrl = properties.optString("forecastHourly", "");
+                    office = properties.optString("cwa", "");
+                    p.edit().putFloat("nws_cache_lat", (float) latitude).putFloat("nws_cache_lon", (float) longitude)
+                        .putString("nws_forecast_url", dailyUrl).putString("nws_hourly_url", hourlyUrl)
+                        .putString("nws_office", office).apply();
+                }
+                final String forecastUrl = dailyUrl;
+                final String hourlyForecastUrl = hourlyUrl;
+                final String forecastOffice = office;
+                Future<JSONObject> dailyRequest = requests.submit(() -> getJson(forecastUrl));
+                Future<JSONObject> hourlyRequest = hourlyForecastUrl.isEmpty() ? null : requests.submit(() -> getJson(hourlyForecastUrl));
+                Future<JSONObject> alertsRequest = requests.submit(() ->
+                    getJson("https://api.weather.gov/alerts/active?point=" + latitude + "," + longitude));
+
+                JSONObject daily = dailyRequest.get(25, TimeUnit.SECONDS);
                 JSONArray days = daily.getJSONObject("properties").getJSONArray("periods");
-                JSONArray hours = new JSONArray();
-                if (!hourlyUrl.isEmpty()) hours = getJson(hourlyUrl).getJSONObject("properties").getJSONArray("periods");
                 String generated = daily.getJSONObject("properties").optString("updateTime", "");
                 if (generated.trim().isEmpty()) generated = daily.getJSONObject("properties").optString("generatedAt", "");
-                String office = properties.optString("cwa", "");
+
+                JSONArray hours = new JSONArray();
+                if (hourlyRequest != null) {
+                    try { hours = hourlyRequest.get(15, TimeUnit.SECONDS).getJSONObject("properties").getJSONArray("periods"); }
+                    catch (Exception ignored) { }
+                }
                 JSONArray alerts = new JSONArray();
                 try {
-                    JSONArray features = getJson("https://api.weather.gov/alerts/active?point=" + latitude + "," + longitude).optJSONArray("features");
+                    JSONObject response = alertsRequest.get(15, TimeUnit.SECONDS);
+                    JSONArray features = response.optJSONArray("features");
                     if (features != null) for (int i = 0; i < features.length(); i++) {
                         JSONObject feature = features.optJSONObject(i);
                         JSONObject alert = feature == null ? null : feature.optJSONObject("properties");
                         if (alert != null) alerts.put(alert);
                     }
                 } catch (Exception ignored) { }
-                JSONArray finalAlerts = alerts;
+
+                JSONArray finalDays = days;
                 JSONArray finalHours = hours;
+                JSONArray finalAlerts = alerts;
                 String finalGenerated = generated;
                 handler.post(() -> {
-                    dailyPeriods = days; hourlyPeriods = finalHours; activeAlerts = finalAlerts; buildDailyDays(days);
+                    dailyPeriods = finalDays;
+                    hourlyPeriods = finalHours;
+                    activeAlerts = finalAlerts;
+                    buildDailyDays(finalDays);
                     setLoading(false, null);
                     renderForecast();
                     String now = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date());
@@ -308,21 +354,27 @@ public class WeatherActivity extends Activity {
                             java.text.SimpleDateFormat input = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
                             Date date = input.parse(normalizedTime);
                             forecastTime = date == null ? forecastTime : new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(date);
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) { }
                     }
                     if (forecasted != null) forecasted.setText("Forecast issued/updated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
-                    prefs().edit().putString("weather_widget_summary", days.optJSONObject(0)==null?"Forecast ready":days.optJSONObject(0).optString("shortForecast","Forecast ready"))
-                        .putString("weather_widget_temperature", days.optJSONObject(0)==null?"—":days.optJSONObject(0).optString("temperature","—")+"°"+(days.optJSONObject(0)==null?"F":days.optJSONObject(0).optString("temperatureUnit","F")))
-                        .putString("weather_widget_icon", days.optJSONObject(0)==null?"🌤️":weatherEmoji(days.optJSONObject(0).optString("shortForecast","")))
+                    JSONObject first = finalDays.optJSONObject(0);
+                    prefs().edit().putString("weather_widget_summary", first == null ? "Forecast ready" : first.optString("shortForecast", "Forecast ready"))
+                        .putString("weather_widget_temperature", first == null ? "—" : first.optString("temperature", "—") + "°" + first.optString("temperatureUnit", "F"))
+                        .putString("weather_widget_icon", first == null ? "🌤️" : weatherEmoji(first.optString("shortForecast", "")))
                         .apply();
                     WeatherWidgetProvider.updateAll(this);
-                    fetchDiscussion(office);
+                    fetchDiscussion(forecastOffice);
                     scheduleAutoRefresh();
                 });
             } catch (Exception e) {
-                handler.post(() -> { setLoading(false, null); showWeatherError("Couldn't load the forecast. Check your connection or choose another saved location.\n\n" + e.getMessage()); });
+                handler.post(() -> {
+                    setLoading(false, null);
+                    showWeatherError("Couldn't load the forecast. Check your connection or choose another saved location.\n\n" + e.getMessage());
+                });
+            } finally {
+                requests.shutdownNow();
             }
-        }).start();
+        }, "YWWeatherFetch").start();
     }
 
     private void renderForecast() {
@@ -779,7 +831,7 @@ public class WeatherActivity extends Activity {
                     try { startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
                     catch (Exception e) { fallbackIpLocation(); }
                 })
-                .setNegativeButton("Use approximate location", (d,w) -> fallbackIpLocation())
+                .setNegativeButton("Choose city or ZIP", (d,w) -> showLocationsPage())
                 .show();
             return;
         }
@@ -787,7 +839,7 @@ public class WeatherActivity extends Activity {
     }
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
         super.onRequestPermissionsResult(requestCode,permissions,grantResults);
-        if(requestCode==LOCATION_PERMISSION_REQUEST){boolean granted=false;for(int r:grantResults)if(r==PackageManager.PERMISSION_GRANTED)granted=true;if(granted)findCurrentLocation();else fallbackIpLocation();}
+        if(requestCode==LOCATION_PERMISSION_REQUEST){boolean granted=false;for(int r:grantResults)if(r==PackageManager.PERMISSION_GRANTED)granted=true;if(granted)findCurrentLocation();else locationUnavailable("Location permission was not granted.");}
     }
 
     @SuppressLint("MissingPermission")
@@ -808,19 +860,8 @@ public class WeatherActivity extends Activity {
         final Location[] best={null};
         final long requestStarted=System.currentTimeMillis();
 
-        // Keep a recent cached fix only as a timeout fallback. Always request
-        // a new provider update first; a cached fix can still point to the wrong area.
-        try{
-            for(String provider:manager.getProviders(true)){
-                try{
-                    Location cached=manager.getLastKnownLocation(provider);
-                    if(cached==null)continue;
-                    long age=requestStarted-cached.getTime();
-                    if(age>=0&&age<=30000L&&cached.hasAccuracy()&&cached.getAccuracy()<=1500f)
-                        best[0]=betterLocation(best[0],cached);
-                }catch(SecurityException|IllegalArgumentException ignored){}
-            }
-        }catch(Exception ignored){}
+        // Only callbacks received after this request began count as a usable fix.
+        // Cached coordinates are deliberately ignored to avoid carrier-gateway stale locations.
 
         final boolean[] finished={false};
         pendingLocationListener=new LocationListener(){
@@ -828,11 +869,12 @@ public class WeatherActivity extends Activity {
                 if(finished[0]||location==null)return;
                 long age=System.currentTimeMillis()-location.getTime();
                 if(age<0||age>30000L)return;
-                if(location.hasAccuracy()&&location.getAccuracy()>1500f)return;
+                if(!location.hasAccuracy() || location.getAccuracy()>5000f)return;
+                if(!Double.isFinite(location.getLatitude()) || !Double.isFinite(location.getLongitude()))return;
                 best[0]=betterLocation(best[0],location);
                 // Prefer a genuinely accurate fix. Do not immediately accept
                 // the first coarse network estimate while GPS is still resolving.
-                if(location.hasAccuracy()&&location.getAccuracy()<=100f){
+                if(location.hasAccuracy()&&location.getAccuracy()<=250f){
                     finished[0]=true;
                     stopLocationUpdates(manager);
                     onCurrentLocation(location);
@@ -861,11 +903,10 @@ public class WeatherActivity extends Activity {
             finished[0]=true;
             stopLocationUpdates(manager);
             Location result=best[0];
-            // A fresh fix within 1.5 km is usable as a last resort; otherwise
-            // IP geolocation is more honest than presenting a bad GPS result.
-            if(result!=null&&result.hasAccuracy()&&result.getAccuracy()<=1500f)
+            long fixAge = result == null ? Long.MAX_VALUE : System.currentTimeMillis() - result.getTime();
+            if(result!=null&&fixAge>=0&&fixAge<=30000L&&result.hasAccuracy()&&result.getAccuracy()<=5000f)
                 onCurrentLocation(result);
-            else fallbackIpLocation();
+            else locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again outdoors with GPS enabled.");
         };
         handler.postDelayed(locationTimeout,20000L);
     }
@@ -900,16 +941,15 @@ public class WeatherActivity extends Activity {
         }).start();
     }
 
-    private void fallbackIpLocation(){
-        setLoading(true,"Finding an approximate location…");
-        new Thread(()->{
-            try{
-                JSONObject ip=getJson("https://ipapi.co/json/");
-                double lat=ip.getDouble("latitude"),lon=ip.getDouble("longitude");
-                String city=ip.optString("city","Nearby area"),region=ip.optString("region_code",ip.optString("region",""));
-                handler.post(()->useCurrentCoordinates(lat,lon,city+(region.isEmpty()?"":", "+region)));
-            }catch(Exception e){handler.post(()->{setLoading(false,null);showWeatherError("Couldn't determine your location. Turn on Location permission and device location, or add a city/ZIP under Weather settings.\n\n"+e.getMessage());});}
-        }).start();
+    private void fallbackIpLocation() {
+        locationUnavailable("YW Weather could not get a fresh device location. Choose a city or ZIP code instead of using an inaccurate network/IP estimate.");
+    }
+
+    private void locationUnavailable(String message) {
+        handler.post(() -> {
+            setLoading(false, null);
+            showWeatherError(message);
+        });
     }
 
     private void useCurrentCoordinates(double lat,double lon,String label){
