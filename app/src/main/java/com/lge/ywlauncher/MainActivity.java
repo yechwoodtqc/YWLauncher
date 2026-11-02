@@ -33,6 +33,8 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ThemeUtils.apply(this);
+        setTaskDescription(new android.app.ActivityManager.TaskDescription(
+            "YW Launcher", R.drawable.ic_launcher, ThemeUtils.accent(this)));
         appliedTheme = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         appliedAccent = ThemeUtils.accent(this);
         build();
@@ -66,24 +68,26 @@ public class MainActivity extends Activity {
         toolbar.addView(selectionCount);
 
         hideSelected = new Button(this);
-        hideSelected.setText("Hide");
+        hideSelected.setText("");
+        hideSelected.setContentDescription("Hide selected apps");
         hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);
-        hideSelected.setCompoundDrawablePadding(dp(4));
+        hideSelected.setPadding(dp(8), 0, dp(8), 0);
         hideSelected.setOnClickListener(v -> hideSelectedApps());
         hideSelected.setBackgroundColor(Color.TRANSPARENT);
         hideSelected.setPadding(dp(8), 0, dp(8), 0);
         hideSelected.setOnFocusChangeListener((v, focused) -> hideSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
 
         uninstallSelected = new Button(this);
-        uninstallSelected.setText("Uninstall");
+        uninstallSelected.setText("");
+        uninstallSelected.setContentDescription("Uninstall selected apps");
         uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);
-        uninstallSelected.setCompoundDrawablePadding(dp(4));
+        uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
         uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
         uninstallSelected.setBackgroundColor(Color.TRANSPARENT);
         uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
         uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
 
         cancelSelection = new Button(this);
         cancelSelection.setText("Cancel");
