@@ -844,73 +844,99 @@ public class WeatherActivity extends Activity {
 
     @SuppressLint("MissingPermission")
     private void findCurrentLocation(){
-        if(android.os.Build.VERSION.SDK_INT>=23
-            && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED
-            && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED) {
-            fallbackIpLocation();
+        final boolean hasFine = android.os.Build.VERSION.SDK_INT < 23
+            || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        final boolean hasCoarse = android.os.Build.VERSION.SDK_INT < 23
+            || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!hasFine && !hasCoarse) {
+            locationUnavailable("Location permission is required. Allow precise or approximate device location, or choose a city or ZIP code.");
             return;
         }
-        final LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);
-        if(manager==null){fallbackIpLocation();return;}
-        setLoading(true,"Waiting for a fresh GPS fix…");
-        if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);
-        if(pendingLocationListener!=null)try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
-        pendingLocationListener=null;
 
-        final Location[] best={null};
-        final long requestStarted=System.currentTimeMillis();
+        final LocationManager manager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (manager == null) {
+            locationUnavailable("Android location services are unavailable. Choose a city or ZIP code.");
+            return;
+        }
 
-        // Only callbacks received after this request began count as a usable fix.
-        // Cached coordinates are deliberately ignored to avoid carrier-gateway stale locations.
+        setLoading(true, "Finding your current location…");
+        if (locationTimeout != null) handler.removeCallbacks(locationTimeout);
+        if (pendingLocationListener != null) {
+            try { manager.removeUpdates(pendingLocationListener); } catch (Exception ignored) { }
+        }
+        pendingLocationListener = null;
 
-        final boolean[] finished={false};
-        pendingLocationListener=new LocationListener(){
-            @Override public void onLocationChanged(Location location){
-                if(finished[0]||location==null)return;
-                if (!LocationManager.GPS_PROVIDER.equals(location.getProvider())) return;
-                long age=System.currentTimeMillis()-location.getTime();
-                if(age<0||age>30000L)return;
-                if(!location.hasAccuracy() || location.getAccuracy()>1000f)return;
-                if(!Double.isFinite(location.getLatitude()) || !Double.isFinite(location.getLongitude()))return;
-                best[0]=betterLocation(best[0],location);
-                // Prefer a genuinely accurate fix. Do not immediately accept
-                // the first coarse network estimate while GPS is still resolving.
-                if(location.hasAccuracy()&&location.getAccuracy()<=250f){
-                    finished[0]=true;
+        final Location[] best = {null};
+        final long requestStarted = System.currentTimeMillis();
+        final boolean[] finished = {false};
+
+        pendingLocationListener = new LocationListener() {
+            @Override public void onLocationChanged(Location location) {
+                if (finished[0] || location == null) return;
+                String provider = location.getProvider();
+                if (!LocationManager.GPS_PROVIDER.equals(provider)
+                    && !LocationManager.NETWORK_PROVIDER.equals(provider)) return;
+                // Provider registration may replay a cached fix. Reject fixes
+                // older than this refresh request so a stale area is never reused.
+                long fixTime = location.getTime();
+                long age = System.currentTimeMillis() - fixTime;
+                if (fixTime < requestStarted - 2000L || age < 0 || age > 30000L) return;
+                if (!location.hasAccuracy() || location.getAccuracy() > 1000f) return;
+                if (!Double.isFinite(location.getLatitude()) || !Double.isFinite(location.getLongitude())) return;
+
+                best[0] = betterLocation(best[0], location);
+                if (location.getAccuracy() <= 250f) {
+                    finished[0] = true;
                     stopLocationUpdates(manager);
                     onCurrentLocation(location);
                 }
             }
-            @Override public void onStatusChanged(String provider,int status,Bundle extras){}
-            @Override public void onProviderEnabled(String provider){}
-            @Override public void onProviderDisabled(String provider){}
+            @Override public void onStatusChanged(String provider, int status, Bundle extras) { }
+            @Override public void onProviderEnabled(String provider) { }
+            @Override public void onProviderDisabled(String provider) { }
         };
-        boolean requested=false;
-        try{
-            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f,
-                    pendingLocationListener, Looper.getMainLooper());
-                requested = true;
-            }
-        }catch(Exception ignored){}
-        if(!requested){
+
+        boolean requested = false;
+        if (hasFine) {
+            try {
+                if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f,
+                        pendingLocationListener, Looper.getMainLooper());
+                    requested = true;
+                }
+            } catch (Exception ignored) { }
+        }
+        if (hasCoarse) {
+            try {
+                if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                    manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000L, 0f,
+                        pendingLocationListener, Looper.getMainLooper());
+                    requested = true;
+                }
+            } catch (Exception ignored) { }
+        }
+
+        if (!requested) {
             stopLocationUpdates(manager);
-            fallbackIpLocation();
+            locationUnavailable("No usable device location provider is enabled. Turn on Location or choose a city or ZIP code.");
             return;
         }
-        locationTimeout=()->{
-            if(finished[0])return;
-            finished[0]=true;
+
+        locationTimeout = () -> {
+            if (finished[0]) return;
+            finished[0] = true;
             stopLocationUpdates(manager);
-            Location result=best[0];
+            Location result = best[0];
             long fixAge = result == null ? Long.MAX_VALUE : System.currentTimeMillis() - result.getTime();
-            if(result!=null&&fixAge>=0&&fixAge<=30000L
-                &&LocationManager.GPS_PROVIDER.equals(result.getProvider())
-                &&result.hasAccuracy()&&result.getAccuracy()<=1000f)
+            if (result != null && result.getTime() >= requestStarted - 2000L
+                && fixAge >= 0 && fixAge <= 30000L
+                && result.hasAccuracy() && result.getAccuracy() <= 1000f) {
                 onCurrentLocation(result);
-            else locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again outdoors with GPS enabled.");
+            } else {
+                locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again with device Location enabled.");
+            }
         };
-        handler.postDelayed(locationTimeout,30000L);
+        handler.postDelayed(locationTimeout, 30000L);
     }
 
     private Location betterLocation(Location oldLocation,Location newLocation){
