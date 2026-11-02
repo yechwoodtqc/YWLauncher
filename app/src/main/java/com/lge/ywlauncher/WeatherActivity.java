@@ -829,20 +829,33 @@ public class WeatherActivity extends Activity {
     }
 
     private void detectLocation(){
-        if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED&&checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},LOCATION_PERMISSION_REQUEST);return;
+        final boolean hasFine = android.os.Build.VERSION.SDK_INT < 23
+            || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        final boolean hasCoarse = android.os.Build.VERSION.SDK_INT < 23 || hasFine
+            || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!hasFine && !hasCoarse) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},LOCATION_PERMISSION_REQUEST);
+            return;
         }
+
+        // Do not require GPS specifically: many phones provide a usable fix
+        // through the network provider while GPS is disabled or unavailable.
         LocationManager lm = (LocationManager)getSystemService(LOCATION_SERVICE);
-        boolean enabled = false;
-        try { enabled = lm != null && lm.isProviderEnabled(LocationManager.GPS_PROVIDER); }
-        catch (Exception ignored) { }
-        if (!enabled) {
+        boolean gpsEnabled = false;
+        boolean networkEnabled = false;
+        if (lm != null) {
+            try { gpsEnabled = hasFine && lm.isProviderEnabled(LocationManager.GPS_PROVIDER); }
+            catch (Exception ignored) { }
+            try { networkEnabled = hasCoarse && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER); }
+            catch (Exception ignored) { }
+        }
+        if (!gpsEnabled && !networkEnabled) {
             setLoading(false, null);
             new AlertDialog.Builder(this).setTitle("Turn on device location")
-                .setMessage("Location is turned off. Enable it in Android settings for a more accurate forecast. Network-based location can be approximate.")
+                .setMessage("Android has no enabled location provider available to YW Weather. Turn on Location in Android settings, or choose a city or ZIP code.")
                 .setPositiveButton("Open settings", (d,w) -> {
                     try { startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
-                    catch (Exception e) { fallbackIpLocation(); }
+                    catch (Exception e) { showLocationsPage(); }
                 })
                 .setNegativeButton("Choose city or ZIP", (d,w) -> showLocationsPage())
                 .show();
@@ -860,6 +873,7 @@ public class WeatherActivity extends Activity {
         final boolean hasFine = android.os.Build.VERSION.SDK_INT < 23
             || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         final boolean hasCoarse = android.os.Build.VERSION.SDK_INT < 23
+            || hasFine
             || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         if (!hasFine && !hasCoarse) {
             locationUnavailable("Location permission is required. Allow precise or approximate device location, or choose a city or ZIP code.");
