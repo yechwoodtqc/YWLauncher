@@ -108,6 +108,14 @@ public class ReorderAppsActivity extends Activity {
         list.setAdapter(adapter);
         if (!order.isEmpty()) list.setItemChecked(0, true);
         list.setOnItemClickListener((parent, view, position, id) -> selected = position);
+        // Keep the logical selection synchronized with D-pad/keyboard focus
+        // as well as touch clicks, so Move Up/Down always affects the highlighted row.
+        list.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                selected = position;
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+        });
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout controls = new LinearLayout(this);
