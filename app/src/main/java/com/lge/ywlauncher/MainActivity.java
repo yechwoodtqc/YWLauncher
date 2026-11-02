@@ -423,7 +423,8 @@ public class MainActivity extends Activity {
         item.setFocusable(true); item.setClickable(true);
         item.setBackground(ThemeUtils.focusBackground(this));
         int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", 40), 18, 56);
-        boolean showLabel = !grid || cellHeightDp >= 42;
+        // List mode is icon-only, matching a simple home-screen app list.
+        boolean showLabel = grid && cellHeightDp >= 42;
         if (grid) iconSize = Math.min(iconSize, Math.max(18, cellHeightDp - (showLabel ? 22 : 4)));
         ImageView icon = new ImageView(this);
         try { icon.setImageDrawable(app.loadIcon(getPackageManager())); }
