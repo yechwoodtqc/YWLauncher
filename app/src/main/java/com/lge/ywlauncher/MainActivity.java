@@ -117,8 +117,15 @@ public class MainActivity extends Activity {
         updateSelectionToolbar();
     }
 
+    private int defaultBackgroundForDevice() {
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 6;
+        if (model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax")) return 5;
+        return 0;
+    }
+
     private void applyBackground() {
-        int background = getSharedPreferences("launcher", 0).getInt("background", 5);
+        int background = getSharedPreferences("launcher", 0).getInt("background", defaultBackgroundForDevice());
         int custom = getSharedPreferences("launcher", 0).getInt("custom_background", Color.rgb(25, 35, 48));
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         if (background == 1) {
@@ -186,6 +193,9 @@ public class MainActivity extends Activity {
         } else if (background == 5) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundResource(R.drawable.bg_exalt_gradient);
+        } else if (background == 6) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackgroundResource(R.drawable.bg_lg_classic_menu);
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
