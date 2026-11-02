@@ -56,6 +56,8 @@ public class WeatherActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ThemeUtils.apply(this);
+        setTaskDescription(new android.app.ActivityManager.TaskDescription(
+            "YW Weather", R.drawable.ic_weather, ThemeUtils.accent(this)));
         fontScale = prefs().getFloat("weather_font_scale", 1.0f);
         loadSavedPlaces();
         buildScreen();
