@@ -25,6 +25,9 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:excludeFromRecents="false"
+            android:taskAffinity="com.lge.ywlauncher.main"
+            android:icon="@drawable/ic_launcher"
             android:label="YW Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
