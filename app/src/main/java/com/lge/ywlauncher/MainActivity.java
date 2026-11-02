@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         ThemeUtils.apply(this);
         setTaskDescription(new android.app.ActivityManager.TaskDescription(
-            "YW Launcher", R.drawable.ic_launcher, ThemeUtils.accent(this)));
+            "YW Launcher", createTaskIcon(R.drawable.ic_launcher), ThemeUtils.accent(this)));
         appliedTheme = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         appliedAccent = ThemeUtils.accent(this);
         build();
@@ -208,6 +208,17 @@ public class MainActivity extends Activity {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
         }
+    }
+
+    private android.graphics.Bitmap createTaskIcon(int resourceId) {
+        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
+        int size = dp(48);
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+            size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+        drawable.setBounds(0, 0, size, size);
+        drawable.draw(canvas);
+        return bitmap;
     }
 
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
