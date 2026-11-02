@@ -216,9 +216,11 @@ public class MainActivity extends Activity {
     private Set<String> normalizedIncludedActivities(Set<String> saved, List<ResolveInfo> available) {
         if (saved == null) return defaultIncludedActivities(available);
         Set<String> result = new HashSet<>();
+        // Keep the non-system-only default above, but preserve every explicit
+        // user choice here, including system apps checked in Launcher Settings.
         for (ResolveInfo item : available) {
-            if ((item.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0
-                && (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName))) result.add(item.activityInfo.name);
+            if (saved.contains(item.activityInfo.name) || saved.contains(item.activityInfo.packageName))
+                result.add(item.activityInfo.name);
         }
         return result;
     }

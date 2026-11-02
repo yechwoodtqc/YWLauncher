@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -76,11 +77,15 @@ public class ReorderAppsActivity extends Activity {
         root.setBackgroundColor(ThemeUtils.surface(this));
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        Button back = new Button(this);
-        back.setText("‹ Back");
-        ThemeUtils.tint(back, this);
+        ImageButton back = new ImageButton(this);
+        back.setImageResource(R.drawable.ic_back_modern);
+        back.setColorFilter(ThemeUtils.text(this));
+        back.setContentDescription("Back");
+        back.setBackground(ThemeUtils.focusOutlineBackground(this));
+        back.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
+        back.setPadding(dp(8), dp(8), dp(8), dp(8));
         back.setOnClickListener(v -> finish());
-        toolbar.addView(back, new LinearLayout.LayoutParams(dp(88), dp(48)));
+        toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
         TextView title = new TextView(this);
         title.setText("Reorder apps");
         title.setTextSize(19);
@@ -149,6 +154,6 @@ public class ReorderAppsActivity extends Activity {
         adapter.notifyDataSetChanged();
         list.setItemChecked(selected, true);
         list.setSelection(selected);
-        list.requestFocus();
+        // Keep keyboard focus on the Move Up/Move Down control for repeated presses.
     }
 }

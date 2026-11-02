@@ -62,7 +62,10 @@ public class SettingsActivity extends Activity {
         setContentView(page);
 
         section("Notifications");
-        addSwitchRow("Persistent launcher notification", "Keep a notification that opens the app.", "notify", true, this::refreshNotification);
+        String notificationHelp = isLgFlipModel()
+            ? "Keep quick access to YW Launcher in the notification shade on this LG flip phone."
+            : "Keep a notification that opens the app.";
+        addSwitchRow("Persistent launcher notification", notificationHelp, "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
         if (isLgFlipModel()) addSettingRow("Add YW Launcher contact",
             "For LG Classic Flip / LG Exalt. Save this contact to open YW Launcher from Contacts.", this::addLauncherContact);

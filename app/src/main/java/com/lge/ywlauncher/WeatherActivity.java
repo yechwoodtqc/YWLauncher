@@ -870,7 +870,7 @@ public class WeatherActivity extends Activity {
                 if (!LocationManager.GPS_PROVIDER.equals(location.getProvider())) return;
                 long age=System.currentTimeMillis()-location.getTime();
                 if(age<0||age>30000L)return;
-                if(!location.hasAccuracy() || location.getAccuracy()>5000f)return;
+                if(!location.hasAccuracy() || location.getAccuracy()>1000f)return;
                 if(!Double.isFinite(location.getLatitude()) || !Double.isFinite(location.getLongitude()))return;
                 best[0]=betterLocation(best[0],location);
                 // Prefer a genuinely accurate fix. Do not immediately accept
@@ -904,7 +904,9 @@ public class WeatherActivity extends Activity {
             stopLocationUpdates(manager);
             Location result=best[0];
             long fixAge = result == null ? Long.MAX_VALUE : System.currentTimeMillis() - result.getTime();
-            if(result!=null&&fixAge>=0&&fixAge<=30000L&&result.hasAccuracy()&&result.getAccuracy()<=5000f)
+            if(result!=null&&fixAge>=0&&fixAge<=30000L
+                &&LocationManager.GPS_PROVIDER.equals(result.getProvider())
+                &&result.hasAccuracy()&&result.getAccuracy()<=1000f)
                 onCurrentLocation(result);
             else locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again outdoors with GPS enabled.");
         };
@@ -931,14 +933,38 @@ public class WeatherActivity extends Activity {
         }
     }
 
-    private void onCurrentLocation(Location location){
-        double lat=location.getLatitude(),lon=location.getLongitude();
-        new Thread(()->{
-            String label="Current location";
-            try{Geocoder g=new Geocoder(this,Locale.US);List<Address>a=g.getFromLocation(lat,lon,1);if(a!=null&&!a.isEmpty()){Address x=a.get(0);String city=x.getLocality();if(city==null||city.trim().isEmpty())city=x.getSubAdminArea();String state=x.getAdminArea();if(city!=null&&!city.isEmpty())label=city+(state==null||state.isEmpty()?"":", "+state);}}catch(Exception ignored){}
-            String finalLabel=label;
-            handler.post(()->useCurrentCoordinates(lat,lon,finalLabel));
-        }).start();
+    private void onCurrentLocation(Location location) {
+        final double latitude = location.getLatitude();
+        final double longitude = location.getLongitude();
+        // Request the forecast immediately. Reverse-geocoding is optional and
+        // must not delay the weather screen on the phone's slow network stack.
+        useCurrentCoordinates(latitude, longitude, "Current location");
+        new Thread(() -> {
+            String label = "";
+            try {
+                Geocoder geocoder = new Geocoder(this, Locale.US);
+                List<Address> matches = geocoder.getFromLocation(latitude, longitude, 1);
+                if (matches != null && !matches.isEmpty()) {
+                    Address address = matches.get(0);
+                    String city = address.getLocality();
+                    if (city == null || city.trim().isEmpty()) city = address.getSubAdminArea();
+                    String state = address.getAdminArea();
+                    if (city != null && !city.trim().isEmpty())
+                        label = city + (state == null || state.trim().isEmpty() ? "" : ", " + state);
+                }
+            } catch (Exception ignored) { }
+            final String resolvedLabel = label;
+            if (!resolvedLabel.isEmpty()) handler.post(() -> {
+                SharedPreferences saved = prefs();
+                boolean sameCoordinates = "current".equals(saved.getString("weather_location_source", ""))
+                    && Math.abs(saved.getFloat("weather_lat", 999f) - (float) latitude) < 0.00001f
+                    && Math.abs(saved.getFloat("weather_lon", 999f) - (float) longitude) < 0.00001f;
+                if (sameCoordinates) {
+                    saved.edit().putString("weather_location", resolvedLabel).apply();
+                    if (locationTitle != null) locationTitle.setText(resolvedLabel + "  ▾");
+                }
+            });
+        }, "YWReverseGeocode").start();
     }
 
     private void fallbackIpLocation() {
@@ -988,8 +1014,10 @@ public class WeatherActivity extends Activity {
     private final class WeatherIconView extends View {
         private final String condition;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path boltPath = new Path();
+        private final Path cloudPath = new Path();
+        private final Path detailPath = new Path();
         private final int size;
+
         WeatherIconView(Context context, String forecast, int sizeDp) {
             super(context);
             condition = forecast == null ? "" : forecast.toLowerCase(Locale.US);
@@ -997,55 +1025,171 @@ public class WeatherActivity extends Activity {
             setContentDescription(forecast);
             setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         }
+
         @Override protected void onMeasure(int widthSpec, int heightSpec) {
             int target = dp(size);
             setMeasuredDimension(resolveSize(target, widthSpec), resolveSize(target, heightSpec));
         }
+
+        private void drawSun(Canvas canvas, float cx, float cy, float radius) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3.2f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setShader(null);
+            paint.setColor(0xffffb34d);
+            for (int i = 0; i < 8; i++) {
+                double angle = Math.PI * i / 4d;
+                float dx = (float) Math.cos(angle);
+                float dy = (float) Math.sin(angle);
+                canvas.drawLine(cx + dx * (radius + 4), cy + dy * (radius + 4),
+                    cx + dx * (radius + 10), cy + dy * (radius + 10), paint);
+            }
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new RadialGradient(cx - radius * .28f, cy - radius * .32f, radius * 1.45f,
+                new int[]{0xfffff9d9, 0xffffc45a, 0xfff58e38}, null, Shader.TileMode.CLAMP));
+            canvas.drawCircle(cx, cy, radius, paint);
+            paint.setShader(null);
+            paint.setColor(0x66ffffff);
+            canvas.drawCircle(cx - radius * .28f, cy - radius * .32f, radius * .25f, paint);
+        }
+
+        private void buildCloud() {
+            cloudPath.reset();
+            cloudPath.moveTo(18, 57);
+            cloudPath.cubicTo(10, 57, 7, 52, 7, 45);
+            cloudPath.cubicTo(7, 37, 13, 31, 21, 31);
+            cloudPath.cubicTo(23, 21, 31, 16, 40, 17);
+            cloudPath.cubicTo(50, 18, 56, 25, 57, 35);
+            cloudPath.cubicTo(65, 35, 70, 40, 70, 47);
+            cloudPath.cubicTo(70, 53, 65, 57, 58, 57);
+            cloudPath.close();
+        }
+
+        private void drawCloud(Canvas canvas) {
+            buildCloud();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(null);
+            paint.setColor(0x2a18314d);
+            canvas.save();
+            canvas.translate(0, 2.5f);
+            canvas.drawPath(cloudPath, paint);
+            canvas.restore();
+
+            paint.setShader(new LinearGradient(17, 17, 59, 58,
+                new int[]{0xffffffff, 0xffe5eff8, 0xffa8bed3}, null, Shader.TileMode.CLAMP));
+            canvas.drawPath(cloudPath, paint);
+            paint.setShader(null);
+
+            detailPath.reset();
+            detailPath.moveTo(20, 35);
+            detailPath.cubicTo(25, 27, 34, 27, 38, 32);
+            detailPath.cubicTo(43, 28, 50, 30, 53, 37);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(1.3f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(0xaaffffff);
+            canvas.drawPath(detailPath, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        private void drawDrop(Canvas canvas, float x, float y) {
+            detailPath.reset();
+            detailPath.moveTo(x, y - 5);
+            detailPath.cubicTo(x + 3, y - 1, x + 5, y + 2, x + 3, y + 5);
+            detailPath.cubicTo(x + 1, y + 8, x - 3, y + 7, x - 4, y + 4);
+            detailPath.cubicTo(x - 5, y + 1, x - 2, y - 3, x, y - 5);
+            detailPath.close();
+            paint.setShader(new LinearGradient(x - 2, y - 5, x + 3, y + 7,
+                0xffa5e3ff, 0xff2688db, Shader.TileMode.CLAMP));
+            canvas.drawPath(detailPath, paint);
+            paint.setShader(null);
+        }
+
+        private void drawSnowflake(Canvas canvas, float x, float y) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(1.6f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(0xff58c7f4);
+            for (int i = 0; i < 3; i++) {
+                canvas.save();
+                canvas.rotate(i * 60, x, y);
+                canvas.drawLine(x, y - 5, x, y + 5, paint);
+                canvas.drawLine(x, y - 5, x - 2, y - 2, paint);
+                canvas.drawLine(x, y - 5, x + 2, y - 2, paint);
+                canvas.restore();
+            }
+            paint.setStyle(Paint.Style.FILL);
+        }
+
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            float scale = Math.min(getWidth(), getHeight()) / 64f;
+            float scale = Math.min(getWidth(), getHeight()) / 80f;
             canvas.save();
-            canvas.translate((getWidth()-64f*scale)/2f,(getHeight()-64f*scale)/2f);
-            canvas.scale(scale,scale);
-            boolean thunder=condition.contains("thunder");
-            boolean rain=condition.contains("rain")||condition.contains("shower")||condition.contains("drizzle")||thunder;
-            boolean snow=condition.contains("snow")||condition.contains("sleet")||condition.contains("ice")||condition.contains("blizzard");
-            boolean fog=condition.contains("fog")||condition.contains("haze")||condition.contains("smoke");
-            boolean cloudy=condition.contains("cloud")||condition.contains("overcast")||condition.contains("partly")||condition.contains("mostly")||rain||snow||fog;
-            boolean sunny=condition.contains("sun")||condition.contains("clear")||condition.contains("partly")||condition.contains("mostly");
-            // Soft tinted medallion gives the forecast art a more polished,
-            // illustrated look while keeping the artwork crisp at small sizes.
+            canvas.translate((getWidth() - 80f * scale) / 2f, (getHeight() - 80f * scale) / 2f);
+            canvas.scale(scale, scale);
+
+            boolean thunder = condition.contains("thunder");
+            boolean rain = condition.contains("rain") || condition.contains("shower") || condition.contains("drizzle") || thunder;
+            boolean snow = condition.contains("snow") || condition.contains("sleet") || condition.contains("ice") || condition.contains("blizzard");
+            boolean fog = condition.contains("fog") || condition.contains("haze") || condition.contains("smoke");
+            boolean partly = condition.contains("partly") || condition.contains("mostly");
+            boolean sunny = condition.contains("sun") || condition.contains("clear") || partly;
+            boolean night = condition.contains("night") || condition.contains("tonight");
+            boolean cloudy = condition.contains("cloud") || condition.contains("overcast") || partly || rain || snow || fog || thunder;
+
+            paint.setShader(null);
             paint.setStyle(Paint.Style.FILL);
-            int halo = thunder ? 0x333f51b5 : (rain || snow || fog ? 0x332196f3 : 0x33ffb74d);
+            int halo = thunder ? 0x263e50a5 : (rain || snow || fog ? 0x263b9cd8 : (night ? 0x263c4b86 : 0x26ffbd62));
             paint.setColor(halo);
-            canvas.drawCircle(32,32,30,paint);
-            paint.setColor(0x22ffffff);
-            canvas.drawCircle(22,18,12,paint);
-            if (sunny) {
-                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xffffb83d);
-                for(int i=0;i<8;i++){double a=Math.PI*i/4;float x=(float)Math.cos(a),y=(float)Math.sin(a);canvas.drawLine(23+x*14,23+y*14,23+x*19,23+y*19,paint);}
-                paint.setStyle(Paint.Style.FILL);canvas.drawCircle(23,23,11,paint);
+            canvas.drawCircle(40, 40, 37, paint);
+            paint.setColor(0x20ffffff);
+            canvas.drawCircle(28, 22, 14, paint);
+
+            if (night) {
+                paint.setShader(new RadialGradient(27, 20, 20,
+                    new int[]{0xfffff2c6, 0xffe0d9af, 0xffb4b8d0}, null, Shader.TileMode.CLAMP));
+                canvas.drawCircle(34, 28, 14, paint);
+                paint.setShader(null);
+                paint.setColor(halo);
+                canvas.drawCircle(41, 22, 13, paint);
+                paint.setColor(0xffe9edff);
+                canvas.drawCircle(53, 18, 1.4f, paint);
+                canvas.drawCircle(60, 31, 1.1f, paint);
+            } else if (sunny) {
+                drawSun(canvas, 28, 29, 12);
             }
-            if (cloudy || !sunny) {
-                paint.setStyle(Paint.Style.FILL);paint.setColor(0xff9baec2);
-                canvas.drawCircle(25,35,13,paint);canvas.drawCircle(39,32,15,paint);canvas.drawCircle(49,39,9,paint);
-                canvas.drawRoundRect(15,34,55,47,7,7,paint);
-                paint.setColor(0xffdce6ef);
-                canvas.drawCircle(25,32,10,paint);canvas.drawCircle(38,29,12,paint);canvas.drawCircle(48,37,7,paint);
-                canvas.drawRoundRect(18,34,53,43,5,5,paint);
-            }
+
+            if (cloudy || !sunny) drawCloud(canvas);
+
             if (thunder) {
-                paint.setStyle(Paint.Style.FILL);paint.setColor(0xffffc247);
-                boltPath.reset();boltPath.moveTo(36,42);boltPath.lineTo(27,53);boltPath.lineTo(34,53);boltPath.lineTo(30,62);boltPath.lineTo(43,48);boltPath.lineTo(36,48);boltPath.close();canvas.drawPath(boltPath,paint);
+                detailPath.reset();
+                detailPath.moveTo(45, 47);
+                detailPath.lineTo(35, 61);
+                detailPath.lineTo(42, 61);
+                detailPath.lineTo(37, 73);
+                detailPath.lineTo(54, 55);
+                detailPath.lineTo(46, 55);
+                detailPath.close();
+                paint.setShader(new LinearGradient(37, 48, 51, 72,
+                    0xfffff1a5, 0xffffb83f, Shader.TileMode.CLAMP));
+                canvas.drawPath(detailPath, paint);
+                paint.setShader(null);
             } else if (rain) {
-                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3.2f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff42a5f5);
-                for(int i=0;i<3;i++)canvas.drawLine(25+i*10,49,21+i*10,56,paint);
+                drawDrop(canvas, 24, 66);
+                drawDrop(canvas, 40, 70);
+                drawDrop(canvas, 56, 65);
             } else if (snow) {
-                paint.setStyle(Paint.Style.FILL);paint.setColor(0xff65c7f7);
-                canvas.drawCircle(23,53,2.6f,paint);canvas.drawCircle(36,55,2.6f,paint);canvas.drawCircle(48,52,2.6f,paint);
+                drawSnowflake(canvas, 24, 67);
+                drawSnowflake(canvas, 42, 70);
+                drawSnowflake(canvas, 59, 66);
             } else if (fog) {
-                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2.5f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(0xff90a4ae);
-                canvas.drawLine(13,51,52,51,paint);canvas.drawLine(19,57,46,57,paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(2.5f);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                paint.setColor(0xff94adbe);
+                canvas.drawLine(12, 65, 67, 65, paint);
+                canvas.drawLine(18, 72, 61, 72, paint);
+                paint.setStyle(Paint.Style.FILL);
             }
             canvas.restore();
         }
