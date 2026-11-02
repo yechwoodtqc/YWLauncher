@@ -19,7 +19,10 @@ public class SettingsActivity extends Activity {
     private static final int CREATE_LOG_FILE = 501;
     private static final int PICK_BACKGROUND_IMAGE = 502;
     private static final int PICK_KEPT_WALLPAPER = 503;
+    private static final int CREATE_DICTIONARY_FILE = 504;
+    private static final int PICK_DICTIONARY_FILE = 505;
     private String pendingLogcat;
+    private String pendingDictionaryBackup;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -61,6 +64,8 @@ public class SettingsActivity extends Activity {
         section("Notifications");
         addSwitchRow("Persistent launcher notification", "Keep a notification that opens the app.", "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
+        if (isLgFlipModel()) addSettingRow("Add YW Launcher contact",
+            "For LG Classic Flip / LG Exalt. Save this contact to open YW Launcher from Contacts.", this::addLauncherContact);
 
         section("Appearance");
         addSettingRow("Home layout", layoutSummary(), this::chooseLayout);
@@ -77,7 +82,9 @@ public class SettingsActivity extends Activity {
         addSettingRow("Reorder apps", "Change the order of app icons.", () -> startActivity(new Intent(this, ReorderAppsActivity.class)));
 
         section("Tweaks");
-        addSwitchRow("Keep wallpaper", "Choose the wallpaper image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
+        addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
+        addSettingRow("Backup T9 dictionary", "Export the Android User Dictionary to a JSON file.", this::backupUserDictionary);
+        addSettingRow("Restore T9 dictionary", "Merge words from a previous dictionary backup.", this::restoreUserDictionary);
 
         section("Tools");
         addSettingRow("Widgets", "Date and weather widgets for the phone home screen.", () ->
@@ -89,9 +96,12 @@ public class SettingsActivity extends Activity {
 
     private void updateKeptWallpaper() {
         if (!prefs.getBoolean("keep_wallpaper", false)) return;
+        // Keep the switch off until an image has actually been copied successfully.
+        prefs.edit().putBoolean("keep_wallpaper", false).apply();
         try {
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             pick.setType("image/*");
             startActivityForResult(pick, PICK_KEPT_WALLPAPER);
         } catch (Exception first) {
@@ -570,6 +580,138 @@ public class SettingsActivity extends Activity {
         manager.notify(42, notification.build());
     }
 
+
+    private boolean isLgFlipModel() {
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        return model.contains("l125") || model.contains("classic") || model.contains("vn220")
+            || model.contains("exalt") || model.contains("lg-ax");
+    }
+
+    private void addLauncherContact() {
+        Uri uri = Uri.parse("content://com.lge.ywlauncher.vcard/contact.vcf");
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri, "text/x-vcard");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try { startActivity(intent); }
+        catch (Exception e) {
+            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWlauncher.vcf file instead.");
+        }
+    }
+
+    private void backupUserDictionary() {
+        new Thread(() -> {
+            try {
+                org.json.JSONArray entries = new org.json.JSONArray();
+                String[] columns = {
+                    android.provider.UserDictionary.Words.WORD,
+                    android.provider.UserDictionary.Words.FREQUENCY,
+                    android.provider.UserDictionary.Words.LOCALE,
+                    android.provider.UserDictionary.Words.APP_ID,
+                    android.provider.UserDictionary.Words.SHORTCUT
+                };
+                android.database.Cursor cursor = getContentResolver().query(
+                    android.provider.UserDictionary.Words.CONTENT_URI, columns, null, null, null);
+                if (cursor != null) {
+                    try {
+                        while (cursor.moveToNext()) {
+                            org.json.JSONObject entry = new org.json.JSONObject();
+                            for (int i = 0; i < columns.length; i++) {
+                                if (cursor.isNull(i)) entry.put(columns[i], org.json.JSONObject.NULL);
+                                else if (i == 1 || i == 3) entry.put(columns[i], cursor.getInt(i));
+                                else entry.put(columns[i], cursor.getString(i));
+                            }
+                            entries.put(entry);
+                        }
+                    } finally { cursor.close(); }
+                }
+                org.json.JSONObject backup = new org.json.JSONObject();
+                backup.put("format", "ywlauncher-user-dictionary-v1");
+                backup.put("source_package", "com.android.providers.userdictionary");
+                backup.put("created_at", System.currentTimeMillis());
+                backup.put("entries", entries);
+                pendingDictionaryBackup = backup.toString(2);
+                runOnUiThread(() -> {
+                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    create.addCategory(Intent.CATEGORY_OPENABLE);
+                    create.setType("application/json");
+                    create.putExtra(Intent.EXTRA_TITLE, "ywlauncher-t9-dictionary.json");
+                    startActivityForResult(create, CREATE_DICTIONARY_FILE);
+                });
+            } catch (SecurityException e) {
+                runOnUiThread(() -> showError("Android denied access to com.android.providers.userdictionary. On this phone that provider may be restricted to the system keyboard."));
+            } catch (Exception e) {
+                runOnUiThread(() -> showError("Could not back up the T9 dictionary: " + e.getMessage()));
+            }
+        }, "YWDictionaryBackup").start();
+    }
+
+    private void restoreUserDictionary() {
+        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        pick.addCategory(Intent.CATEGORY_OPENABLE);
+        pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        pick.setType("application/json");
+        startActivityForResult(pick, PICK_DICTIONARY_FILE);
+    }
+
+    private void writeDictionaryBackup(Uri destination) {
+        try (OutputStream output = getContentResolver().openOutputStream(destination)) {
+            if (output == null) throw new IOException("Could not open the selected backup file.");
+            output.write((pendingDictionaryBackup == null ? "" : pendingDictionaryBackup).getBytes("UTF-8"));
+            output.flush();
+            Toast.makeText(this, "T9 dictionary backup saved", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            showError("Could not save the dictionary backup: " + e.getMessage());
+        } finally {
+            pendingDictionaryBackup = null;
+        }
+    }
+
+    private void readDictionaryBackup(Uri source) {
+        new Thread(() -> {
+            try {
+                StringBuilder json = new StringBuilder();
+                InputStream input = getContentResolver().openInputStream(source);
+                if (input == null) throw new IOException("Could not read the selected file.");
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) json.append(line);
+                }
+                org.json.JSONObject object = new org.json.JSONObject(json.toString());
+                if (!"ywlauncher-user-dictionary-v1".equals(object.optString("format"))) {
+                    throw new IOException("This is not a YW Launcher T9 dictionary backup.");
+                }
+                org.json.JSONArray entries = object.getJSONArray("entries");
+                int inserted = 0, skipped = 0;
+                for (int i = 0; i < entries.length(); i++) {
+                    org.json.JSONObject entry = entries.getJSONObject(i);
+                    String word = entry.optString(android.provider.UserDictionary.Words.WORD, "").trim();
+                    if (word.isEmpty()) { skipped++; continue; }
+                    android.content.ContentValues values = new android.content.ContentValues();
+                    values.put(android.provider.UserDictionary.Words.WORD, word);
+                    values.put(android.provider.UserDictionary.Words.FREQUENCY,
+                        entry.optInt(android.provider.UserDictionary.Words.FREQUENCY, 250));
+                    String locale = entry.optString(android.provider.UserDictionary.Words.LOCALE, "");
+                    if (locale.isEmpty()) values.putNull(android.provider.UserDictionary.Words.LOCALE);
+                    else values.put(android.provider.UserDictionary.Words.LOCALE, locale);
+                    values.put(android.provider.UserDictionary.Words.APP_ID,
+                        entry.optInt(android.provider.UserDictionary.Words.APP_ID, 0));
+                    String shortcut = entry.optString(android.provider.UserDictionary.Words.SHORTCUT, "");
+                    if (shortcut.isEmpty()) values.putNull(android.provider.UserDictionary.Words.SHORTCUT);
+                    else values.put(android.provider.UserDictionary.Words.SHORTCUT, shortcut);
+                    Uri created = getContentResolver().insert(android.provider.UserDictionary.Words.CONTENT_URI, values);
+                    if (created != null) inserted++; else skipped++;
+                }
+                final int restored = inserted, ignored = skipped;
+                runOnUiThread(() -> Toast.makeText(this,
+                    "Restored " + restored + " words; skipped " + ignored + ".", Toast.LENGTH_LONG).show());
+            } catch (SecurityException e) {
+                runOnUiThread(() -> showError("Android denied access to com.android.providers.userdictionary. On this phone that provider may be restricted to the system keyboard."));
+            } catch (Exception e) {
+                runOnUiThread(() -> showError("Could not restore the T9 dictionary: " + e.getMessage()));
+            }
+        }, "YWDictionaryRestore").start();
+    }
+
     private void exportLogcat() {
         try {
             Process process = Runtime.getRuntime().exec(new String[]{"logcat", "-d", "-t", "3000"});
@@ -591,6 +733,15 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == CREATE_DICTIONARY_FILE) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) writeDictionaryBackup(data.getData());
+            else pendingDictionaryBackup = null;
+            return;
+        }
+        if (requestCode == PICK_DICTIONARY_FILE) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) readDictionaryBackup(data.getData());
+            return;
+        }
         if (requestCode == PICK_KEPT_WALLPAPER) {
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
                 try {
@@ -607,6 +758,7 @@ public class SettingsActivity extends Activity {
                         try { input.close(); } catch (Exception ignored) {}
                         try { output.close(); } catch (Exception ignored) {}
                     }
+                    prefs.edit().putBoolean("keep_wallpaper", true).apply();
                     Toast.makeText(this, "Wallpaper image saved for restoration after restart.", Toast.LENGTH_LONG).show();
                 } catch (Exception e) {
                     prefs.edit().putBoolean("keep_wallpaper", false).apply();

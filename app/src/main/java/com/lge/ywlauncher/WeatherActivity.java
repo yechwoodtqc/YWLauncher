@@ -116,7 +116,7 @@ public class WeatherActivity extends Activity {
             back.setPadding(dp(8),dp(8),dp(8),dp(8));
             back.setFocusable(true);
             back.setOnClickListener(v -> { if ("add-location".equals(currentPage)) showLocationsPage(); else showForecastPage(); });
-            toolbar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(44)));
+            toolbar.addView(back,new LinearLayout.LayoutParams(dp(36),dp(36)));
         }
         TextView title = new TextView(this);
         title.setText(titleText);
@@ -821,7 +821,7 @@ public class WeatherActivity extends Activity {
         }
         LocationManager lm = (LocationManager)getSystemService(LOCATION_SERVICE);
         boolean enabled = false;
-        try { enabled = lm != null && (lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)); }
+        try { enabled = lm != null && lm.isProviderEnabled(LocationManager.GPS_PROVIDER); }
         catch (Exception ignored) { }
         if (!enabled) {
             setLoading(false, null);
@@ -852,7 +852,7 @@ public class WeatherActivity extends Activity {
         }
         final LocationManager manager=(LocationManager)getSystemService(LOCATION_SERVICE);
         if(manager==null){fallbackIpLocation();return;}
-        setLoading(true,"Getting a fresh GPS/network fix…");
+        setLoading(true,"Waiting for a fresh GPS fix…");
         if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);
         if(pendingLocationListener!=null)try{manager.removeUpdates(pendingLocationListener);}catch(Exception ignored){}
         pendingLocationListener=null;
@@ -867,6 +867,7 @@ public class WeatherActivity extends Activity {
         pendingLocationListener=new LocationListener(){
             @Override public void onLocationChanged(Location location){
                 if(finished[0]||location==null)return;
+                if (!LocationManager.GPS_PROVIDER.equals(location.getProvider())) return;
                 long age=System.currentTimeMillis()-location.getTime();
                 if(age<0||age>30000L)return;
                 if(!location.hasAccuracy() || location.getAccuracy()>5000f)return;
@@ -886,11 +887,10 @@ public class WeatherActivity extends Activity {
         };
         boolean requested=false;
         try{
-            for(String provider:manager.getProviders(true)){
-                try{
-                    manager.requestLocationUpdates(provider,1000L,0f,pendingLocationListener,Looper.getMainLooper());
-                    requested=true;
-                }catch(SecurityException|IllegalArgumentException ignored){}
+            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f,
+                    pendingLocationListener, Looper.getMainLooper());
+                requested = true;
             }
         }catch(Exception ignored){}
         if(!requested){
@@ -908,7 +908,7 @@ public class WeatherActivity extends Activity {
                 onCurrentLocation(result);
             else locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again outdoors with GPS enabled.");
         };
-        handler.postDelayed(locationTimeout,20000L);
+        handler.postDelayed(locationTimeout,30000L);
     }
 
     private Location betterLocation(Location oldLocation,Location newLocation){
