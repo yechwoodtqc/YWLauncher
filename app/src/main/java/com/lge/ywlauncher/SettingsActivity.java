@@ -601,7 +601,18 @@ public class SettingsActivity extends Activity {
         }
     }
 
+    private boolean hasUserDictionaryProvider() {
+        android.content.pm.ProviderInfo provider =
+            getPackageManager().resolveContentProvider("user_dictionary", 0);
+        if (provider == null || !"com.android.providers.userdictionary".equals(provider.packageName)) {
+            showError("The Android User Dictionary provider (com.android.providers.userdictionary) is not available on this phone.");
+            return false;
+        }
+        return true;
+    }
+
     private void backupUserDictionary() {
+        if (!hasUserDictionaryProvider()) return;
         new Thread(() -> {
             try {
                 org.json.JSONArray entries = new org.json.JSONArray();
@@ -638,7 +649,12 @@ public class SettingsActivity extends Activity {
                     create.addCategory(Intent.CATEGORY_OPENABLE);
                     create.setType("application/json");
                     create.putExtra(Intent.EXTRA_TITLE, "ywlauncher-t9-dictionary.json");
-                    startActivityForResult(create, CREATE_DICTIONARY_FILE);
+                    try {
+                        startActivityForResult(create, CREATE_DICTIONARY_FILE);
+                    } catch (Exception launchError) {
+                        pendingDictionaryBackup = null;
+                        showError("This phone could not open a document picker to save the T9 backup: " + launchError.getMessage());
+                    }
                 });
             } catch (SecurityException e) {
                 runOnUiThread(() -> showError("Android denied access to com.android.providers.userdictionary. On this phone that provider may be restricted to the system keyboard."));
@@ -649,11 +665,16 @@ public class SettingsActivity extends Activity {
     }
 
     private void restoreUserDictionary() {
+        if (!hasUserDictionaryProvider()) return;
         Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         pick.addCategory(Intent.CATEGORY_OPENABLE);
         pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         pick.setType("application/json");
-        startActivityForResult(pick, PICK_DICTIONARY_FILE);
+        try {
+            startActivityForResult(pick, PICK_DICTIONARY_FILE);
+        } catch (Exception e) {
+            showError("This phone could not open a document picker to select the T9 backup: " + e.getMessage());
+        }
     }
 
     private void writeDictionaryBackup(Uri destination) {
@@ -696,8 +717,9 @@ public class SettingsActivity extends Activity {
                     String locale = entry.optString(android.provider.UserDictionary.Words.LOCALE, "");
                     if (locale.isEmpty()) values.putNull(android.provider.UserDictionary.Words.LOCALE);
                     else values.put(android.provider.UserDictionary.Words.LOCALE, locale);
-                    values.put(android.provider.UserDictionary.Words.APP_ID,
-                        entry.optInt(android.provider.UserDictionary.Words.APP_ID, 0));
+                    // Restore as a shared dictionary entry. A source APP_ID belongs
+                    // to the original application and may not exist on this phone.
+                    values.put(android.provider.UserDictionary.Words.APP_ID, 0);
                     String shortcut = entry.optString(android.provider.UserDictionary.Words.SHORTCUT, "");
                     if (shortcut.isEmpty()) values.putNull(android.provider.UserDictionary.Words.SHORTCUT);
                     else values.put(android.provider.UserDictionary.Words.SHORTCUT, shortcut);
