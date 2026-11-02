@@ -49,6 +49,17 @@ public class WeatherActivity extends Activity {
         SavedPlace(String name, double lat, double lon) { this.name=name; this.lat=lat; this.lon=lon; }
         JSONObject json() throws JSONException { JSONObject o=new JSONObject(); o.put("name",name); o.put("lat",lat); o.put("lon",lon); return o; }
     }
+    private android.graphics.Bitmap createTaskIcon(int resourceId) {
+        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
+        int size = dp(48);
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+            size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+        drawable.setBounds(0, 0, size, size);
+        drawable.draw(canvas);
+        return bitmap;
+    }
+
     private int dp(float v) { return Math.round(v * getResources().getDisplayMetrics().density); }
     private android.content.SharedPreferences prefs() { return getSharedPreferences(PREFS, 0); }
     private float textSize(float base) { return base * fontScale; }
@@ -57,7 +68,7 @@ public class WeatherActivity extends Activity {
         super.onCreate(state);
         ThemeUtils.apply(this);
         setTaskDescription(new android.app.ActivityManager.TaskDescription(
-            "YW Weather", R.drawable.ic_weather, ThemeUtils.accent(this)));
+            "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
         fontScale = prefs().getFloat("weather_font_scale", 1.0f);
         loadSavedPlaces();
         buildScreen();
