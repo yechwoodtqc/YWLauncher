@@ -36,8 +36,9 @@ public class FileBrowserActivity extends Activity {
         list=new ListView(this);page.addView(list,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout buttons=new LinearLayout(this);buttons.setGravity(Gravity.CENTER_VERTICAL);
         Button up=new Button(this);up.setText("Up");up.setOnClickListener(v->{if(current.getParentFile()!=null)navigate(current.getParentFile());});
+        Button choose=new Button(this);choose.setText("Save here");choose.setVisibility("save".equals(mode)?View.VISIBLE:View.GONE);choose.setOnClickListener(v->showSaveName());
         Button cancel=new Button(this);cancel.setText("Cancel");cancel.setOnClickListener(v->finish());
-        buttons.addView(up,new LinearLayout.LayoutParams(0,-2,1));buttons.addView(cancel,new LinearLayout.LayoutParams(0,-2,1));
+        buttons.addView(up,new LinearLayout.LayoutParams(0,-2,1));buttons.addView(choose,new LinearLayout.LayoutParams(0,-2,1));buttons.addView(cancel,new LinearLayout.LayoutParams(0,-2,1));
         page.addView(buttons);setContentView(page);
         list.setOnItemClickListener((parent,view,position,id)->{
             File file=entries.get(position);
@@ -50,7 +51,6 @@ public class FileBrowserActivity extends Activity {
             return false;
         });
         navigate(current);
-        if("save".equals(mode)) showSaveName();
     }
 
     private void navigate(File folder) {
