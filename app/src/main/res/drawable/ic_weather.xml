@@ -1,6 +1,18 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
-    <path android:fillColor="#EAF5FF" android:pathData="M0,0h48v48h-48z"/>
-    <path android:fillColor="#FDBA36" android:pathData="M17,5a9,9 0,1 0,0 18a9,9 0,1 0,0 -18"/>
-    <path android:fillColor="#64B5F6" android:pathData="M15,32c-4.4,0 -8,-3.2 -8,-7.2s3.6,-7.2 8,-7.2c1.3,0 2.5,0.3 3.6,0.8C21,14 24.4,12 28.4,12c6.2,0 11.1,4.8 11.1,10.7 0,0.5 0,1 -0.1,1.5 2.4,0.6 4.1,2.6 4.1,5 0,2.9 -2.5,5.2 -5.6,5.2H15z"/>
-    <path android:fillColor="#1976D2" android:pathData="M15,36l-2,5h3l2,-5zM25,36l-2,5h3l2,-5zM35,36l-2,5h3l2,-5z"/>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Bright sun and rays -->
+    <path android:fillColor="#FFD21F" android:pathData="M63,3a3,3 0,0 1,3 3v8a3,3 0,0 1,-6 0V6a3,3 0,0 1,3 -3M91,30a3,3 0,0 1,-3 3h-8a3,3 0,0 1,0 -6h8a3,3 0,0 1,3 3M84,7a3,3 0,0 1,0 4l-6,6a3,3 0,0 1,-4 -4l6,-6a3,3 0,0 1,4 0M42,7a3,3 0,0 1,4 0l6,6a3,3 0,0 1,-4 4l-6,-6a3,3 0,0 1,0 -4"/>
+    <path android:fillColor="#FFF16A" android:pathData="M63,14a22,22 0,1 0,0 44a22,22 0,1 0,0 -44"/>
+    <path android:fillColor="#FFB51B" android:pathData="M63,14a22,22 0,0 1,0 44z"/>
+    <!-- Rear cloud -->
+    <path android:fillColor="#B7DEFA" android:pathData="M34,49a17,17 0,0 1,33 0a13,13 0,0 1,13 13a12,12 0,0 1,-12 12H30a13,13 0,0 1,4 -25"/>
+    <path android:fillColor="#EAF7FF" android:pathData="M3,62a16,16 0,0 1,31 -5a17,17 0,0 1,33 2a14,14 0,0 1,15 14a13,13 0,0 1,-13 13H16A16,16 0,0 1,3 62"/>
+    <!-- Foreground cloud -->
+    <path android:fillColor="#D7EEFF" android:pathData="M54,79a11,11 0,0 1,21 -4a12,12 0,0 1,18 10a11,11 0,0 1,-11 11H55a10,10 0,0 1,-1 -17"/>
+    <path android:fillColor="#F4FBFF" android:pathData="M52,83a11,11 0,0 1,21 -4a12,12 0,0 1,17 9a8,8 0,0 1,-8 8H57a10,10 0,0 1,-5 -13"/>
+    <!-- Blue rain / wind accents -->
+    <path android:fillColor="#159BFF" android:pathData="M8,89l7,-8a3,3 0,0 1,5 4l-7,8a3,3 0,0 1,-5 -4M29,89l7,-8a3,3 0,0 1,5 4l-7,8a3,3 0,0 1,-5 -4M50,89l7,-8a3,3 0,0 1,5 4l-7,8a3,3 0,0 1,-5 -4"/>
 </vector>
