@@ -731,8 +731,12 @@ public class SettingsActivity extends Activity {
            requestCode==PICK_DICTIONARY_FILE || requestCode==PICK_KEPT_WALLPAPER ||
            requestCode==PICK_BACKGROUND_IMAGE) {
             Uri uri=resultCode==RESULT_OK && data!=null ? data.getData() : null;
-            if(uri!=null && android.os.Build.VERSION.SDK_INT>=19) {
-                try { getContentResolver().takePersistableUriPermission(uri, data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)); } catch(Exception ignored) { }
+            if(uri!=null && android.os.Build.VERSION.SDK_INT>=19 &&
+                requestCode!=CREATE_DICTIONARY_FILE && requestCode!=CREATE_LOG_FILE) {
+                int grantFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                if ((grantFlags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)) != 0) {
+                    try { getContentResolver().takePersistableUriPermission(uri, grantFlags); } catch(Exception ignored) { }
+                }
             }
             if(requestCode==CREATE_DICTIONARY_FILE) {
                 if(uri!=null) writeDictionaryBackup(uri); else pendingDictionaryBackup=null;
@@ -788,6 +792,7 @@ public class SettingsActivity extends Activity {
         }
         try { startActivityForResult(intent, requestCode); }
         catch (Exception e) {
+            if (save) { showError("This phone does not provide a system save picker."); return; }
             Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
             fallback.addCategory(Intent.CATEGORY_OPENABLE);
             fallback.setType("image".equals(filter) ? "image/*" : ("json".equals(filter) ? "application/json" : "text/plain"));
