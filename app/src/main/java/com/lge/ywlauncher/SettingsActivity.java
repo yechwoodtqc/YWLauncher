@@ -638,6 +638,19 @@ public class SettingsActivity extends Activity {
                 if(!"ywlauncher-user-dictionary-v1".equals(object.optString("format")))
                     throw new IOException("This is not a YW Launcher T9 dictionary backup.");
                 org.json.JSONArray entries=object.getJSONArray("entries"); int inserted=0,skipped=0;
+                java.util.HashSet<String> existing=new java.util.HashSet<>();
+                String[] projection={android.provider.UserDictionary.Words.WORD,
+                    android.provider.UserDictionary.Words.LOCALE,
+                    android.provider.UserDictionary.Words.SHORTCUT};
+                try(android.database.Cursor cursor=getContentResolver().query(
+                    android.provider.UserDictionary.Words.CONTENT_URI,projection,null,null,null)) {
+                    if(cursor!=null) while(cursor.moveToNext()) {
+                        String w=cursor.getString(0);
+                        String l=cursor.isNull(1)?"":cursor.getString(1);
+                        String sh=cursor.isNull(2)?"":cursor.getString(2);
+                        existing.add((w==null?"":w).trim().toLowerCase(Locale.US)+"|"+l+"|"+sh);
+                    }
+                }
                 for(int i=0;i<entries.length();i++) {
                     org.json.JSONObject entry=entries.getJSONObject(i);
                     String word=entry.optString(android.provider.UserDictionary.Words.WORD,"").trim();
@@ -650,8 +663,10 @@ public class SettingsActivity extends Activity {
                     values.put(android.provider.UserDictionary.Words.APP_ID,0);
                     String shortcut=entry.optString(android.provider.UserDictionary.Words.SHORTCUT,"");
                     if(shortcut.isEmpty()) values.putNull(android.provider.UserDictionary.Words.SHORTCUT); else values.put(android.provider.UserDictionary.Words.SHORTCUT,shortcut);
+                    String identity=word.toLowerCase(Locale.US)+"|"+locale+"|"+shortcut;
+                    if(existing.contains(identity)){skipped++;continue;}
                     Uri created=getContentResolver().insert(android.provider.UserDictionary.Words.CONTENT_URI,values);
-                    if(created!=null) inserted++; else skipped++;
+                    if(created!=null){inserted++;existing.add(identity);}else skipped++;
                 }
                 final int restored=inserted,ignored=skipped;
                 runOnUiThread(() -> Toast.makeText(this,"Restored "+restored+" words; skipped "+ignored+".",Toast.LENGTH_LONG).show());
@@ -749,7 +764,12 @@ public class SettingsActivity extends Activity {
                     (action==PICK_DICTIONARY_FILE?"json":(action==CREATE_LOG_FILE?"text":"json"));
                 String mode=action==CREATE_DICTIONARY_FILE||action==CREATE_LOG_FILE?"save":"open";
                 launchFileBrowser(mode,filter,action);
-            } else showError("Storage access is needed to browse and save files. Please allow it in Android app permissions.");
+            } else {
+                if(pendingBrowserRequest==PICK_KEPT_WALLPAPER)
+                    prefs.edit().putBoolean("keep_wallpaper",false).apply();
+                pendingBrowserRequest=0;
+                showError("Storage access is needed to browse and save files. Please allow it in Android app permissions.");
+            }
         }
     }
 
