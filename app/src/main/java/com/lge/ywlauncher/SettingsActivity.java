@@ -96,7 +96,8 @@ public class SettingsActivity extends Activity {
         section("Tweaks");
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
 
-
+        section("Tools");
+        addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
     }
 
     @Override protected void onPause() { if(settingsScroll!=null) prefs.edit().putInt("settings_scroll_y",settingsScroll.getScrollY()).apply(); super.onPause(); }
