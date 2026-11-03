@@ -21,6 +21,9 @@ public class SettingsActivity extends Activity {
     private static final int PICK_KEPT_WALLPAPER = 503;
     private static final int CREATE_DICTIONARY_FILE = 504;
     private static final int PICK_DICTIONARY_FILE = 505;
+    private static final int PICK_LOCAL_FILE = 506;
+    private static final int PICK_LOCAL_FOLDER = 507;
+    private String pendingFileAction;
     private String pendingLogcat;
     private String pendingDictionaryBackup;
 
@@ -99,26 +102,8 @@ public class SettingsActivity extends Activity {
 
     private void updateKeptWallpaper() {
         if (!prefs.getBoolean("keep_wallpaper", false)) return;
-        // Keep the switch off until an image has actually been copied successfully.
         prefs.edit().putBoolean("keep_wallpaper", false).apply();
-        try {
-            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            pick.addCategory(Intent.CATEGORY_OPENABLE);
-            pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            pick.setType("image/*");
-            startActivityForResult(pick, PICK_KEPT_WALLPAPER);
-        } catch (Exception first) {
-            try {
-                Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
-                pick.addCategory(Intent.CATEGORY_OPENABLE);
-                pick.setType("image/*");
-                startActivityForResult(pick, PICK_KEPT_WALLPAPER);
-            } catch (Exception second) {
-                prefs.edit().putBoolean("keep_wallpaper", false).apply();
-                showError("No image picker is available. Please enable a Gallery or Files app and try again.");
-                recreate();
-            }
-        }
+        launchFileBrowser("open", "image", PICK_KEPT_WALLPAPER);
     }
 
     private int dp(float value) {
@@ -305,40 +290,16 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseBackground() {
-        int[] values = {0, 7, 1, 2, 3, 4, 5, 6};
-        String[] labels = {"Device default", "System wallpaper", "Blue", "Black", "Custom color", "Custom image", "Exalt gradient", "LG Classic menu"};
-        int current = prefs.getInt("background", defaultBackgroundForDevice());
-        if (current == 0) current = defaultBackgroundForDevice();
-        int selected = 0;
-        for (int i = 0; i < values.length; i++) if (values[i] == current) selected = i;
-        new AlertDialog.Builder(this).setTitle("Background")
-            .setSingleChoiceItems(labels, selected, (dialog, which) -> {
-                int value = values[which];
-                dialog.dismiss();
-                if (value == 3) {
-                    prefs.edit().putInt("background", 3).apply();
-                    choosePalette("Custom background color", "custom_background", Color.rgb(25, 35, 48));
-                } else if (value == 4) {
-                    Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                    pick.addCategory(Intent.CATEGORY_OPENABLE);
-                    pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-                    pick.setType("image/*");
-                    try { startActivityForResult(pick, PICK_BACKGROUND_IMAGE); }
-                    catch (Exception first) {
-                        try {
-                            Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
-                            fallback.addCategory(Intent.CATEGORY_OPENABLE);
-                            fallback.setType("image/*");
-                            startActivityForResult(fallback, PICK_BACKGROUND_IMAGE);
-                        } catch (Exception second) {
-                            showError("This phone has no available image picker. Install or enable a Gallery/Files app, then try again.");
-                        }
-                    }
-                } else {
-                    prefs.edit().putInt("background", value).apply();
-                    recreate();
-                }
-            }).setNegativeButton("Cancel", null).show();
+        int[] values={0,7,1,2,3,4,5,6};
+        String[] labels={"Device default","System wallpaper","Blue","Black","Custom color","Custom image","Exalt gradient","LG Classic menu"};
+        int current=prefs.getInt("background",defaultBackgroundForDevice()); if(current==0) current=defaultBackgroundForDevice();
+        int selected=0; for(int i=0;i<values.length;i++) if(values[i]==current) selected=i;
+        new AlertDialog.Builder(this).setTitle("Background").setSingleChoiceItems(labels,selected,(dialog,which)->{
+            int value=values[which];dialog.dismiss();
+            if(value==3){prefs.edit().putInt("background",3).apply();choosePalette("Custom background color","custom_background",Color.rgb(25,35,48));}
+            else if(value==4) launchFileBrowser("open","image",PICK_BACKGROUND_IMAGE);
+            else {prefs.edit().putInt("background",value).apply();recreate();}
+        }).setNegativeButton("Cancel",null).show();
     }
 
     private void chooseTheme() {
@@ -624,222 +585,175 @@ public class SettingsActivity extends Activity {
         new Thread(() -> {
             try {
                 org.json.JSONArray entries = new org.json.JSONArray();
-                String[] columns = {
-                    android.provider.UserDictionary.Words.WORD,
-                    android.provider.UserDictionary.Words.FREQUENCY,
-                    android.provider.UserDictionary.Words.LOCALE,
-                    android.provider.UserDictionary.Words.APP_ID,
-                    android.provider.UserDictionary.Words.SHORTCUT
-                };
+                String[] columns = { android.provider.UserDictionary.Words.WORD,
+                    android.provider.UserDictionary.Words.FREQUENCY, android.provider.UserDictionary.Words.LOCALE,
+                    android.provider.UserDictionary.Words.APP_ID, android.provider.UserDictionary.Words.SHORTCUT };
                 android.database.Cursor cursor = getContentResolver().query(
                     android.provider.UserDictionary.Words.CONTENT_URI, columns, null, null, null);
-                if (cursor != null) {
-                    try {
-                        while (cursor.moveToNext()) {
-                            org.json.JSONObject entry = new org.json.JSONObject();
-                            for (int i = 0; i < columns.length; i++) {
-                                if (cursor.isNull(i)) entry.put(columns[i], org.json.JSONObject.NULL);
-                                else if (i == 1 || i == 3) entry.put(columns[i], cursor.getInt(i));
-                                else entry.put(columns[i], cursor.getString(i));
-                            }
-                            entries.put(entry);
+                if (cursor != null) try {
+                    while (cursor.moveToNext()) {
+                        org.json.JSONObject entry = new org.json.JSONObject();
+                        for (int i=0;i<columns.length;i++) {
+                            if(cursor.isNull(i)) entry.put(columns[i],org.json.JSONObject.NULL);
+                            else if(i==1||i==3) entry.put(columns[i],cursor.getInt(i));
+                            else entry.put(columns[i],cursor.getString(i));
                         }
-                    } finally { cursor.close(); }
-                }
-                org.json.JSONObject backup = new org.json.JSONObject();
-                backup.put("format", "ywlauncher-user-dictionary-v1");
-                backup.put("source_package", "com.android.providers.userdictionary");
-                backup.put("created_at", System.currentTimeMillis());
-                backup.put("entries", entries);
-                pendingDictionaryBackup = backup.toString(2);
-                runOnUiThread(() -> {
-                    Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                    create.addCategory(Intent.CATEGORY_OPENABLE);
-                    create.setType("application/json");
-                    create.putExtra(Intent.EXTRA_TITLE, "ywlauncher-t9-dictionary.json");
-                    try {
-                        startActivityForResult(create, CREATE_DICTIONARY_FILE);
-                    } catch (Exception launchError) {
-                        pendingDictionaryBackup = null;
-                        showError("This phone could not open a document picker to save the T9 backup: " + launchError.getMessage());
+                        entries.put(entry);
                     }
-                });
-            } catch (SecurityException e) {
-                runOnUiThread(() -> showError("Android denied access to com.android.providers.userdictionary. On this phone that provider may be restricted to the system keyboard."));
-            } catch (Exception e) {
-                runOnUiThread(() -> showError("Could not back up the T9 dictionary: " + e.getMessage()));
-            }
-        }, "YWDictionaryBackup").start();
+                } finally { cursor.close(); }
+                org.json.JSONObject backup=new org.json.JSONObject();
+                backup.put("format","ywlauncher-user-dictionary-v1");
+                backup.put("source_package","com.android.providers.userdictionary");
+                backup.put("created_at",System.currentTimeMillis()); backup.put("entries",entries);
+                pendingDictionaryBackup=backup.toString(2);
+                runOnUiThread(() -> launchFileBrowser("save", "json", CREATE_DICTIONARY_FILE));
+            } catch(Exception e) { runOnUiThread(() -> showError("Could not back up the T9 dictionary: "+e.getMessage())); }
+        },"YWDictionaryBackup").start();
     }
 
     private void restoreUserDictionary() {
         if (!hasUserDictionaryProvider()) return;
-        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        pick.addCategory(Intent.CATEGORY_OPENABLE);
-        pick.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        pick.setType("application/json");
-        try {
-            startActivityForResult(pick, PICK_DICTIONARY_FILE);
-        } catch (Exception e) {
-            showError("This phone could not open a document picker to select the T9 backup: " + e.getMessage());
-        }
+        launchFileBrowser("open", "json", PICK_DICTIONARY_FILE);
     }
 
-    private void writeDictionaryBackup(Uri destination) {
-        try (OutputStream output = getContentResolver().openOutputStream(destination)) {
-            if (output == null) throw new IOException("Could not open the selected backup file.");
+    private void writeDictionaryBackup(File destination) {
+        try (OutputStream output = new FileOutputStream(destination)) {
             output.write((pendingDictionaryBackup == null ? "" : pendingDictionaryBackup).getBytes("UTF-8"));
             output.flush();
-            Toast.makeText(this, "T9 dictionary backup saved", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            showError("Could not save the dictionary backup: " + e.getMessage());
-        } finally {
-            pendingDictionaryBackup = null;
-        }
+            Toast.makeText(this, "T9 dictionary backup saved to " + destination.getAbsolutePath(), Toast.LENGTH_LONG).show();
+        } catch(Exception e) { showError("Could not save the dictionary backup: "+e.getMessage()); }
+        finally { pendingDictionaryBackup=null; }
     }
 
-    private void readDictionaryBackup(Uri source) {
+    private void readDictionaryBackup(File source) {
         new Thread(() -> {
             try {
-                StringBuilder json = new StringBuilder();
-                InputStream input = getContentResolver().openInputStream(source);
-                if (input == null) throw new IOException("Could not read the selected file.");
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) json.append(line);
+                StringBuilder json=new StringBuilder();
+                try(BufferedReader reader=new BufferedReader(new InputStreamReader(new FileInputStream(source),"UTF-8"))) {
+                    String line; while((line=reader.readLine())!=null) json.append(line);
                 }
-                org.json.JSONObject object = new org.json.JSONObject(json.toString());
-                if (!"ywlauncher-user-dictionary-v1".equals(object.optString("format"))) {
+                org.json.JSONObject object=new org.json.JSONObject(json.toString());
+                if(!"ywlauncher-user-dictionary-v1".equals(object.optString("format")))
                     throw new IOException("This is not a YW Launcher T9 dictionary backup.");
+                org.json.JSONArray entries=object.getJSONArray("entries"); int inserted=0,skipped=0;
+                for(int i=0;i<entries.length();i++) {
+                    org.json.JSONObject entry=entries.getJSONObject(i);
+                    String word=entry.optString(android.provider.UserDictionary.Words.WORD,"").trim();
+                    if(word.isEmpty()){skipped++;continue;}
+                    android.content.ContentValues values=new android.content.ContentValues();
+                    values.put(android.provider.UserDictionary.Words.WORD,word);
+                    values.put(android.provider.UserDictionary.Words.FREQUENCY,entry.optInt(android.provider.UserDictionary.Words.FREQUENCY,250));
+                    String locale=entry.optString(android.provider.UserDictionary.Words.LOCALE,"");
+                    if(locale.isEmpty()) values.putNull(android.provider.UserDictionary.Words.LOCALE); else values.put(android.provider.UserDictionary.Words.LOCALE,locale);
+                    values.put(android.provider.UserDictionary.Words.APP_ID,0);
+                    String shortcut=entry.optString(android.provider.UserDictionary.Words.SHORTCUT,"");
+                    if(shortcut.isEmpty()) values.putNull(android.provider.UserDictionary.Words.SHORTCUT); else values.put(android.provider.UserDictionary.Words.SHORTCUT,shortcut);
+                    Uri created=getContentResolver().insert(android.provider.UserDictionary.Words.CONTENT_URI,values);
+                    if(created!=null) inserted++; else skipped++;
                 }
-                org.json.JSONArray entries = object.getJSONArray("entries");
-                int inserted = 0, skipped = 0;
-                for (int i = 0; i < entries.length(); i++) {
-                    org.json.JSONObject entry = entries.getJSONObject(i);
-                    String word = entry.optString(android.provider.UserDictionary.Words.WORD, "").trim();
-                    if (word.isEmpty()) { skipped++; continue; }
-                    android.content.ContentValues values = new android.content.ContentValues();
-                    values.put(android.provider.UserDictionary.Words.WORD, word);
-                    values.put(android.provider.UserDictionary.Words.FREQUENCY,
-                        entry.optInt(android.provider.UserDictionary.Words.FREQUENCY, 250));
-                    String locale = entry.optString(android.provider.UserDictionary.Words.LOCALE, "");
-                    if (locale.isEmpty()) values.putNull(android.provider.UserDictionary.Words.LOCALE);
-                    else values.put(android.provider.UserDictionary.Words.LOCALE, locale);
-                    // Restore as a shared dictionary entry. A source APP_ID belongs
-                    // to the original application and may not exist on this phone.
-                    values.put(android.provider.UserDictionary.Words.APP_ID, 0);
-                    String shortcut = entry.optString(android.provider.UserDictionary.Words.SHORTCUT, "");
-                    if (shortcut.isEmpty()) values.putNull(android.provider.UserDictionary.Words.SHORTCUT);
-                    else values.put(android.provider.UserDictionary.Words.SHORTCUT, shortcut);
-                    Uri created = getContentResolver().insert(android.provider.UserDictionary.Words.CONTENT_URI, values);
-                    if (created != null) inserted++; else skipped++;
-                }
-                final int restored = inserted, ignored = skipped;
-                runOnUiThread(() -> Toast.makeText(this,
-                    "Restored " + restored + " words; skipped " + ignored + ".", Toast.LENGTH_LONG).show());
-            } catch (SecurityException e) {
-                runOnUiThread(() -> showError("Android denied access to com.android.providers.userdictionary. On this phone that provider may be restricted to the system keyboard."));
-            } catch (Exception e) {
-                runOnUiThread(() -> showError("Could not restore the T9 dictionary: " + e.getMessage()));
-            }
-        }, "YWDictionaryRestore").start();
+                final int restored=inserted,ignored=skipped;
+                runOnUiThread(() -> Toast.makeText(this,"Restored "+restored+" words; skipped "+ignored+".",Toast.LENGTH_LONG).show());
+            } catch(SecurityException e) { runOnUiThread(() -> showError("Android denied access to com.android.providers.userdictionary. On this phone that provider may be restricted to the system keyboard.")); }
+            catch(Exception e) { runOnUiThread(() -> showError("Could not restore the T9 dictionary: "+e.getMessage())); }
+        },"YWDictionaryRestore").start();
     }
 
     private void exportLogcat() {
         try {
-            Process process = Runtime.getRuntime().exec(new String[]{"logcat", "-d", "-t", "3000"});
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            StringBuilder output = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) output.append(line).append('\n');
-            reader.close();
-            pendingLogcat = output.toString();
-            Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-            create.addCategory(Intent.CATEGORY_OPENABLE);
-            create.setType("text/plain");
-            create.putExtra(Intent.EXTRA_TITLE, "ywlauncher-logcat.txt");
-            startActivityForResult(create, CREATE_LOG_FILE);
-        } catch (Exception e) {
-            showError("Could not collect logcat: " + e.getMessage());
-        }
+            Process process=Runtime.getRuntime().exec(new String[]{"logcat","-d","-t","3000"});
+            BufferedReader reader=new BufferedReader(new InputStreamReader(process.getInputStream()));
+            StringBuilder output=new StringBuilder(); String line;
+            while((line=reader.readLine())!=null) output.append(line).append('\n');
+            reader.close(); pendingLogcat=output.toString();
+            launchFileBrowser("save","text",CREATE_LOG_FILE);
+        } catch(Exception e) { showError("Could not collect logcat: "+e.getMessage()); }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == CREATE_DICTIONARY_FILE) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null) writeDictionaryBackup(data.getData());
-            else pendingDictionaryBackup = null;
-            return;
-        }
-        if (requestCode == PICK_DICTIONARY_FILE) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null) readDictionaryBackup(data.getData());
-            return;
-        }
-        if (requestCode == PICK_KEPT_WALLPAPER) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode==CREATE_DICTIONARY_FILE || requestCode==CREATE_LOG_FILE ||
+           requestCode==PICK_DICTIONARY_FILE || requestCode==PICK_KEPT_WALLPAPER ||
+           requestCode==PICK_BACKGROUND_IMAGE) {
+            String path=resultCode==RESULT_OK && data!=null ? data.getStringExtra(FileBrowserActivity.EXTRA_PATH) : null;
+            if(requestCode==CREATE_DICTIONARY_FILE) {
+                if(path!=null) writeDictionaryBackup(new File(path)); else pendingDictionaryBackup=null;
+                return;
+            }
+            if(requestCode==CREATE_LOG_FILE) {
                 try {
-                    java.io.File saved = new java.io.File(getFilesDir(), "kept_wallpaper.png");
-                    java.io.InputStream input = getContentResolver().openInputStream(data.getData());
-                    if (input == null) throw new IOException("The selected image could not be opened.");
-                    java.io.FileOutputStream output = new java.io.FileOutputStream(saved);
-                    try {
-                        byte[] buffer = new byte[8192];
-                        int count;
-                        while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-                        output.flush();
-                    } finally {
-                        try { input.close(); } catch (Exception ignored) {}
-                        try { output.close(); } catch (Exception ignored) {}
+                    if(path==null) return;
+                    try(FileOutputStream out=new FileOutputStream(path)) {
+                        out.write((pendingLogcat==null?"":pendingLogcat).getBytes("UTF-8"));
                     }
-                    prefs.edit().putBoolean("keep_wallpaper", true).apply();
-                    Toast.makeText(this, "Wallpaper image saved for restoration after restart.", Toast.LENGTH_LONG).show();
-                } catch (Exception e) {
-                    prefs.edit().putBoolean("keep_wallpaper", false).apply();
-                    showError("Could not save that wallpaper image: " + e.getMessage());
-                }
-            } else {
-                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                    Toast.makeText(this,"Logcat saved to "+path,Toast.LENGTH_LONG).show();
+                } catch(Exception e) { showError("Could not save logcat: "+e.getMessage()); }
+                finally { pendingLogcat=null; }
+                return;
             }
-            recreate();
-            return;
-        }
-        if (requestCode == PICK_BACKGROUND_IMAGE && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri uri = data.getData();
-            try {
-                java.io.File saved = new java.io.File(getFilesDir(), "launcher_background_image");
-                java.io.InputStream input = getContentResolver().openInputStream(uri);
-                if (input == null) throw new IOException("The selected image could not be opened.");
-                java.io.FileOutputStream output = new java.io.FileOutputStream(saved);
+            if(path==null) {
+                if(requestCode==PICK_KEPT_WALLPAPER) prefs.edit().putBoolean("keep_wallpaper",false).apply();
+                return;
+            }
+            if(requestCode==PICK_DICTIONARY_FILE) { readDictionaryBackup(new File(path)); return; }
+            if(requestCode==PICK_KEPT_WALLPAPER) {
                 try {
-                    byte[] buffer = new byte[8192];
-                    int count;
-                    while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-                    output.flush();
-                } finally {
-                    try { input.close(); } catch (Exception ignored) {}
-                    try { output.close(); } catch (Exception ignored) {}
-                }
-                prefs.edit().putString("custom_background_path", saved.getAbsolutePath())
-                    .remove("custom_background_uri").putInt("background", 4).apply();
-                recreate();
-            } catch (Exception e) {
-                showError("Could not use that image: " + e.getMessage());
+                    copyFile(new File(path),new File(getFilesDir(),"kept_wallpaper.png"));
+                    prefs.edit().putBoolean("keep_wallpaper",true).apply();
+                    Toast.makeText(this,"Wallpaper image saved for restoration after restart.",Toast.LENGTH_LONG).show();
+                } catch(Exception e) { prefs.edit().putBoolean("keep_wallpaper",false).apply(); showError("Could not save that wallpaper image: "+e.getMessage()); }
+                recreate(); return;
             }
-            return;
-        }
-        if (requestCode == CREATE_LOG_FILE && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            try {
-                Uri uri = data.getData();
-                OutputStream output = getContentResolver().openOutputStream(uri);
-                if (output == null) throw new IOException("Could not open selected file");
-                output.write((pendingLogcat == null ? "" : pendingLogcat).getBytes("UTF-8"));
-                output.close();
-                Toast.makeText(this, "Logcat file saved", Toast.LENGTH_LONG).show();
-            } catch (Exception e) {
-                showError("Could not save logcat: " + e.getMessage());
+            if(requestCode==PICK_BACKGROUND_IMAGE) {
+                showWallpaperPreview(new File(path)); return;
             }
         }
-        pendingLogcat = null;
+    }
+
+    private void launchFileBrowser(String mode, String filter, int requestCode) {
+        Intent intent=new Intent(this,FileBrowserActivity.class);
+        intent.putExtra(FileBrowserActivity.EXTRA_MODE,mode);
+        intent.putExtra(FileBrowserActivity.EXTRA_FILTER,filter);
+        startActivityForResult(intent,requestCode);
+    }
+
+    private void copyFile(File source, File destination) throws IOException {
+        try(InputStream in=new FileInputStream(source); OutputStream out=new FileOutputStream(destination)) {
+            byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))!=-1) out.write(buffer,0,n);
+        }
+    }
+
+    private void showWallpaperPreview(File imageFile) {
+        android.graphics.BitmapFactory.Options bounds=new android.graphics.BitmapFactory.Options();
+        bounds.inJustDecodeBounds=true; android.graphics.BitmapFactory.decodeFile(imageFile.getAbsolutePath(),bounds);
+        int sample=1, w=Math.max(1,getResources().getDisplayMetrics().widthPixels), h=Math.max(1,getResources().getDisplayMetrics().heightPixels);
+        while(bounds.outWidth/sample>w*2 || bounds.outHeight/sample>h*2) sample*=2;
+        android.graphics.BitmapFactory.Options opts=new android.graphics.BitmapFactory.Options(); opts.inSampleSize=sample;
+        android.graphics.Bitmap bitmap=android.graphics.BitmapFactory.decodeFile(imageFile.getAbsolutePath(),opts);
+        if(bitmap==null){showError("Could not preview this image.");return;}
+        LinearLayout panel=new LinearLayout(this); panel.setPadding(dp(12),dp(8),dp(12),dp(8)); panel.setOrientation(LinearLayout.VERTICAL);
+        ImageView preview=new ImageView(this); preview.setImageBitmap(bitmap); preview.setBackgroundColor(Color.BLACK);
+        preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        panel.addView(preview,new LinearLayout.LayoutParams(-1,dp(220)));
+        TextView hint=new TextView(this); hint.setText("Preview how the image will appear behind your apps. Choose the fit below.");
+        hint.setTextColor(ThemeUtils.text(this)); hint.setPadding(0,dp(8),0,dp(8)); panel.addView(hint);
+        String[] fits={"Fill / crop","Fit entire image","Stretch"};
+        String saved=prefs.getString("wallpaper_fit","crop");
+        int selected="fit".equals(saved)?1:("stretch".equals(saved)?2:0);
+        RadioGroup group=new RadioGroup(this); group.setOrientation(RadioGroup.VERTICAL);
+        for(int i=0;i<fits.length;i++){RadioButton rb=new RadioButton(this);rb.setText(fits[i]);rb.setTextColor(ThemeUtils.text(this));rb.setId(100+i);group.addView(rb);if(i==selected)rb.setChecked(true);}
+        group.setOnCheckedChangeListener((g,id)->preview.setScaleType(id==101?ImageView.ScaleType.FIT_CENTER:(id==102?ImageView.ScaleType.FIT_XY:ImageView.ScaleType.CENTER_CROP)));
+        panel.addView(group);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Wallpaper preview").setView(panel)
+            .setPositiveButton("Apply",(d,which)->{
+                String fit=group.getCheckedRadioButtonId()==101?"fit":(group.getCheckedRadioButtonId()==102?"stretch":"crop");
+                try {
+                    File savedFile=new File(getFilesDir(),"launcher_background_image"); copyFile(imageFile,savedFile);
+                    prefs.edit().putString("custom_background_path",savedFile.getAbsolutePath()).remove("custom_background_uri")
+                        .putString("wallpaper_fit",fit).putInt("background",4).apply();
+                    recreate();
+                } catch(Exception e){showError("Could not save that wallpaper: "+e.getMessage());}
+            }).setNegativeButton("Cancel",null).create();
+        dialog.show();
     }
 
     private void showError(String message) {
