@@ -760,12 +760,13 @@ public class SettingsActivity extends Activity {
         String saved=prefs.getString("wallpaper_fit","crop");
         int selected="fit".equals(saved)?1:("stretch".equals(saved)?2:0);
         RadioGroup group=new RadioGroup(this); group.setOrientation(RadioGroup.VERTICAL);
-        for(int i=0;i<fits.length;i++){RadioButton rb=new RadioButton(this);rb.setText(fits[i]);rb.setTextColor(ThemeUtils.text(this));rb.setId(100+i);group.addView(rb);if(i==selected)rb.setChecked(true);}
-        group.setOnCheckedChangeListener((g,id)->preview.setScaleType(id==101?ImageView.ScaleType.FIT_CENTER:(id==102?ImageView.ScaleType.FIT_XY:ImageView.ScaleType.CENTER_CROP)));
+        final int[] fitIds={View.generateViewId(),View.generateViewId(),View.generateViewId()};
+        for(int i=0;i<fits.length;i++){RadioButton rb=new RadioButton(this);rb.setText(fits[i]);rb.setTextColor(ThemeUtils.text(this));rb.setId(fitIds[i]);group.addView(rb);if(i==selected)rb.setChecked(true);}
+        group.setOnCheckedChangeListener((g,id)->preview.setScaleType(id==fitIds[1]?ImageView.ScaleType.FIT_CENTER:(id==fitIds[2]?ImageView.ScaleType.FIT_XY:ImageView.ScaleType.CENTER_CROP)));
         panel.addView(group);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Wallpaper preview").setView(panel)
             .setPositiveButton("Apply",(d,which)->{
-                String fit=group.getCheckedRadioButtonId()==101?"fit":(group.getCheckedRadioButtonId()==102?"stretch":"crop");
+                String fit=group.getCheckedRadioButtonId()==fitIds[1]?"fit":(group.getCheckedRadioButtonId()==fitIds[2]?"stretch":"crop");
                 try {
                     File savedFile=new File(getFilesDir(),"launcher_background_image"); copyFile(imageFile,savedFile);
                     prefs.edit().putString("custom_background_path",savedFile.getAbsolutePath()).remove("custom_background_uri")
