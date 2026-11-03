@@ -208,7 +208,7 @@ public class MainActivity extends Activity {
             if (!applied) root.setBackgroundColor(custom);
         } else if (background == 5) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
-            root.setBackgroundResource(R.drawable.bg_exalt_gradient);
+            root.setBackground(new ExaltBackgroundDrawable());
         } else if (background == 6) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundResource(R.drawable.bg_lg_classic_menu);
