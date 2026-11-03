@@ -162,9 +162,8 @@ public class MainActivity extends Activity {
                     options.inSampleSize = sample;
                     Bitmap bitmap = BitmapFactory.decodeFile(imagePath, options);
                     if (bitmap != null) {
-                        BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
-                        drawable.setGravity(Gravity.FILL);
-                        root.setBackground(drawable);
+                        String fit = getSharedPreferences("launcher", 0).getString("wallpaper_fit", "crop");
+                        root.setBackground(new WallpaperDrawable(bitmap, fit));
                         applied = true;
                     }
                 } catch (Throwable ignored) { }
@@ -188,9 +187,8 @@ public class MainActivity extends Activity {
                         if (input != null) {
                             Bitmap bitmap = BitmapFactory.decodeStream(input, null, options);
                             if (bitmap != null) {
-                                BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
-                                drawable.setGravity(Gravity.FILL);
-                                root.setBackground(drawable);
+                                String fit = getSharedPreferences("launcher", 0).getString("wallpaper_fit", "crop");
+                                root.setBackground(new WallpaperDrawable(bitmap, fit));
                                 applied = true;
                             }
                         }
