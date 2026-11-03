@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.WRITE_USER_DICTIONARY" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <queries>
         <intent>
@@ -25,6 +27,9 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:excludeFromRecents="false"
+            android:taskAffinity="com.lge.ywlauncher.main"
+            android:icon="@drawable/ic_launcher"
             android:label="YW Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -57,6 +62,7 @@
         </activity>
 
         <activity android:name=".SettingsActivity" android:exported="false" android:label="Settings" />
+        <activity android:name=".FileBrowserActivity" android:exported="false" android:label="Choose file" />
         <activity android:name=".ReorderAppsActivity" android:exported="false" android:label="Reorder apps" />
 
         <activity

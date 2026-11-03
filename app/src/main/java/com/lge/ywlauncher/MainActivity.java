@@ -33,6 +33,8 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ThemeUtils.apply(this);
+        setTaskDescription(new android.app.ActivityManager.TaskDescription(
+            "YW Launcher", createTaskIcon(R.drawable.ic_launcher), ThemeUtils.accent(this)));
         appliedTheme = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         appliedAccent = ThemeUtils.accent(this);
         build();
@@ -66,24 +68,26 @@ public class MainActivity extends Activity {
         toolbar.addView(selectionCount);
 
         hideSelected = new Button(this);
-        hideSelected.setText("Hide");
+        hideSelected.setText("");
+        hideSelected.setContentDescription("Hide selected apps");
         hideSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_hide_modern, 0, 0, 0);
-        hideSelected.setCompoundDrawablePadding(dp(4));
+        hideSelected.setPadding(dp(8), 0, dp(8), 0);
         hideSelected.setOnClickListener(v -> hideSelectedApps());
         hideSelected.setBackgroundColor(Color.TRANSPARENT);
         hideSelected.setPadding(dp(8), 0, dp(8), 0);
         hideSelected.setOnFocusChangeListener((v, focused) -> hideSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
 
         uninstallSelected = new Button(this);
-        uninstallSelected.setText("Uninstall");
+        uninstallSelected.setText("");
+        uninstallSelected.setContentDescription("Uninstall selected apps");
         uninstallSelected.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uninstall_modern, 0, 0, 0);
-        uninstallSelected.setCompoundDrawablePadding(dp(4));
+        uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
         uninstallSelected.setOnClickListener(v -> uninstallSelectedApps());
         uninstallSelected.setBackgroundColor(Color.TRANSPARENT);
         uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
         uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(-2, dp(42)));
+        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
 
         cancelSelection = new Button(this);
         cancelSelection.setText("Cancel");
@@ -126,6 +130,10 @@ public class MainActivity extends Activity {
 
     private void applyBackground() {
         int background = getSharedPreferences("launcher", 0).getInt("background", defaultBackgroundForDevice());
+        // Treat the legacy value 0 as "device default". Older builds saved 0
+        // for the initial wallpaper setting, preventing model-specific LG
+        // Classic/Exalt defaults from ever being applied after an upgrade.
+        if (background == 0) background = defaultBackgroundForDevice();
         int custom = getSharedPreferences("launcher", 0).getInt("custom_background", Color.rgb(25, 35, 48));
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         if (background == 1) {
@@ -154,9 +162,8 @@ public class MainActivity extends Activity {
                     options.inSampleSize = sample;
                     Bitmap bitmap = BitmapFactory.decodeFile(imagePath, options);
                     if (bitmap != null) {
-                        BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
-                        drawable.setGravity(Gravity.FILL);
-                        root.setBackground(drawable);
+                        String fit = getSharedPreferences("launcher", 0).getString("wallpaper_fit", "crop");
+                        root.setBackground(new WallpaperDrawable(bitmap, fit));
                         applied = true;
                     }
                 } catch (Throwable ignored) { }
@@ -180,9 +187,8 @@ public class MainActivity extends Activity {
                         if (input != null) {
                             Bitmap bitmap = BitmapFactory.decodeStream(input, null, options);
                             if (bitmap != null) {
-                                BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
-                                drawable.setGravity(Gravity.FILL);
-                                root.setBackground(drawable);
+                                String fit = getSharedPreferences("launcher", 0).getString("wallpaper_fit", "crop");
+                                root.setBackground(new WallpaperDrawable(bitmap, fit));
                                 applied = true;
                             }
                         }
@@ -200,6 +206,17 @@ public class MainActivity extends Activity {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
         }
+    }
+
+    private android.graphics.Bitmap createTaskIcon(int resourceId) {
+        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
+        int size = dp(48);
+        android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+            size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+        drawable.setBounds(0, 0, size, size);
+        drawable.draw(canvas);
+        return bitmap;
     }
 
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }

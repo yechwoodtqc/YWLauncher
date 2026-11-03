@@ -2,24 +2,37 @@
 
 **Android application ID:** `com.lge.ywlauncher`
 
-A native Android launcher project targeting Android 6.0 (API 23) and keypad-only LG flip phones.
+A native Android app designed for keypad-only LG flip phones and compatible Android devices. It targets Android 6.0 (API 23) and remains a regular app; it does **not** register itself as the device's default Home app.
 
-## Implemented
-- Selectable Android home launcher with D-pad-focusable rows, app icons above names, and visible focus states.
-- App inclusion controls, with system apps excluded by default.
-- Custom per-activity ordering with Move Up / Move Down controls.
-- Long-press actions to launch, uninstall, or hide an app.
-- Background choices (system wallpaper, blue, or black), compact/comfortable/large app tiles, system/light/dark themes, and ten accent palettes.
-- Persistent launcher notification, boot receiver, and a visually hidden small icon by default (Android still requires a notification icon resource).
-- Weather screen using the National Weather Service API, ZIP-code lookup, manual location input, current-location detection with provider fallback, refresh, and last-updated time.
-- English/Hebrew date home-screen widget provider.
-- Logcat collection with a system file picker so the user can choose where to save the text file.
-- GitHub Actions workflow configured to build and upload a debug APK artifact named `ywlauncher-debug-apk`.
+## Features
+
+- App grid and list layouts with D-pad navigation, visible focus states, configurable rows, columns, and icon sizes.
+- App selection, hide/unhide, system-app opt-in, and saved app ordering.
+- System wallpaper, solid colors, custom images with Fit / Fill-Crop / Stretch preview, Exalt gradient, and LG Classic menu backgrounds.
+- Light, dark, and system themes; configurable accent and focus styles.
+- Persistent notification shortcut with a separately configurable status-bar icon.
+- Optional wallpaper restoration after reboot.
+- T9 dictionary backup and merge-style restore through Android's User Dictionary provider. Availability depends on the device's provider and permissions.
+- Logcat export to a user-selected file. Android may restrict which system messages an ordinary app can read.
+- YW Weather with National Weather Service forecasts, saved locations, ZIP/city lookup, current device-location detection, forecast refresh, and weather widget.
+- English and Hebrew date widget.
+- Separate YW Launcher and YW Weather entries in Recent Apps.
 
 ## Build
-The workflow uses JDK 17, Android SDK platform 34, Gradle 8.2, and runs `gradle --no-daemon assembleDebug`. To build locally, install the Android SDK platform 34 and run `gradle assembleDebug` with JDK 17.
 
-## Device and build status
-This project has not yet been verified on an LG Exalt or LG Classic Flip. The GitHub connector did not return a workflow run or commit status for the latest commits, so a successful APK build is **not confirmed**. Check the repository's Actions page for the actual run and download the artifact if the build succeeds.
+GitHub Actions uses JDK 17, Android SDK platform 34, Gradle 8.2, builds the debug APK, runs Android lint, and uploads build diagnostics and the APK artifact for pull requests.
 
-Android widgets are hosted by the phone's home app, not inside this app, so widget availability depends on that home app. The weather.gov service is intended for US forecasts. Location detection needs runtime permission and may fail indoors or when no provider can obtain a fix. Android restricts access to system-wide logcat on production devices, so exported logs may not contain every system message.
+To build locally, install JDK 17 and Android SDK platform 34, then run:
+
+```bash
+gradle --no-daemon assembleDebug
+gradle --no-daemon lintDebug
+```
+
+## Compatibility and verification
+
+- Minimum Android version: Android 6.0 (API 23).
+- Weather forecasts use the US National Weather Service; weather.gov coverage is for the United States.
+- Current-location detection requires location permission and an enabled provider capable of returning a fresh fix. If it cannot obtain one, choose a city or ZIP code; the app does not substitute an IP-based location estimate.
+- Widgets are hosted by the phone's existing Home app, not inside YW Launcher.
+- A successful CI build and lint run do not replace testing on the target LG device. Wallpaper rendering, file access, notification behavior, dictionary-provider access, and keypad navigation still require physical-device verification.
