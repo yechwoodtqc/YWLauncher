@@ -92,7 +92,7 @@ public class ChooseAppsActivity extends Activity {
                 body.addView(icon,new LinearLayout.LayoutParams(dp(42),dp(42)));
                 TextView label=new TextView(this);label.setText(app.loadLabel(getPackageManager()));label.setTextSize(11);label.setTextColor(ThemeUtils.text(this));label.setGravity(Gravity.CENTER);label.setMaxLines(2);label.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 body.addView(label,new LinearLayout.LayoutParams(-1,-2)); cell.addView(body,new FrameLayout.LayoutParams(-1,-1));
-                TextView check=new TextView(this);check.setText("✓");check.setTextSize(19);check.setTypeface(null,1);check.setTextColor(Color.WHITE);check.setGravity(Gravity.CENTER);
+                TextView check=new TextView(this);check.setText("✓");check.setTextSize(19);check.setTypeface(null,android.graphics.Typeface.BOLD);check.setTextColor(Color.WHITE);check.setGravity(Gravity.CENTER);
                 GradientDrawable mark=new GradientDrawable();mark.setColor(0xff168b43);mark.setShape(GradientDrawable.OVAL);check.setBackground(mark);
                 FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(dp(25),dp(25),Gravity.TOP|Gravity.END);cp.setMargins(0,dp(2),dp(2),0);cell.addView(check,cp);
                 check.setVisibility(included.contains(name)?View.VISIBLE:View.GONE);
