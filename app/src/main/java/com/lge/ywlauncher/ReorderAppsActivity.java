@@ -127,16 +127,29 @@ public class ReorderAppsActivity extends Activity {
             @Override public Object getItem(int position) { return labels.get(position); }
             @Override public long getItemId(int position) { return position; }
             @Override public View getView(int position, View convertView, ViewGroup parent) {
-                TextView row = convertView instanceof TextView ? (TextView) convertView : new TextView(ReorderAppsActivity.this);
-                boolean active = position == selected;
-                row.setText(labels.get(position));
-                row.setTextSize(18);
-                row.setSingleLine(false);
-                row.setMaxLines(2);
-                row.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                LinearLayout row = convertView instanceof LinearLayout ? (LinearLayout) convertView : new LinearLayout(ReorderAppsActivity.this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dp(12), dp(5), dp(8), dp(5));
-                row.setTextColor(active ? ThemeUtils.focusText(ReorderAppsActivity.this) : ThemeUtils.text(ReorderAppsActivity.this));
+                row.removeAllViews();
+                boolean active = position == selected;
+                ImageView icon = new ImageView(ReorderAppsActivity.this);
+                for (ResolveInfo app : apps) if (app.activityInfo.name.equals(order.get(position))) {
+                    try { icon.setImageDrawable(app.loadIcon(getPackageManager())); }
+                    catch (Exception ignored) { icon.setImageResource(android.R.drawable.sym_def_app_icon); }
+                    break;
+                }
+                row.addView(icon, new LinearLayout.LayoutParams(dp(36), dp(36)));
+                TextView label = new TextView(ReorderAppsActivity.this);
+                label.setText(labels.get(position));
+                label.setTextSize(17);
+                label.setSingleLine(false);
+                label.setMaxLines(2);
+                label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                label.setGravity(Gravity.CENTER_VERTICAL);
+                label.setPadding(dp(12), dp(4), dp(8), dp(4));
+                label.setTextColor(active ? ThemeUtils.focusText(ReorderAppsActivity.this) : ThemeUtils.text(ReorderAppsActivity.this));
+                row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+                row.setPadding(dp(10), dp(4), dp(8), dp(4));
                 row.setBackground(rowBackground(active));
                 row.setFocusable(false);
                 return row;
