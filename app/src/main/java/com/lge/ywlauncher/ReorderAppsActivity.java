@@ -5,10 +5,13 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -17,7 +20,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,10 +28,11 @@ public class ReorderAppsActivity extends Activity {
     private final ArrayList<ResolveInfo> apps = new ArrayList<>();
     private final ArrayList<String> order = new ArrayList<>();
     private final ArrayList<String> labels = new ArrayList<>();
-    private ArrayAdapter<String> adapter;
     private ListView list;
+    private BaseAdapter adapter;
     private int selected = 0;
     private android.content.SharedPreferences prefs;
+    private Button upButton, downButton;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -45,8 +48,8 @@ public class ReorderAppsActivity extends Activity {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_LAUNCHER);
         List<ResolveInfo> found = getPackageManager().queryIntentActivities(intent, 0);
-        Set<String> savedIncluded = prefs.getStringSet("included", null);
         Set<String> included = new HashSet<>();
+        Set<String> savedIncluded = prefs.getStringSet("included", null);
         for (ResolveInfo app : found) {
             if (MainActivity.class.getName().equals(app.activityInfo.name)) continue;
             boolean system = (app.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
@@ -69,6 +72,19 @@ public class ReorderAppsActivity extends Activity {
             for (ResolveInfo app : apps) if (app.activityInfo.name.equals(name)) { label = app.loadLabel(getPackageManager()).toString(); break; }
             labels.add(label);
         }
+    }
+
+    private GradientDrawable rowBackground(boolean active) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(7));
+        if (active) {
+            bg.setColor(ThemeUtils.accent(this));
+            bg.setStroke(dp(2), ThemeUtils.isDark(this) ? Color.WHITE : 0xff174f9c);
+        } else {
+            bg.setColor(ThemeUtils.surface(this));
+            bg.setStroke(dp(1), ThemeUtils.divider(this));
+        }
+        return bg;
     }
 
     private void buildPage() {
@@ -96,7 +112,7 @@ public class ReorderAppsActivity extends Activity {
         root.addView(toolbar);
 
         TextView help = new TextView(this);
-        help.setText("Select an app, then move it up or down. Save when finished.");
+        help.setText("Select an app, then use arrows or keypad 1 / 2. Save when finished.");
         help.setTextSize(13);
         help.setTextColor(ThemeUtils.secondaryText(this));
         help.setPadding(dp(14), dp(8), dp(14), dp(8));
@@ -104,54 +120,55 @@ public class ReorderAppsActivity extends Activity {
 
         list = new ListView(this);
         list.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_activated_1, labels);
-        list.setAdapter(adapter);
-        if (!order.isEmpty()) list.setItemChecked(0, true);
-        list.setOnItemClickListener((parent, view, position, id) -> {
-            selected = position;
-            list.setItemChecked(position, true);
-        });
-        // Keep the logical selection synchronized with D-pad/keyboard focus
-        // as well as touch clicks, so Move Up/Down always affects the highlighted row.
-        list.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                selected = position;
+        list.setDivider(null);
+        list.setSelector(android.R.color.transparent);
+        adapter = new BaseAdapter() {
+            @Override public int getCount() { return labels.size(); }
+            @Override public Object getItem(int position) { return labels.get(position); }
+            @Override public long getItemId(int position) { return position; }
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                TextView row = convertView instanceof TextView ? (TextView) convertView : new TextView(ReorderAppsActivity.this);
+                boolean active = position == selected;
+                row.setText(labels.get(position));
+                row.setTextSize(16);
+                row.setSingleLine(true);
+                row.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(dp(14), 0, dp(10), 0);
+                row.setTextColor(active ? ThemeUtils.focusText(ReorderAppsActivity.this) : ThemeUtils.text(ReorderAppsActivity.this));
+                row.setBackground(rowBackground(active));
+                row.setFocusable(false);
+                return row;
             }
+        };
+        list.setAdapter(adapter);
+        if (!order.isEmpty()) list.setSelection(0);
+        list.setOnItemClickListener((parent, view, position, id) -> selectRow(position));
+        list.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) { selectRow(position); }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        LinearLayout controls = new LinearLayout(this);
-        controls.setPadding(dp(8), dp(6), dp(8), dp(6));
-        controls.setGravity(Gravity.CENTER_VERTICAL);
-        Button up = new Button(this); up.setText("↑  Move up"); ThemeUtils.tint(up, this);
-        Button down = new Button(this); down.setText("↓  Move down"); ThemeUtils.tint(down, this);
-        // ThemeUtils.focusBackground is transparent when unfocused. Keep the
-        // labels legible and draw an outline only while the button owns focus.
-        up.setTextColor(ThemeUtils.text(this));
-        down.setTextColor(ThemeUtils.text(this));
-        up.setBackground(ThemeUtils.focusOutlineBackground(this));
-        down.setBackground(ThemeUtils.focusOutlineBackground(this));
-        up.setOnFocusChangeListener((v,f)->up.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
-        down.setOnFocusChangeListener((v,f)->down.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
-        controls.addView(up, new LinearLayout.LayoutParams(0, dp(50), 1));
-        controls.addView(down, new LinearLayout.LayoutParams(0, dp(50), 1));
-        root.addView(controls);
-
         LinearLayout footer = new LinearLayout(this);
-        footer.setPadding(dp(8), dp(4), dp(8), dp(10));
-        Button save = new Button(this); save.setText("Save order"); ThemeUtils.tint(save, this);
+        footer.setPadding(dp(5), dp(5), dp(5), dp(8));
+        footer.setGravity(Gravity.CENTER_VERTICAL);
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+
+        LinearLayout upGroup = arrowGroup("↑", "1", true);
+        LinearLayout downGroup = arrowGroup("↓", "2", false);
+        Button save = new Button(this); save.setText("Save"); ThemeUtils.tint(save, this);
         Button cancel = new Button(this); cancel.setText("Cancel"); ThemeUtils.tint(cancel, this);
         save.setTextColor(ThemeUtils.text(this));
         cancel.setTextColor(ThemeUtils.text(this));
         save.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancel.setBackground(ThemeUtils.focusOutlineBackground(this));
-        footer.addView(save, new LinearLayout.LayoutParams(0, dp(48), 1));
-        footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1));
+        footer.addView(upGroup, new LinearLayout.LayoutParams(0, dp(48), 1));
+        footer.addView(downGroup, new LinearLayout.LayoutParams(0, dp(48), 1));
+        footer.addView(save, new LinearLayout.LayoutParams(0, dp(48), 1.25f));
+        footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1.25f));
         root.addView(footer);
 
-        up.setOnClickListener(v -> move(-1));
-        down.setOnClickListener(v -> move(1));
         save.setOnClickListener(v -> {
             StringBuilder value = new StringBuilder();
             for (String name : order) { if (value.length() > 0) value.append('\n'); value.append(name); }
@@ -160,25 +177,53 @@ public class ReorderAppsActivity extends Activity {
             finish();
         });
         cancel.setOnClickListener(v -> finish());
-        if (order.isEmpty()) { up.setEnabled(false); down.setEnabled(false); save.setEnabled(false); }
+        if (order.isEmpty()) { upButton.setEnabled(false); downButton.setEnabled(false); save.setEnabled(false); }
         setContentView(root);
     }
 
+    private LinearLayout arrowGroup(String arrow, String number, boolean up) {
+        LinearLayout group = new LinearLayout(this);
+        group.setGravity(Gravity.CENTER);
+        group.setOrientation(LinearLayout.HORIZONTAL);
+        Button arrowButton = new Button(this);
+        arrowButton.setText(arrow);
+        arrowButton.setTextSize(23);
+        arrowButton.setContentDescription(up ? "Move up" : "Move down");
+        arrowButton.setTextColor(ThemeUtils.text(this));
+        arrowButton.setBackground(ThemeUtils.focusOutlineBackground(this));
+        arrowButton.setPadding(0, 0, 0, 0);
+        group.addView(arrowButton, new LinearLayout.LayoutParams(0, dp(48), 1));
+        TextView key = new TextView(this);
+        key.setText(number);
+        key.setTextSize(10);
+        key.setTextColor(ThemeUtils.secondaryText(this));
+        key.setGravity(Gravity.CENTER);
+        group.addView(key, new LinearLayout.LayoutParams(dp(14), dp(48)));
+        arrowButton.setOnClickListener(v -> move(up ? -1 : 1));
+        if (up) upButton = arrowButton; else downButton = arrowButton;
+        return group;
+    }
+
+    private void selectRow(int position) {
+        if (position < 0 || position >= order.size()) return;
+        selected = position;
+        adapter.notifyDataSetChanged();
+    }
+
     private void move(int direction) {
-        View moveControl = getCurrentFocus();
-        // ListView keeps its selected position when focus moves to a Move
-        // button. Read it before swapping so touch and D-pad selection agree.
-        int listSelection = list.getSelectedItemPosition();
-        if (listSelection >= 0 && listSelection < order.size()) selected = listSelection;
+        if (selected < 0 || selected >= order.size()) return;
         int target = selected + direction;
         if (target < 0 || target >= order.size()) return;
         Collections.swap(order, selected, target);
         selected = target;
         refreshLabels();
         adapter.notifyDataSetChanged();
-        list.setItemChecked(selected, true);
         list.setSelection(selected);
-        // Keep keyboard focus on the Move Up/Move Down control for repeated presses.
-        if (moveControl != null) moveControl.requestFocus();
+    }
+
+    @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_1) { move(-1); return true; }
+        if (keyCode == KeyEvent.KEYCODE_2) { move(1); return true; }
+        return super.onKeyDown(keyCode, event);
     }
 }
