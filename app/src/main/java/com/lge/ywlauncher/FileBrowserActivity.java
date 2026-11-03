@@ -54,10 +54,24 @@ public class FileBrowserActivity extends Activity {
     }
 
     private void navigate(File folder) {
-        if(folder==null || !folder.isDirectory() || !folder.canRead()) return;
+        if(folder==null || !folder.isDirectory()) {
+            new AlertDialog.Builder(this).setMessage("That folder is not available.")
+                .setPositiveButton("OK",null).show();
+            return;
+        }
+        if(!folder.canRead()) {
+            new AlertDialog.Builder(this).setTitle("Cannot open folder")
+                .setMessage("Android does not allow reading this folder. Choose another folder or check storage permissions.")
+                .setPositiveButton("OK",null).show();
+            return;
+        }
         current=folder;location.setText(folder.getAbsolutePath());
         entries.clear(); File[] files=folder.listFiles();
-        if(files!=null) for(File f:files) {
+        if(files==null) {
+            new AlertDialog.Builder(this).setTitle("Cannot list folder")
+                .setMessage("The folder could not be read. Try another location.")
+                .setPositiveButton("OK",null).show();
+        } else for(File f:files) {
             if(f.isDirectory() || matches(f)) entries.add(f);
         }
         Collections.sort(entries,(a,b)->{
@@ -87,14 +101,29 @@ public class FileBrowserActivity extends Activity {
                 if(value.isEmpty() || value.contains("/") || value.contains("\\") || value.equals(".") || value.equals("..")) {
                     Toast.makeText(this,"Enter a valid file name.",Toast.LENGTH_LONG).show();showSaveName();return;
                 }
+                if(current==null || !current.isDirectory() || !current.canWrite()) {
+                    new AlertDialog.Builder(this).setTitle("Cannot save here")
+                        .setMessage("This folder is not writable. Choose a different folder.")
+                        .setPositiveButton("OK",null).show();
+                    return;
+                }
                 File target=new File(current,value);
-                if(target.exists()) new AlertDialog.Builder(this).setMessage("Replace existing file?").setNegativeButton("Cancel",null)
+                if(target.exists() && !target.isFile()) {
+                    new AlertDialog.Builder(this).setMessage("A folder already has that name. Choose another file name.")
+                        .setPositiveButton("OK",null).show();
+                } else if(target.exists()) new AlertDialog.Builder(this).setMessage("Replace existing file?").setNegativeButton("Cancel",null)
                     .setPositiveButton("Replace",(dd,ww)->finishWith(target)).show();
                 else finishWith(target);
             }).show();
     }
 
     private void finishWith(File file) {
+        if(file==null || ("save".equals(mode) && (file.getParentFile()==null || !file.getParentFile().canWrite()))) {
+            new AlertDialog.Builder(this).setTitle("Cannot save file")
+                .setMessage("Android cannot write to this location. Choose another folder.")
+                .setPositiveButton("OK",null).show();
+            return;
+        }
         Intent result=new Intent();result.putExtra(EXTRA_PATH,file.getAbsolutePath());setResult(RESULT_OK,result);finish();
     }
 
