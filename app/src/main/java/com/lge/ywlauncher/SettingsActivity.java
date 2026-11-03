@@ -712,7 +712,7 @@ public class SettingsActivity extends Activity {
 
     private void launchFileBrowser(String mode, String filter, int requestCode) {
         if (android.os.Build.VERSION.SDK_INT >= 23 &&
-            checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED || checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED)) {
             pendingBrowserRequest=requestCode;
             requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE,android.Manifest.permission.WRITE_EXTERNAL_STORAGE},700);
             return;
@@ -726,7 +726,7 @@ public class SettingsActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode,permissions,grantResults);
         if(requestCode==700) {
-            if(grantResults.length>0 && grantResults[0]==PackageManager.PERMISSION_GRANTED) {
+            if(grantResults.length>=2 && grantResults[0]==PackageManager.PERMISSION_GRANTED && grantResults[1]==PackageManager.PERMISSION_GRANTED) {
                 int action=pendingBrowserRequest; pendingBrowserRequest=0;
                 String filter=action==PICK_BACKGROUND_IMAGE||action==PICK_KEPT_WALLPAPER?"image":
                     (action==PICK_DICTIONARY_FILE?"json":(action==CREATE_LOG_FILE?"text":"json"));
