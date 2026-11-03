@@ -44,7 +44,7 @@ public class ChooseAppsActivity extends Activity {
         ImageButton back=new ImageButton(this); back.setImageResource(R.drawable.ic_back_modern); back.setColorFilter(ThemeUtils.text(this));
         back.setContentDescription("Back"); back.setBackground(ThemeUtils.focusOutlineBackground(this));
         back.setOnClickListener(v->finish()); bar.addView(back,new LinearLayout.LayoutParams(dp(46),dp(48)));
-        TextView title=new TextView(this); title.setText("Choose apps"); title.setTextSize(19); title.setTypeface(null,1); title.setTextColor(ThemeUtils.text(this));
+        TextView title=new TextView(this); title.setText("Choose apps"); title.setTextSize(19); title.setTypeface(null,android.graphics.Typeface.BOLD); title.setTextColor(ThemeUtils.text(this));
         bar.addView(title,new LinearLayout.LayoutParams(0,dp(48),1));
         root.addView(bar,new LinearLayout.LayoutParams(-1,dp(48)));
 
@@ -94,7 +94,7 @@ public class ChooseAppsActivity extends Activity {
                 body.addView(label,new LinearLayout.LayoutParams(-1,-2)); cell.addView(body,new FrameLayout.LayoutParams(-1,-1));
                 TextView check=new TextView(this);check.setText("✓");check.setTextSize(19);check.setTypeface(null,1);check.setTextColor(Color.WHITE);check.setGravity(Gravity.CENTER);
                 GradientDrawable mark=new GradientDrawable();mark.setColor(0xff168b43);mark.setShape(GradientDrawable.OVAL);check.setBackground(mark);
-                FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(dp(25),dp(25),Gravity.TOP|Gravity.RIGHT);cp.setMargins(0,dp(2),dp(2),0);cell.addView(check,cp);
+                FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(dp(25),dp(25),Gravity.TOP|Gravity.END);cp.setMargins(0,dp(2),dp(2),0);cell.addView(check,cp);
                 check.setVisibility(included.contains(name)?View.VISIBLE:View.GONE);
                 cell.setOnFocusChangeListener((v,focus)->v.setBackground(focus?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
                 cell.setOnClickListener(v->{if(included.contains(name))included.remove(name);else included.add(name);check.setVisibility(included.contains(name)?View.VISIBLE:View.GONE);});
