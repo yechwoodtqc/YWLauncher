@@ -24,6 +24,7 @@ public class SettingsActivity extends Activity {
     private static final int PICK_LOCAL_FILE = 506;
     private static final int PICK_LOCAL_FOLDER = 507;
     private String pendingFileAction;
+    private int pendingBrowserRequest;
     private String pendingLogcat;
     private String pendingDictionaryBackup;
 
@@ -710,10 +711,29 @@ public class SettingsActivity extends Activity {
     }
 
     private void launchFileBrowser(String mode, String filter, int requestCode) {
+        if (android.os.Build.VERSION.SDK_INT >= 23 &&
+            checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            pendingBrowserRequest=requestCode;
+            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE,android.Manifest.permission.WRITE_EXTERNAL_STORAGE},700);
+            return;
+        }
         Intent intent=new Intent(this,FileBrowserActivity.class);
         intent.putExtra(FileBrowserActivity.EXTRA_MODE,mode);
         intent.putExtra(FileBrowserActivity.EXTRA_FILTER,filter);
         startActivityForResult(intent,requestCode);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==700) {
+            if(grantResults.length>0 && grantResults[0]==PackageManager.PERMISSION_GRANTED) {
+                int action=pendingBrowserRequest; pendingBrowserRequest=0;
+                String filter=action==PICK_BACKGROUND_IMAGE||action==PICK_KEPT_WALLPAPER?"image":
+                    (action==PICK_DICTIONARY_FILE?"json":(action==CREATE_LOG_FILE?"text":"json"));
+                String mode=action==CREATE_DICTIONARY_FILE||action==CREATE_LOG_FILE?"save":"open";
+                launchFileBrowser(mode,filter,action);
+            } else showError("Storage access is needed to browse and save files. Please allow it in Android app permissions.");
+        }
     }
 
     private void copyFile(File source, File destination) throws IOException {
