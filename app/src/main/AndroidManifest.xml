@@ -61,6 +61,7 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ChooseAppsActivity" android:exported="false" android:label="Choose apps" />
         <activity android:name=".SettingsActivity" android:exported="false" android:label="Settings" />
         <activity android:name=".FileBrowserActivity" android:exported="false" android:label="Choose file" />
         <activity android:name=".ReorderAppsActivity" android:exported="false" android:label="Reorder apps" />
