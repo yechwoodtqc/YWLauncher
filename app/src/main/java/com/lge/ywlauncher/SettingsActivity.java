@@ -27,6 +27,8 @@ public class SettingsActivity extends Activity {
     private int pendingBrowserRequest;
     private String pendingLogcat;
     private String pendingDictionaryBackup;
+    private String pendingExportContent;
+    private String pendingExportName;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -626,7 +628,7 @@ public class SettingsActivity extends Activity {
                 backup.put("source_package","com.android.providers.userdictionary");
                 backup.put("created_at",System.currentTimeMillis()); backup.put("entries",entries);
                 pendingDictionaryBackup=backup.toString(2);
-                runOnUiThread(() -> launchFileBrowser("save", "json", CREATE_DICTIONARY_FILE));
+                runOnUiThread(() -> saveExportToDownloads("ywlauncher-t9-dictionary.json", pendingDictionaryBackup, CREATE_DICTIONARY_FILE));
             } catch(Exception e) { runOnUiThread(() -> showError("Could not back up the T9 dictionary: "+e.getMessage())); }
         },"YWDictionaryBackup").start();
     }
@@ -712,7 +714,7 @@ public class SettingsActivity extends Activity {
                 if(exitCode!=0 && output.length()==0)
                     throw new IOException("logcat exited with code "+exitCode);
                 pendingLogcat=output.toString();
-                runOnUiThread(() -> launchFileBrowser("save","text",CREATE_LOG_FILE));
+                runOnUiThread(() -> saveExportToDownloads("ywlauncher-logcat.txt", pendingLogcat, CREATE_LOG_FILE));
             } catch(InterruptedException e) {
                 Thread.currentThread().interrupt();
                 runOnUiThread(() -> showError("Logcat export was interrupted."));
@@ -776,45 +778,73 @@ public class SettingsActivity extends Activity {
         }
     }
 
+    private void saveExportToDownloads(String fileName, String contents, int requestCode) {
+        if (contents == null) {
+            showError("There is no export data to save.");
+            return;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 23 &&
+            checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            pendingExportName = fileName;
+            pendingExportContent = contents;
+            pendingBrowserRequest = requestCode;
+            requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 700);
+            return;
+        }
+        writeExportToDownloads(fileName, contents, requestCode);
+    }
+
+    private void writeExportToDownloads(String fileName, String contents, int requestCode) {
+        try {
+            File downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+            if (!downloads.exists() && !downloads.mkdirs()) throw new IOException("Could not create the Downloads folder.");
+            File destination = new File(downloads, fileName);
+            try (OutputStream output = new FileOutputStream(destination)) {
+                output.write(contents.getBytes("UTF-8"));
+                output.flush();
+            }
+            android.media.MediaScannerConnection.scanFile(this, new String[]{destination.getAbsolutePath()}, null, null);
+            Toast.makeText(this, "Saved to Downloads/" + fileName, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            showError("Could not save " + fileName + ": " + e.getMessage());
+        } finally {
+            if (requestCode == CREATE_LOG_FILE) pendingLogcat = null;
+            if (requestCode == CREATE_DICTIONARY_FILE) pendingDictionaryBackup = null;
+        }
+    }
+
     private void launchFileBrowser(String mode, String filter, int requestCode) {
-        boolean save = "save".equals(mode);
-        Intent intent = new Intent(save ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         if ("image".equals(filter)) intent.setType("image/*");
         else if ("json".equals(filter)) intent.setType("application/json");
         else intent.setType("text/plain");
-        if (save) {
-            String name = "json".equals(filter) ? "ywlauncher-t9-dictionary.json" :
-                ("text".equals(filter) ? "ywlauncher-logcat.txt" : "ywlauncher-backup.txt");
-            intent.putExtra(Intent.EXTRA_TITLE, name);
-        } else {
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        }
-        try { startActivityForResult(intent, requestCode); }
-        catch (Exception e) {
-            if (save) { showError("This phone does not provide a system save picker."); return; }
-            Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
-            fallback.addCategory(Intent.CATEGORY_OPENABLE);
-            fallback.setType("image".equals(filter) ? "image/*" : ("json".equals(filter) ? "application/json" : "text/plain"));
-            try { startActivityForResult(Intent.createChooser(fallback, "Choose file"), requestCode); }
-            catch (Exception ignored) { showError("No system file picker is available on this phone."); }
-        }
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        if ("image".equals(filter)) intent.setType("image/*");
+        else if ("json".equals(filter)) intent.setType("application/json");
+        else intent.setType("*/*");
+        try { startActivityForResult(Intent.createChooser(intent, "Choose file"), requestCode); }
+        catch (Exception e) { showError("No file browser is available on this phone."); }
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
-        if(requestCode==700) {
-            if(grantResults.length>=2 && grantResults[0]==PackageManager.PERMISSION_GRANTED && grantResults[1]==PackageManager.PERMISSION_GRANTED) {
-                int action=pendingBrowserRequest; pendingBrowserRequest=0;
-                String filter=action==PICK_BACKGROUND_IMAGE||action==PICK_KEPT_WALLPAPER?"image":
-                    (action==PICK_DICTIONARY_FILE?"json":(action==CREATE_LOG_FILE?"text":"json"));
-                String mode=action==CREATE_DICTIONARY_FILE||action==CREATE_LOG_FILE?"save":"open";
-                launchFileBrowser(mode,filter,action);
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 700) {
+            int action = pendingBrowserRequest;
+            pendingBrowserRequest = 0;
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && pendingExportContent != null && pendingExportName != null) {
+                String name = pendingExportName;
+                String contents = pendingExportContent;
+                pendingExportName = null;
+                pendingExportContent = null;
+                writeExportToDownloads(name, contents, action);
             } else {
-                if(pendingBrowserRequest==PICK_KEPT_WALLPAPER)
-                    prefs.edit().putBoolean("keep_wallpaper",false).apply();
-                pendingBrowserRequest=0;
-                showError("Storage access is needed to browse and save files. Please allow it in Android app permissions.");
+                pendingExportName = null;
+                pendingExportContent = null;
+                pendingLogcat = null;
+                pendingDictionaryBackup = null;
+                showError(granted ? "Nothing was waiting to be exported." : "Storage permission is required to save exports to Downloads.");
             }
         }
     }
