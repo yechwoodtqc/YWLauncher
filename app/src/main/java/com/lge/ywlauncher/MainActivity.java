@@ -635,6 +635,14 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            setTaskDescription(new ActivityManager.TaskDescription(
+                "YW Launcher", createTaskIcon(R.drawable.ic_launcher), ThemeUtils.accent(this)));
+            try {
+                for (ActivityManager.AppTask task : ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getAppTasks())
+                    task.setExcludeFromRecents(false);
+            } catch (Exception ignored) { }
+        }
         if (root == null) return;
         String mode = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         int accent = ThemeUtils.accent(this);
