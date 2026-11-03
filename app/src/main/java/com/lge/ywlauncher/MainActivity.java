@@ -90,7 +90,10 @@ public class MainActivity extends Activity {
         toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
 
         cancelSelection = new Button(this);
-        cancelSelection.setText("Cancel");
+        cancelSelection.setText("");
+        cancelSelection.setContentDescription("Clear selection");
+        cancelSelection.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_close_modern, 0, 0, 0);
+        cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancelSelection.setOnClickListener(v -> clearSelection());
         toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(-2, dp(42)));
 
@@ -218,6 +221,8 @@ public class MainActivity extends Activity {
         drawable.draw(canvas);
         return bitmap;
     }
+
+    private float prefsFontScale() { return getSharedPreferences("launcher", 0).getInt("font_size_percent", 100) / 100f; }
 
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private int clamp(int value, int low, int high) { return Math.max(low, Math.min(high, value)); }
@@ -367,7 +372,7 @@ public class MainActivity extends Activity {
             TextView dot = new TextView(this);
             dot.setText(i == currentPage ? "●" : "•");
             dot.setTextSize(i == currentPage ? 12 : 10);
-            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : (ThemeUtils.isDark(this) ? 0xffc4cbd3 : 0xff66717e));
+            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : (ThemeUtils.isDark(this) ? 0xfff1f4f7 : 0xff34495e));
             if (i == currentPage) dot.setTypeface(null, android.graphics.Typeface.BOLD);
             dot.setGravity(Gravity.CENTER);
             dot.setContentDescription("Page " + (i + 1));
@@ -452,7 +457,7 @@ public class MainActivity extends Activity {
         item.addView(icon, iconParams);
         TextView label = new TextView(this);
         label.setText(app.loadLabel(getPackageManager()));
-        label.setTextColor(ThemeUtils.text(this)); label.setTextSize(grid ? 11 : 14);
+        label.setTextColor(ThemeUtils.text(this)); label.setTextSize((grid ? 11 : 14) * prefsFontScale());
         label.setGravity(grid ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
         label.setSingleLine(true); label.setEllipsize(android.text.TextUtils.TruncateAt.END);
         label.setPadding(dp(2), dp(1), dp(2), dp(1));
@@ -603,7 +608,8 @@ public class MainActivity extends Activity {
         if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
             try {
                 Intent dial = new Intent(Intent.ACTION_DIAL);
-                dial.setData(Uri.parse("tel:"));
+                char digit = event != null && event.getNumber() != 0 ? event.getNumber() : (char) ('0' + (keyCode - KeyEvent.KEYCODE_0));
+                dial.setData(Uri.fromParts("tel", String.valueOf(digit), null));
                 startActivity(dial);
                 return true;
             } catch (Exception ignored) { }
