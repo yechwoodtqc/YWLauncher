@@ -71,7 +71,7 @@ public class ChooseAppsActivity extends Activity {
         scroll.post(()->{View first=findFirstFocusable(grid);if(first!=null)first.requestFocus();else save.requestFocus();});
     }
 
-    private String join(List<String> values){StringBuilder b=new StringBuilder();for(String v:values){if(b.length()>0)b.append('\\n');b.append(v);}return b.toString();}
+    private String join(List<String> values){StringBuilder b=new StringBuilder();for(String v:values){if(b.length()>0)b.append('\n');b.append(v);}return b.toString();}
     private View findFirstFocusable(ViewGroup group){for(int i=0;i<group.getChildCount();i++){View v=group.getChildAt(i);if(v.isFocusable())return v;if(v instanceof ViewGroup){View f=findFirstFocusable((ViewGroup)v);if(f!=null)return f;}}return null;}
 
     private void render(){
