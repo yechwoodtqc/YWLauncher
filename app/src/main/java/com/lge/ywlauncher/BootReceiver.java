@@ -10,6 +10,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.os.Build;
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,10 +46,26 @@ public class BootReceiver extends BroadcastReceiver {
                         options.inSampleSize = sampleSize;
                         Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
                         if (bitmap != null) {
+                            Bitmap output = null;
                             try {
-                                WallpaperManager.getInstance(context).setBitmap(bitmap);
+                                String fit=prefs.getString("kept_wallpaper_fit","crop");
+                                int width=Math.max(1,metrics.widthPixels), height=Math.max(1,metrics.heightPixels);
+                                output=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+                                Canvas canvas=new Canvas(output);
+                                Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+                                float sx=width/(float)bitmap.getWidth(), sy=height/(float)bitmap.getHeight();
+                                float scale="fit".equals(fit)?Math.min(sx,sy):("stretch".equals(fit)?-1f:Math.max(sx,sy));
+                                Rect destination;
+                                if("stretch".equals(fit)) destination=new Rect(0,0,width,height);
+                                else {
+                                    int dw=Math.round(bitmap.getWidth()*scale), dh=Math.round(bitmap.getHeight()*scale);
+                                    destination=new Rect((width-dw)/2,(height-dh)/2,(width+dw)/2,(height+dh)/2);
+                                }
+                                canvas.drawBitmap(bitmap,null,destination,paint);
+                                WallpaperManager.getInstance(context).setBitmap(output);
                             } finally {
                                 bitmap.recycle();
+                                if(output!=null) output.recycle();
                             }
                         }
                     }
