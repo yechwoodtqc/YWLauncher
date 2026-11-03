@@ -89,6 +89,14 @@ public class WeatherActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            setTaskDescription(new ActivityManager.TaskDescription(
+                "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
+            try {
+                for (ActivityManager.AppTask task : ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getAppTasks())
+                    task.setExcludeFromRecents(false);
+            } catch (Exception ignored) { }
+        }
         scheduleAutoRefresh();
     }
     @Override protected void onPause() {
