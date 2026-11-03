@@ -113,7 +113,7 @@ public class ReorderAppsActivity extends Activity {
 
         TextView help = new TextView(this);
         help.setText("Select an app, then use arrows or keypad 1 / 2. Save when finished.");
-        help.setTextSize(13);
+        help.setTextSize(14);
         help.setTextColor(ThemeUtils.secondaryText(this));
         help.setPadding(dp(14), dp(8), dp(14), dp(8));
         root.addView(help);
@@ -130,11 +130,12 @@ public class ReorderAppsActivity extends Activity {
                 TextView row = convertView instanceof TextView ? (TextView) convertView : new TextView(ReorderAppsActivity.this);
                 boolean active = position == selected;
                 row.setText(labels.get(position));
-                row.setTextSize(16);
-                row.setSingleLine(true);
+                row.setTextSize(18);
+                row.setSingleLine(false);
+                row.setMaxLines(2);
                 row.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dp(14), 0, dp(10), 0);
+                row.setPadding(dp(12), dp(5), dp(8), dp(5));
                 row.setTextColor(active ? ThemeUtils.focusText(ReorderAppsActivity.this) : ThemeUtils.text(ReorderAppsActivity.this));
                 row.setBackground(rowBackground(active));
                 row.setFocusable(false);
@@ -151,7 +152,7 @@ public class ReorderAppsActivity extends Activity {
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout footer = new LinearLayout(this);
-        footer.setPadding(dp(5), dp(5), dp(5), dp(8));
+        footer.setPadding(dp(3), dp(5), dp(3), dp(8));
         footer.setGravity(Gravity.CENTER_VERTICAL);
         footer.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -163,10 +164,10 @@ public class ReorderAppsActivity extends Activity {
         cancel.setTextColor(ThemeUtils.text(this));
         save.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancel.setBackground(ThemeUtils.focusOutlineBackground(this));
-        footer.addView(upGroup, new LinearLayout.LayoutParams(0, dp(48), 1));
-        footer.addView(downGroup, new LinearLayout.LayoutParams(0, dp(48), 1));
-        footer.addView(save, new LinearLayout.LayoutParams(0, dp(48), 1.25f));
-        footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1.25f));
+        footer.addView(upGroup, new LinearLayout.LayoutParams(0, dp(52), 0.9f));
+        footer.addView(downGroup, new LinearLayout.LayoutParams(0, dp(52), 0.9f));
+        footer.addView(save, new LinearLayout.LayoutParams(0, dp(52), 1.35f));
+        footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(52), 1.35f));
         root.addView(footer);
 
         save.setOnClickListener(v -> {
@@ -187,18 +188,18 @@ public class ReorderAppsActivity extends Activity {
         group.setOrientation(LinearLayout.HORIZONTAL);
         Button arrowButton = new Button(this);
         arrowButton.setText(arrow);
-        arrowButton.setTextSize(23);
+        arrowButton.setTextSize(27);
         arrowButton.setContentDescription(up ? "Move up" : "Move down");
         arrowButton.setTextColor(ThemeUtils.text(this));
         arrowButton.setBackground(ThemeUtils.focusOutlineBackground(this));
         arrowButton.setPadding(0, 0, 0, 0);
-        group.addView(arrowButton, new LinearLayout.LayoutParams(0, dp(48), 1));
+        group.addView(arrowButton, new LinearLayout.LayoutParams(0, dp(52), 1));
         TextView key = new TextView(this);
         key.setText(number);
-        key.setTextSize(10);
+        key.setTextSize(18);
         key.setTextColor(ThemeUtils.secondaryText(this));
         key.setGravity(Gravity.CENTER);
-        group.addView(key, new LinearLayout.LayoutParams(dp(14), dp(48)));
+        group.addView(key, new LinearLayout.LayoutParams(dp(26), dp(52)));
         arrowButton.setOnClickListener(v -> move(up ? -1 : 1));
         if (up) upButton = arrowButton; else downButton = arrowButton;
         return group;
