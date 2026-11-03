@@ -102,8 +102,9 @@ public class SettingsActivity extends Activity {
     }
 
     private void updateKeptWallpaper() {
+        // Turning the switch off only disables restoration. Turning it on asks
+        // for an image; the preference remains enabled only after a successful copy.
         if (!prefs.getBoolean("keep_wallpaper", false)) return;
-        prefs.edit().putBoolean("keep_wallpaper", false).apply();
         launchFileBrowser("open", "image", PICK_KEPT_WALLPAPER);
     }
 
@@ -660,14 +661,30 @@ public class SettingsActivity extends Activity {
     }
 
     private void exportLogcat() {
-        try {
-            Process process=Runtime.getRuntime().exec(new String[]{"logcat","-d","-t","3000"});
-            BufferedReader reader=new BufferedReader(new InputStreamReader(process.getInputStream()));
-            StringBuilder output=new StringBuilder(); String line;
-            while((line=reader.readLine())!=null) output.append(line).append('\n');
-            reader.close(); pendingLogcat=output.toString();
-            launchFileBrowser("save","text",CREATE_LOG_FILE);
-        } catch(Exception e) { showError("Could not collect logcat: "+e.getMessage()); }
+        new Thread(() -> {
+            Process process=null;
+            try {
+                process=new ProcessBuilder("logcat","-d","-t","3000").redirectErrorStream(true).start();
+                StringBuilder output=new StringBuilder();
+                try(BufferedReader reader=new BufferedReader(new InputStreamReader(process.getInputStream(),"UTF-8"))) {
+                    String line;
+                    while((line=reader.readLine())!=null) output.append(line).append('\n');
+                }
+                int exitCode=process.waitFor();
+                if(exitCode!=0 && output.length()==0)
+                    throw new IOException("logcat exited with code "+exitCode);
+                pendingLogcat=output.toString();
+                runOnUiThread(() -> launchFileBrowser("save","text",CREATE_LOG_FILE));
+            } catch(InterruptedException e) {
+                Thread.currentThread().interrupt();
+                runOnUiThread(() -> showError("Logcat export was interrupted."));
+            } catch(Exception e) {
+                final String message=e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();
+                runOnUiThread(() -> showError("Could not collect logcat: "+message));
+            } finally {
+                if(process!=null) process.destroy();
+            }
+        },"YWLogcatExport").start();
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -752,12 +769,13 @@ public class SettingsActivity extends Activity {
         if(bitmap==null){showError("Could not preview this image.");return;}
         LinearLayout panel=new LinearLayout(this); panel.setPadding(dp(12),dp(8),dp(12),dp(8)); panel.setOrientation(LinearLayout.VERTICAL);
         ImageView preview=new ImageView(this); preview.setImageBitmap(bitmap); preview.setBackgroundColor(Color.BLACK);
-        preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        String saved=prefs.getString("wallpaper_fit","crop");
+        preview.setScaleType("fit".equals(saved)?ImageView.ScaleType.FIT_CENTER:
+            ("stretch".equals(saved)?ImageView.ScaleType.FIT_XY:ImageView.ScaleType.CENTER_CROP));
         panel.addView(preview,new LinearLayout.LayoutParams(-1,dp(220)));
         TextView hint=new TextView(this); hint.setText("Preview how the image will appear behind your apps. Choose the fit below.");
         hint.setTextColor(ThemeUtils.text(this)); hint.setPadding(0,dp(8),0,dp(8)); panel.addView(hint);
         String[] fits={"Fill / crop","Fit entire image","Stretch"};
-        String saved=prefs.getString("wallpaper_fit","crop");
         int selected="fit".equals(saved)?1:("stretch".equals(saved)?2:0);
         RadioGroup group=new RadioGroup(this); group.setOrientation(RadioGroup.VERTICAL);
         final int[] fitIds={View.generateViewId(),View.generateViewId(),View.generateViewId()};
