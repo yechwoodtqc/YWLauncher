@@ -735,9 +735,12 @@ public class SettingsActivity extends Activity {
             Uri uri=resultCode==RESULT_OK && data!=null ? data.getData() : null;
             if(uri!=null && android.os.Build.VERSION.SDK_INT>=19 &&
                 requestCode!=CREATE_DICTIONARY_FILE && requestCode!=CREATE_LOG_FILE) {
-                int grantFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                if ((grantFlags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)) != 0) {
-                    try { getContentResolver().takePersistableUriPermission(uri, grantFlags); } catch(Exception ignored) { }
+                // The restore and image pickers only need read access. Keep the
+                // permission flag explicit so Android lint can verify its value.
+                if ((data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+                    try {
+                        getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    } catch (Exception ignored) { }
                 }
             }
             if(requestCode==CREATE_DICTIONARY_FILE) {
