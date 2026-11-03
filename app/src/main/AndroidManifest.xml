@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.WRITE_USER_DICTIONARY" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <queries>
         <intent>
@@ -60,6 +62,7 @@
         </activity>
 
         <activity android:name=".SettingsActivity" android:exported="false" android:label="Settings" />
+        <activity android:name=".FileBrowserActivity" android:exported="false" android:label="Choose file" />
         <activity android:name=".ReorderAppsActivity" android:exported="false" android:label="Reorder apps" />
 
         <activity
