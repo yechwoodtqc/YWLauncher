@@ -89,14 +89,6 @@ public class MainActivity extends Activity {
         uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
         toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
 
-        cancelSelection = new Button(this);
-        cancelSelection.setText("");
-        cancelSelection.setContentDescription("Clear selection");
-        cancelSelection.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_close_modern, 0, 0, 0);
-        cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
-        cancelSelection.setOnClickListener(v -> clearSelection());
-        toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(-2, dp(42)));
-
         settingsButton = new ImageButton(this);
         settingsButton.setImageResource(R.drawable.ic_settings_modern);
         settingsButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
@@ -106,6 +98,18 @@ public class MainActivity extends Activity {
         settingsButton.setFocusable(true);
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(54), dp(48)));
+
+        // Keep the clear-selection X as the final control, flush to the
+        // right edge of the toolbar on narrow flip-phone screens.
+        cancelSelection = new Button(this);
+        cancelSelection.setText("");
+        cancelSelection.setContentDescription("Clear selection");
+        cancelSelection.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_close_modern, 0, 0, 0);
+        cancelSelection.setPadding(dp(5), 0, dp(5), 0);
+        cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
+        cancelSelection.setOnClickListener(v -> clearSelection());
+        toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(48)));
 
         scroll = new ScrollView(this);
