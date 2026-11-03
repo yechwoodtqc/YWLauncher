@@ -592,7 +592,8 @@ public class SettingsActivity extends Activity {
                     android.provider.UserDictionary.Words.APP_ID, android.provider.UserDictionary.Words.SHORTCUT };
                 android.database.Cursor cursor = getContentResolver().query(
                     android.provider.UserDictionary.Words.CONTENT_URI, columns, null, null, null);
-                if (cursor != null) try {
+                if (cursor == null) throw new IOException("The Android User Dictionary provider returned no data.");
+                try {
                     while (cursor.moveToNext()) {
                         org.json.JSONObject entry = new org.json.JSONObject();
                         for (int i=0;i<columns.length;i++) {
@@ -642,9 +643,11 @@ public class SettingsActivity extends Activity {
                 String[] projection={android.provider.UserDictionary.Words.WORD,
                     android.provider.UserDictionary.Words.LOCALE,
                     android.provider.UserDictionary.Words.SHORTCUT};
-                try(android.database.Cursor cursor=getContentResolver().query(
-                    android.provider.UserDictionary.Words.CONTENT_URI,projection,null,null,null)) {
-                    if(cursor!=null) while(cursor.moveToNext()) {
+                android.database.Cursor existingCursor=getContentResolver().query(
+                    android.provider.UserDictionary.Words.CONTENT_URI,projection,null,null,null);
+                if(existingCursor==null) throw new IOException("The Android User Dictionary provider returned no data.");
+                try(android.database.Cursor cursor=existingCursor) {
+                    while(cursor.moveToNext()) {
                         String w=cursor.getString(0);
                         String l=cursor.isNull(1)?"":cursor.getString(1);
                         String sh=cursor.isNull(2)?"":cursor.getString(2);
