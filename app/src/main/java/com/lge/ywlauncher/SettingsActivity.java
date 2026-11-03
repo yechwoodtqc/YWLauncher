@@ -79,6 +79,7 @@ public class SettingsActivity extends Activity {
         addSettingRow("Grid rows", prefs.getInt("grid_rows", 3) + " rows per page", () -> chooseGridValue("grid_rows", "Grid rows", 2, 6));
         addSettingRow("Grid columns", prefs.getInt("grid_columns", 3) + " columns", () -> chooseGridValue("grid_columns", "Grid columns", 2, 6));
         addSettingRow("Icon size", iconSizeSummary(), this::chooseIconSize);
+        addSettingRow("Font size", fontSizeSummary(), this::chooseFontSize);
         addSettingRow("Background", backgroundSummary(), this::chooseBackground);
         addSettingRow("Theme", themeSummary(), this::chooseTheme);
         addSettingRow("Accent color", "Choose the highlight color.", this::chooseAccent);
@@ -144,11 +145,11 @@ public class SettingsActivity extends Activity {
         labels.setOrientation(LinearLayout.VERTICAL);
         TextView title = new TextView(this);
         title.setText(titleText);
-        title.setTextSize(15);
+        title.setTextSize(15 * fontScale());
         title.setTextColor(ThemeUtils.text(this));
         TextView summary = new TextView(this);
         summary.setText(summaryText);
-        summary.setTextSize(12);
+        summary.setTextSize(12 * fontScale());
         summary.setTextColor(ThemeUtils.secondaryText(this));
         summary.setPadding(0, dp(3), 0, 0);
         labels.addView(title, new LinearLayout.LayoutParams(-1, -2));
@@ -227,6 +228,22 @@ public class SettingsActivity extends Activity {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
         if (model.contains("exalt") || model.contains("vn220") || model.contains("lg-ax")) return 48;
         return 40;
+    }
+
+    private float fontScale() { return prefs.getInt("font_size_percent", 100) / 100f; }
+
+    private String fontSizeSummary() { return prefs.getInt("font_size_percent", 100) + "%"; }
+
+    private void chooseFontSize() {
+        String[] labels = {"Small (85%)", "Default (100%)", "Large (115%)", "Extra large (130%)", "Largest (145%)"};
+        int[] values = {85, 100, 115, 130, 145};
+        int current = prefs.getInt("font_size_percent", 100), selected = 1;
+        for (int i=0;i<values.length;i++) if(values[i]==current) selected=i;
+        new AlertDialog.Builder(this).setTitle("Launcher font size")
+            .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                prefs.edit().putInt("font_size_percent", values[which]).apply();
+                dialog.dismiss(); recreate();
+            }).setNegativeButton("Cancel", null).show();
     }
 
     private String iconSizeSummary() {
@@ -619,20 +636,23 @@ public class SettingsActivity extends Activity {
         launchFileBrowser("open", "json", PICK_DICTIONARY_FILE);
     }
 
-    private void writeDictionaryBackup(File destination) {
-        try (OutputStream output = new FileOutputStream(destination)) {
+    private void writeDictionaryBackup(Uri destination) {
+        try (OutputStream output = getContentResolver().openOutputStream(destination, "wt")) {
+            if (output == null) throw new IOException("The selected destination could not be opened.");
             output.write((pendingDictionaryBackup == null ? "" : pendingDictionaryBackup).getBytes("UTF-8"));
             output.flush();
-            Toast.makeText(this, "T9 dictionary backup saved to " + destination.getAbsolutePath(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "T9 dictionary backup saved.", Toast.LENGTH_LONG).show();
         } catch(Exception e) { showError("Could not save the dictionary backup: "+e.getMessage()); }
         finally { pendingDictionaryBackup=null; }
     }
 
-    private void readDictionaryBackup(File source) {
+    private void readDictionaryBackup(Uri source) {
         new Thread(() -> {
             try {
                 StringBuilder json=new StringBuilder();
-                try(BufferedReader reader=new BufferedReader(new InputStreamReader(new FileInputStream(source),"UTF-8"))) {
+                try(InputStream input=getContentResolver().openInputStream(source)) {
+                    if(input==null) throw new IOException("The selected backup could not be opened.");
+                    BufferedReader reader=new BufferedReader(new InputStreamReader(input,"UTF-8"));
                     String line; while((line=reader.readLine())!=null) json.append(line);
                 }
                 org.json.JSONObject object=new org.json.JSONObject(json.toString());
@@ -710,52 +730,70 @@ public class SettingsActivity extends Activity {
         if(requestCode==CREATE_DICTIONARY_FILE || requestCode==CREATE_LOG_FILE ||
            requestCode==PICK_DICTIONARY_FILE || requestCode==PICK_KEPT_WALLPAPER ||
            requestCode==PICK_BACKGROUND_IMAGE) {
-            String path=resultCode==RESULT_OK && data!=null ? data.getStringExtra(FileBrowserActivity.EXTRA_PATH) : null;
+            Uri uri=resultCode==RESULT_OK && data!=null ? data.getData() : null;
+            if(uri!=null && android.os.Build.VERSION.SDK_INT>=19) {
+                try { getContentResolver().takePersistableUriPermission(uri, data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)); } catch(Exception ignored) { }
+            }
             if(requestCode==CREATE_DICTIONARY_FILE) {
-                if(path!=null) writeDictionaryBackup(new File(path)); else pendingDictionaryBackup=null;
+                if(uri!=null) writeDictionaryBackup(uri); else pendingDictionaryBackup=null;
                 return;
             }
             if(requestCode==CREATE_LOG_FILE) {
                 try {
-                    if(path==null) return;
-                    try(FileOutputStream out=new FileOutputStream(path)) {
+                    if(uri==null) return;
+                    try(OutputStream out=getContentResolver().openOutputStream(uri, "wt")) {
+                        if(out==null) throw new IOException("The selected destination could not be opened.");
                         out.write((pendingLogcat==null?"":pendingLogcat).getBytes("UTF-8"));
                     }
-                    Toast.makeText(this,"Logcat saved to "+path,Toast.LENGTH_LONG).show();
+                    Toast.makeText(this,"Logcat exported.",Toast.LENGTH_LONG).show();
                 } catch(Exception e) { showError("Could not save logcat: "+e.getMessage()); }
                 finally { pendingLogcat=null; }
                 return;
             }
-            if(path==null) {
+            if(uri==null) {
                 if(requestCode==PICK_KEPT_WALLPAPER) prefs.edit().putBoolean("keep_wallpaper",false).apply();
                 return;
             }
-            if(requestCode==PICK_DICTIONARY_FILE) { readDictionaryBackup(new File(path)); return; }
+            if(requestCode==PICK_DICTIONARY_FILE) { readDictionaryBackup(uri); return; }
             if(requestCode==PICK_KEPT_WALLPAPER) {
                 try {
-                    copyFile(new File(path),new File(getFilesDir(),"kept_wallpaper.png"));
+                    try(InputStream in=getContentResolver().openInputStream(uri); OutputStream out=new FileOutputStream(new File(getFilesDir(),"kept_wallpaper.png"))) {
+                        if(in==null) throw new IOException("The selected image could not be opened.");
+                        byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))!=-1) out.write(buffer,0,n);
+                    }
                     prefs.edit().putBoolean("keep_wallpaper",true).apply();
                     Toast.makeText(this,"Wallpaper image saved for restoration after restart.",Toast.LENGTH_LONG).show();
                 } catch(Exception e) { prefs.edit().putBoolean("keep_wallpaper",false).apply(); showError("Could not save that wallpaper image: "+e.getMessage()); }
                 recreate(); return;
             }
             if(requestCode==PICK_BACKGROUND_IMAGE) {
-                showWallpaperPreview(new File(path)); return;
+                showWallpaperPreview(uri); return;
             }
         }
     }
 
     private void launchFileBrowser(String mode, String filter, int requestCode) {
-        if (android.os.Build.VERSION.SDK_INT >= 23 &&
-            (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED || checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED)) {
-            pendingBrowserRequest=requestCode;
-            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE,android.Manifest.permission.WRITE_EXTERNAL_STORAGE},700);
-            return;
+        boolean save = "save".equals(mode);
+        Intent intent = new Intent(save ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        if ("image".equals(filter)) intent.setType("image/*");
+        else if ("json".equals(filter)) intent.setType("application/json");
+        else intent.setType("text/plain");
+        if (save) {
+            String name = "json".equals(filter) ? "ywlauncher-t9-dictionary.json" :
+                ("text".equals(filter) ? "ywlauncher-logcat.txt" : "ywlauncher-backup.txt");
+            intent.putExtra(Intent.EXTRA_TITLE, name);
+        } else {
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         }
-        Intent intent=new Intent(this,FileBrowserActivity.class);
-        intent.putExtra(FileBrowserActivity.EXTRA_MODE,mode);
-        intent.putExtra(FileBrowserActivity.EXTRA_FILTER,filter);
-        startActivityForResult(intent,requestCode);
+        try { startActivityForResult(intent, requestCode); }
+        catch (Exception e) {
+            Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
+            fallback.addCategory(Intent.CATEGORY_OPENABLE);
+            fallback.setType("image".equals(filter) ? "image/*" : ("json".equals(filter) ? "application/json" : "text/plain"));
+            try { startActivityForResult(Intent.createChooser(fallback, "Choose file"), requestCode); }
+            catch (Exception ignored) { showError("No system file picker is available on this phone."); }
+        }
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -782,13 +820,19 @@ public class SettingsActivity extends Activity {
         }
     }
 
-    private void showWallpaperPreview(File imageFile) {
+    private void showWallpaperPreview(Uri imageUri) {
         android.graphics.BitmapFactory.Options bounds=new android.graphics.BitmapFactory.Options();
-        bounds.inJustDecodeBounds=true; android.graphics.BitmapFactory.decodeFile(imageFile.getAbsolutePath(),bounds);
+        bounds.inJustDecodeBounds=true;
+        try(InputStream in=getContentResolver().openInputStream(imageUri)) {
+            if(in==null) throw new IOException("Could not open the selected image.");
+            android.graphics.BitmapFactory.decodeStream(in,null,bounds);
+        } catch(Exception e) { showError("Could not inspect this image: "+e.getMessage()); return; }
         int sample=1, w=Math.max(1,getResources().getDisplayMetrics().widthPixels), h=Math.max(1,getResources().getDisplayMetrics().heightPixels);
         while(bounds.outWidth/sample>w*2 || bounds.outHeight/sample>h*2) sample*=2;
         android.graphics.BitmapFactory.Options opts=new android.graphics.BitmapFactory.Options(); opts.inSampleSize=sample;
-        android.graphics.Bitmap bitmap=android.graphics.BitmapFactory.decodeFile(imageFile.getAbsolutePath(),opts);
+        android.graphics.Bitmap bitmap;
+        try(InputStream in=getContentResolver().openInputStream(imageUri)) { bitmap=in==null?null:android.graphics.BitmapFactory.decodeStream(in,null,opts); }
+        catch(Exception e) { bitmap=null; }
         if(bitmap==null){showError("Could not preview this image.");return;}
         LinearLayout panel=new LinearLayout(this); panel.setPadding(dp(12),dp(8),dp(12),dp(8)); panel.setOrientation(LinearLayout.VERTICAL);
         ImageView preview=new ImageView(this); preview.setImageBitmap(bitmap); preview.setBackgroundColor(Color.BLACK);
@@ -809,8 +853,8 @@ public class SettingsActivity extends Activity {
             .setPositiveButton("Apply",(d,which)->{
                 String fit=group.getCheckedRadioButtonId()==fitIds[1]?"fit":(group.getCheckedRadioButtonId()==fitIds[2]?"stretch":"crop");
                 try {
-                    File savedFile=new File(getFilesDir(),"launcher_background_image"); copyFile(imageFile,savedFile);
-                    prefs.edit().putString("custom_background_path",savedFile.getAbsolutePath()).remove("custom_background_uri")
+                    try { getContentResolver().takePersistableUriPermission(imageUri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch(Exception ignored) { }
+                    prefs.edit().putString("custom_background_uri",imageUri.toString()).remove("custom_background_path")
                         .putString("wallpaper_fit",fit).putInt("background",4).apply();
                     recreate();
                 } catch(Exception e){showError("Could not save that wallpaper: "+e.getMessage());}
