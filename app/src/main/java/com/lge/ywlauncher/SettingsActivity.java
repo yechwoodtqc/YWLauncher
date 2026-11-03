@@ -623,6 +623,14 @@ public class SettingsActivity extends Activity {
                         entries.put(entry);
                     }
                 } finally { cursor.close(); }
+                // Do not silently create a backup that contains no words.
+                // Android exposes the User Dictionary provider here; some LG
+                // keyboard dictionaries are private to the keyboard and are
+                // not exposed through this provider.
+                if (entries.length() == 0) {
+                    runOnUiThread(() -> showError("No words were found in Android's User Dictionary, so no empty backup was created. The LG keyboard's private predictive dictionary is not exposed by Android's public User Dictionary provider."));
+                    return;
+                }
                 org.json.JSONObject backup=new org.json.JSONObject();
                 backup.put("format","ywlauncher-user-dictionary-v1");
                 backup.put("source_package","com.android.providers.userdictionary");
