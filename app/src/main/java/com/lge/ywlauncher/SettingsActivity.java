@@ -15,6 +15,7 @@ import java.util.*;
 
 public class SettingsActivity extends Activity {
     private LinearLayout content;
+    private ScrollView settingsScroll;
     private SharedPreferences prefs;
     private static final int CREATE_LOG_FILE = 501;
     private static final int PICK_BACKGROUND_IMAGE = 502;
@@ -57,15 +58,16 @@ public class SettingsActivity extends Activity {
         toolbar.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
         page.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(50)));
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setVerticalScrollBarEnabled(false);
+        settingsScroll = new ScrollView(this);
+        settingsScroll.setFillViewport(true);
+        settingsScroll.setVerticalScrollBarEnabled(false);
         content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(0, dp(4), 0, dp(16));
-        scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
-        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        settingsScroll.addView(content, new ScrollView.LayoutParams(-1, -2));
+        page.addView(settingsScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(page);
+        settingsScroll.post(() -> settingsScroll.scrollTo(0, prefs.getInt("settings_scroll_y", 0)));
 
         section("Notifications");
         String notificationHelp = isLgFlipModel()
@@ -78,7 +80,7 @@ public class SettingsActivity extends Activity {
 
         section("Appearance");
         addSettingRow("Home layout", layoutSummary(), this::chooseLayout);
-        addSettingRow("Grid rows", prefs.getInt("grid_rows", 3) + " rows per page", () -> chooseGridValue("grid_rows", "Grid rows", 2, 6));
+        addSettingRow("Grid rows", prefs.getInt("grid_rows", defaultGridRows()) + " rows per page", () -> chooseGridValue("grid_rows", "Grid rows", 2, 6));
         addSettingRow("Grid columns", prefs.getInt("grid_columns", 3) + " columns", () -> chooseGridValue("grid_columns", "Grid columns", 2, 6));
         addSettingRow("Icon size", iconSizeSummary(), this::chooseIconSize);
         addSettingRow("Font size", fontSizeSummary(), this::chooseFontSize);
@@ -88,21 +90,16 @@ public class SettingsActivity extends Activity {
         addSettingRow("Focus highlight", prefs.getBoolean("focus_outline_only", false) ? "Outline only" : "Filled highlight", this::chooseFocusStyle);
 
         section("Apps");
-        addSettingRow("Choose apps", "Choose which installed apps appear in the app grid.", this::chooseApps);
+        addSettingRow("Choose apps", "Choose apps with launcher icons and check marks.", () -> startActivity(new Intent(this, ChooseAppsActivity.class)));
         addSettingRow("Reorder apps", "Change the order of app icons.", () -> startActivity(new Intent(this, ReorderAppsActivity.class)));
 
         section("Tweaks");
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
-        addSettingRow("Backup T9 dictionary", "Export the Android User Dictionary to a JSON file.", this::backupUserDictionary);
-        addSettingRow("Restore T9 dictionary", "Merge words from a previous dictionary backup.", this::restoreUserDictionary);
 
-        section("Tools");
-        addSettingRow("Widgets", "Date and weather widgets for the phone home screen.", () ->
-            new AlertDialog.Builder(this)
-                .setMessage("YW Launcher provides English/Hebrew Date and Weather widgets. To add one, open the phone's existing home-screen widget picker and choose “English and Hebrew Date” or “YW Weather”. These widgets appear on the phone's current home app; YW Launcher itself remains a regular app, not the default Home app.")
-                .setPositiveButton("OK", null).show());
-        addSettingRow("Export logcat", "Save recent Android log messages to a text file.", this::exportLogcat);
+
     }
+
+    @Override protected void onPause() { if(settingsScroll!=null) prefs.edit().putInt("settings_scroll_y",settingsScroll.getScrollY()).apply(); super.onPause(); }
 
     private void updateKeptWallpaper() {
         // Turning the switch off only disables restoration. Turning it on asks
@@ -226,18 +223,20 @@ public class SettingsActivity extends Activity {
         return "list".equals(prefs.getString("layout_mode", "grid")) ? "List" : "Grid";
     }
 
+    private int defaultGridRows() { String model=(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).toLowerCase(Locale.US); return (model.contains("exalt")||model.contains("vn220")||model.contains("lg-ax"))?4:3; }
+
     private int defaultIconSize() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
         if (model.contains("exalt") || model.contains("vn220") || model.contains("lg-ax")) return 48;
         return 40;
     }
 
-    private float fontScale() { return prefs.getInt("font_size_percent", 100) / 100f; }
+    private float fontScale() { int v=prefs.getInt("font_size_percent",100); if(v<=85)return .85f; if(v<=100)return 1f; if(v<=115)return 1.15f; if(v<=130)return 1.3f; return 1.45f; }
 
-    private String fontSizeSummary() { return prefs.getInt("font_size_percent", 100) + "%"; }
+    private String fontSizeSummary() { int v=prefs.getInt("font_size_percent",100); if(v<=85)return "Smaller"; if(v<=100)return "Small"; if(v<=115)return "Large"; if(v<=130)return "Larger"; return "Biggest"; }
 
     private void chooseFontSize() {
-        String[] labels = {"Small (85%)", "Default (100%)", "Large (115%)", "Extra large (130%)", "Largest (145%)"};
+        String[] labels = {"Smaller", "Small", "Large", "Larger", "Biggest"};
         int[] values = {85, 100, 115, 130, 145};
         int current = prefs.getInt("font_size_percent", 100), selected = 1;
         for (int i=0;i<values.length;i++) if(values[i]==current) selected=i;
