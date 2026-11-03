@@ -663,7 +663,7 @@ public class SettingsActivity extends Activity {
                     values.put(android.provider.UserDictionary.Words.APP_ID,0);
                     String shortcut=entry.optString(android.provider.UserDictionary.Words.SHORTCUT,"");
                     if(shortcut.isEmpty()) values.putNull(android.provider.UserDictionary.Words.SHORTCUT); else values.put(android.provider.UserDictionary.Words.SHORTCUT,shortcut);
-                    String identity=word.toLowerCase(Locale.US)+"|"+locale+"|"+shortcut;
+                    String identity=word.trim().toLowerCase(Locale.US)+"|"+locale+"|"+shortcut;
                     if(existing.contains(identity)){skipped++;continue;}
                     Uri created=getContentResolver().insert(android.provider.UserDictionary.Words.CONTENT_URI,values);
                     if(created!=null){inserted++;existing.add(identity);}else skipped++;
