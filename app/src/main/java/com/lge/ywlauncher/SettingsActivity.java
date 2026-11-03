@@ -816,13 +816,9 @@ public class SettingsActivity extends Activity {
     private void launchFileBrowser(String mode, String filter, int requestCode) {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        if ("image".equals(filter)) intent.setType("image/*");
-        else if ("json".equals(filter)) intent.setType("application/json");
-        else intent.setType("text/plain");
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        if ("image".equals(filter)) intent.setType("image/*");
-        else if ("json".equals(filter)) intent.setType("application/json");
-        else intent.setType("*/*");
+        // Older file managers often do not advertise JSON MIME support. Let the
+        // user browse files and validate the selected backup after opening it.
+        intent.setType("image".equals(filter) ? "image/*" : "*/*");
         try { startActivityForResult(Intent.createChooser(intent, "Choose file"), requestCode); }
         catch (Exception e) { showError("No file browser is available on this phone."); }
     }
