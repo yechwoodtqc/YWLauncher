@@ -778,6 +778,7 @@ public class SettingsActivity extends Activity {
                         byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))!=-1) out.write(buffer,0,n);
                     }
                     prefs.edit().putBoolean("keep_wallpaper",true).apply();
+                    chooseKeptWallpaperFit();
                     Toast.makeText(this,"Wallpaper image saved for restoration after restart.",Toast.LENGTH_LONG).show();
                 } catch(Exception e) { prefs.edit().putBoolean("keep_wallpaper",false).apply(); showError("Could not save that wallpaper image: "+e.getMessage()); }
                 recreate(); return;
@@ -859,6 +860,18 @@ public class SettingsActivity extends Activity {
         try(InputStream in=new FileInputStream(source); OutputStream out=new FileOutputStream(destination)) {
             byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))!=-1) out.write(buffer,0,n);
         }
+    }
+
+    private void chooseKeptWallpaperFit() {
+        String[] choices={"Fill / crop","Fit entire image","Stretch"};
+        String current=prefs.getString("kept_wallpaper_fit","crop");
+        int selected="fit".equals(current)?1:("stretch".equals(current)?2:0);
+        new AlertDialog.Builder(this).setTitle("Kept wallpaper appearance")
+            .setSingleChoiceItems(choices,selected,(dialog,which)->{
+                String value=which==1?"fit":(which==2?"stretch":"crop");
+                prefs.edit().putString("kept_wallpaper_fit",value).apply();
+                dialog.dismiss();
+            }).setNegativeButton("Later",null).show();
     }
 
     private void showWallpaperPreview(Uri imageUri) {
