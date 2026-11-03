@@ -24,10 +24,30 @@ public class BootReceiver extends BroadcastReceiver {
                 try {
                     File file = new File(context.getFilesDir(), "kept_wallpaper.png");
                     if (file.isFile() && file.length() > 0) {
-                        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+                        BitmapFactory.Options bounds = new BitmapFactory.Options();
+                        bounds.inJustDecodeBounds = true;
+                        BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
+                        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return;
+
+                        // Decode near the display resolution instead of loading a
+                        // full-resolution camera image during the boot broadcast.
+                        android.util.DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+                        int targetWidth = Math.max(1, metrics.widthPixels * 2);
+                        int targetHeight = Math.max(1, metrics.heightPixels * 2);
+                        int sampleSize = 1;
+                        while (bounds.outWidth / sampleSize > targetWidth
+                            || bounds.outHeight / sampleSize > targetHeight) {
+                            sampleSize *= 2;
+                        }
+                        BitmapFactory.Options options = new BitmapFactory.Options();
+                        options.inSampleSize = sampleSize;
+                        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
                         if (bitmap != null) {
-                            WallpaperManager.getInstance(context).setBitmap(bitmap);
-                            bitmap.recycle();
+                            try {
+                                WallpaperManager.getInstance(context).setBitmap(bitmap);
+                            } finally {
+                                bitmap.recycle();
+                            }
                         }
                     }
                 } catch (Exception ignored) {
