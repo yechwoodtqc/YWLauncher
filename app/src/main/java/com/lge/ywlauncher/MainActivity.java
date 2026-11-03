@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
         selectionCount = new TextView(this);
         selectionCount.setTextColor(ThemeUtils.text(this));
         selectionCount.setTextSize(13);
-        toolbar.addView(selectionCount);
+        selectionCount.setVisibility(View.GONE);
 
         hideSelected = new Button(this);
         hideSelected.setText("");
@@ -76,7 +76,8 @@ public class MainActivity extends Activity {
         hideSelected.setBackgroundColor(Color.TRANSPARENT);
         hideSelected.setPadding(dp(8), 0, dp(8), 0);
         hideSelected.setOnFocusChangeListener((v, focused) -> hideSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
+        hideSelected.setFocusable(false);
+        toolbar.addView(hideSelected, new LinearLayout.LayoutParams(dp(40), dp(42)));
 
         uninstallSelected = new Button(this);
         uninstallSelected.setText("");
@@ -87,7 +88,8 @@ public class MainActivity extends Activity {
         uninstallSelected.setBackgroundColor(Color.TRANSPARENT);
         uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
         uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(44), dp(42)));
+        uninstallSelected.setFocusable(false);
+        toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(40), dp(42)));
 
         settingsButton = new ImageButton(this);
         settingsButton.setImageResource(R.drawable.ic_settings_modern);
@@ -97,7 +99,7 @@ public class MainActivity extends Activity {
         settingsButton.setBackground(ThemeUtils.focusOutlineBackground(this));
         settingsButton.setFocusable(true);
         settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
-        toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(54), dp(48)));
+        toolbar.addView(settingsButton, new LinearLayout.LayoutParams(dp(40), dp(42)));
 
         // Keep the clear-selection X as the final control, flush to the
         // right edge of the toolbar on narrow flip-phone screens.
@@ -105,7 +107,8 @@ public class MainActivity extends Activity {
         cancelSelection.setText("");
         cancelSelection.setContentDescription("Clear selection");
         cancelSelection.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_close_modern, 0, 0, 0);
-        cancelSelection.setPadding(dp(5), 0, dp(5), 0);
+        cancelSelection.setPadding(0, 0, 0, 0);
+        cancelSelection.setGravity(Gravity.CENTER);
         cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancelSelection.setOnClickListener(v -> clearSelection());
         toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(dp(42), dp(42)));
@@ -226,6 +229,8 @@ public class MainActivity extends Activity {
         return bitmap;
     }
 
+    private int defaultGridRows() { String m=(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).toLowerCase(Locale.US); return (m.contains("exalt")||m.contains("vn220")||m.contains("lg-ax"))?4:3; }
+
     private float prefsFontScale() { return getSharedPreferences("launcher", 0).getInt("font_size_percent", 100) / 100f; }
 
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -332,7 +337,7 @@ public class MainActivity extends Activity {
             }
             return;
         }
-        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
+        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         int pageSize = rows * columns;
         int pageCount = Math.max(1, (apps.size() + pageSize - 1) / pageSize);
@@ -530,7 +535,7 @@ public class MainActivity extends Activity {
     private void updateSelectionToolbar() {
         boolean selecting = !selectedApps.isEmpty();
         if (selectionCount != null) {
-            selectionCount.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            selectionCount.setVisibility(View.GONE);
             selectionCount.setText(selectedApps.size() + " selected");
         }
         if (hideSelected != null) hideSelected.setVisibility(selecting ? View.VISIBLE : View.GONE);
