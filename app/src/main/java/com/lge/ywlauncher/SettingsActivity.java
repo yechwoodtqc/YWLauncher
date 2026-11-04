@@ -926,12 +926,11 @@ public class SettingsActivity extends Activity {
         preview.setImageBitmap(bitmap);
         preview.setBackgroundColor(Color.BLACK);
         preview.setScaleType(ImageView.ScaleType.MATRIX);
-        int previewWidth = Math.min(dp(230), Math.max(dp(150),
-            getResources().getDisplayMetrics().widthPixels - dp(64)));
         float screenRatio = getResources().getDisplayMetrics().heightPixels
             / (float) Math.max(1, getResources().getDisplayMetrics().widthPixels);
-        int previewHeight = Math.min(dp(300), Math.round(previewWidth * screenRatio));
-        if (previewHeight < dp(150)) previewHeight = dp(150);
+        int previewHeight = Math.min(dp(300), Math.max(dp(180),
+            getResources().getDisplayMetrics().heightPixels - dp(250)));
+        int previewWidth = Math.min(dp(230), Math.max(dp(110), Math.round(previewHeight / screenRatio)));
         FrameLayout previewFrame = new FrameLayout(this);
         previewFrame.setBackgroundColor(Color.BLACK);
         previewFrame.addView(preview, new FrameLayout.LayoutParams(-1, -1));
@@ -1004,7 +1003,10 @@ public class SettingsActivity extends Activity {
         zoomLabel.setText("Zoom  " + Math.round(initialZoom * 100) + "%");
         panel.addView(zoom);
 
-        new AlertDialog.Builder(this).setTitle("Keep wallpaper preview").setView(panel)
+        ScrollView previewScroll = new ScrollView(this);
+        previewScroll.setFillViewport(false);
+        previewScroll.addView(panel);
+        new AlertDialog.Builder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
             .setPositiveButton("Apply", (dialog, which) -> {
                 String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
                     (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
