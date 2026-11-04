@@ -37,11 +37,10 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         pageTouchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
         ThemeUtils.apply(this);
-        setTaskDescription(new android.app.ActivityManager.TaskDescription(
-            "YW Launcher", createTaskIcon(R.drawable.ic_launcher), ThemeUtils.accent(this)));
         appliedTheme = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         appliedAccent = ThemeUtils.accent(this);
         build();
+        updateRecentTaskDescription();
         loadApps();
         scroll.post(() -> { if (!isFinishing()) { renderApps(); focusFirstApp(); } });
         postLaunchNotification();
@@ -254,6 +253,18 @@ public class MainActivity extends Activity {
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
+        }
+    }
+
+    private void updateRecentTaskDescription() {
+        if (android.os.Build.VERSION.SDK_INT < 21) return;
+        int accent = ThemeUtils.accent(this);
+        accent = Color.rgb(Color.red(accent), Color.green(accent), Color.blue(accent));
+        try {
+            setTaskDescription(new ActivityManager.TaskDescription(
+                "YW Launcher", createTaskIcon(R.drawable.ic_launcher), accent));
+        } catch (RuntimeException ignored) {
+            setTaskDescription(new ActivityManager.TaskDescription("YW Launcher"));
         }
     }
 
@@ -702,8 +713,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (android.os.Build.VERSION.SDK_INT >= 21) {
-            setTaskDescription(new ActivityManager.TaskDescription(
-                "YW Launcher", createTaskIcon(R.drawable.ic_launcher), ThemeUtils.accent(this)));
+            updateRecentTaskDescription();
             try {
                 for (ActivityManager.AppTask task : ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getAppTasks())
                     task.setExcludeFromRecents(false);
