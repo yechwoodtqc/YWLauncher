@@ -818,8 +818,13 @@ public class SettingsActivity extends Activity {
     }
 
     private void launchFileBrowser(String mode, String filter, int requestCode) {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        // ACTION_OPEN_DOCUMENT grants a persistable read permission. This is
+        // important for custom backgrounds, whose URI is reopened on later
+        // launcher starts rather than copied into private storage.
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+            | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         // Older file managers often do not advertise JSON MIME support. Let the
         // user browse files and validate the selected backup after opening it.
         intent.setType("image".equals(filter) ? "image/*" : "*/*");
