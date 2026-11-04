@@ -55,6 +55,7 @@ public class BootReceiver extends BroadcastReceiver {
                                 Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
                                 float sx=width/(float)bitmap.getWidth(), sy=height/(float)bitmap.getHeight();
                                 float scale="fit".equals(fit)?Math.min(sx,sy):("stretch".equals(fit)?-1f:Math.max(sx,sy));
+                                if (!"stretch".equals(fit)) scale *= Math.max(1f, Math.min(2f, prefs.getFloat("kept_wallpaper_zoom", 1f)));
                                 Rect destination;
                                 if("stretch".equals(fit)) destination=new Rect(0,0,width,height);
                                 else {
