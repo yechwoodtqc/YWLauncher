@@ -511,8 +511,8 @@ public class WeatherActivity extends Activity {
         card.setBackground(ThemeUtils.focusBackground(this));
         card.setFocusable(true);
         card.setClickable(true);
-        card.addView(weatherIcon(period.optString("shortForecast", ""), 40),
-            new LinearLayout.LayoutParams(dp(48), dp(48)));
+        card.addView(weatherIcon(period.optString("shortForecast", ""), 48),
+            new LinearLayout.LayoutParams(dp(56), dp(56)));
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(dp(8), 0, dp(3), 0);
@@ -895,7 +895,7 @@ public class WeatherActivity extends Activity {
         // Older flip phones may not deliver a fresh callback promptly. Keep a
         // recent, reasonably accurate cached fix as a bounded fallback.
         long now = System.currentTimeMillis();
-        String[] providers = {LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER};
+        String[] providers = {LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER, LocationManager.PASSIVE_PROVIDER};
         for (String provider : providers) {
             try {
                 if ((LocationManager.GPS_PROVIDER.equals(provider) && !hasFine)
@@ -920,12 +920,12 @@ public class WeatherActivity extends Activity {
                 long fixTime = location.getTime();
                 long age = System.currentTimeMillis() - fixTime;
                 if (fixTime < requestStarted - 2000L || age < 0 || age > 30000L) return;
-                if (!location.hasAccuracy() || location.getAccuracy() > 1000f) return;
+                if (!location.hasAccuracy() || location.getAccuracy() > 5000f) return;
                 if (Double.isNaN(location.getLatitude()) || Double.isInfinite(location.getLatitude())
                     || Double.isNaN(location.getLongitude()) || Double.isInfinite(location.getLongitude())) return;
 
                 best[0] = betterLocation(best[0], location);
-                if (location.getAccuracy() <= 250f) {
+                if (location.getAccuracy() <= 500f) {
                     finished[0] = true;
                     stopLocationUpdates(manager);
                     onCurrentLocation(location);
@@ -976,7 +976,7 @@ public class WeatherActivity extends Activity {
                 locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again with device Location enabled.");
             }
         };
-        handler.postDelayed(locationTimeout, 30000L);
+        handler.postDelayed(locationTimeout, 45000L);
     }
 
     private Location betterLocation(Location oldLocation,Location newLocation){
@@ -1039,6 +1039,18 @@ public class WeatherActivity extends Activity {
 
     private void locationUnavailable(String message) {
         handler.post(() -> {
+            SharedPreferences saved = prefs();
+            // A previously obtained current-location fix is a useful fallback
+            // on older flip phones whose location providers often fail to wake.
+            if ("current".equals(saved.getString("weather_location_source", ""))
+                && saved.contains("weather_lat") && saved.contains("weather_lon")) {
+                float lat = saved.getFloat("weather_lat", 999f);
+                float lon = saved.getFloat("weather_lon", 999f);
+                if (lat >= -90f && lat <= 90f && lon >= -180f && lon <= 180f) {
+                    useCurrentCoordinates(lat, lon, "Last known location");
+                    return;
+                }
+            }
             setLoading(false, null);
             showWeatherError(message);
         });
