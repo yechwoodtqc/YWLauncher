@@ -31,10 +31,11 @@ public class MainActivity extends Activity {
     private boolean processingUninstalls;
     private float pageTouchDownX, pageTouchDownY;
     private boolean pagingGesture;
-    private final int pageTouchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+    private int pageTouchSlop = 8;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        pageTouchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
         ThemeUtils.apply(this);
         setTaskDescription(new android.app.ActivityManager.TaskDescription(
             "YW Launcher", createTaskIcon(R.drawable.ic_launcher), ThemeUtils.accent(this)));
@@ -130,7 +131,7 @@ public class MainActivity extends Activity {
                     float dy = event.getY() - pageTouchDownY;
                     if (Math.abs(dx) > pageTouchSlop && Math.abs(dx) > Math.abs(dy) * 1.25f) {
                         int direction = dx < 0 ? 1 : -1;
-                        if (pageCount() > 1 && ((direction > 0 && currentPage < pageCount() - 1)
+                        if ("grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid")) && pageCount() > 1 && ((direction > 0 && currentPage < pageCount() - 1)
                             || (direction < 0 && currentPage > 0))) {
                             pagingGesture = true;
                             return true;
@@ -476,7 +477,7 @@ public class MainActivity extends Activity {
     }
 
     private int pageCount() {
-        int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6)
+        int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6)
             * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         return Math.max(1, (apps.size() + size - 1) / size);
     }
