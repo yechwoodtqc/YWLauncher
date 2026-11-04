@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -93,7 +95,7 @@ public class ChooseAppsActivity extends Activity {
                 body.addView(icon,new LinearLayout.LayoutParams(dp(42),dp(42)));
                 TextView label=new TextView(this);label.setText(app.loadLabel(getPackageManager()));label.setTextSize(11);label.setTextColor(ThemeUtils.text(this));label.setGravity(Gravity.CENTER);label.setMaxLines(2);label.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 body.addView(label,new LinearLayout.LayoutParams(-1,-2)); cell.addView(body,new FrameLayout.LayoutParams(-1,-1));
-                TextView check=new TextView(this);check.setText("✓");check.setTextSize(19);check.setTypeface(null,android.graphics.Typeface.BOLD);check.setTextColor(Color.WHITE);check.setGravity(Gravity.CENTER);
+                View check=new CheckMarkView();
                 GradientDrawable mark=new GradientDrawable();mark.setColor(0xff168b43);mark.setShape(GradientDrawable.OVAL);check.setBackground(mark);
                 FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(dp(25),dp(25),Gravity.TOP|Gravity.END);cp.setMargins(0,dp(2),dp(2),0);cell.addView(check,cp);
                 check.setVisibility(included.contains(name)?View.VISIBLE:View.GONE);
@@ -105,5 +107,28 @@ public class ChooseAppsActivity extends Activity {
             grid.addView(line,new LinearLayout.LayoutParams(-1,h));
         }
     }
+    private final class CheckMarkView extends View {
+        private final Paint checkPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        CheckMarkView() {
+            super(ChooseAppsActivity.this);
+            checkPaint.setColor(Color.WHITE);
+            checkPaint.setStyle(Paint.Style.STROKE);
+            checkPaint.setStrokeWidth(dp(2.8f));
+            checkPaint.setStrokeCap(Paint.Cap.SQUARE);
+            checkPaint.setStrokeJoin(Paint.Join.MITER);
+            setContentDescription("Selected");
+        }
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float scale = Math.min(getWidth(), getHeight()) / 25f;
+            canvas.save();
+            canvas.translate((getWidth() - 25f * scale) / 2f, (getHeight() - 25f * scale) / 2f);
+            canvas.scale(scale, scale);
+            canvas.drawLine(5.5f, 12.5f, 10.0f, 17.0f, checkPaint);
+            canvas.drawLine(10.0f, 17.0f, 19.0f, 7.5f, checkPaint);
+            canvas.restore();
+        }
+    }
+
     @Override public boolean onKeyDown(int keyCode,KeyEvent event){return super.onKeyDown(keyCode,event);}
 }
