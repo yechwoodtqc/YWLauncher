@@ -44,8 +44,9 @@ public class ChooseAppsActivity extends Activity {
         ImageButton back=new ImageButton(this); back.setImageResource(R.drawable.ic_back_modern); back.setColorFilter(ThemeUtils.text(this));
         back.setContentDescription("Back"); back.setBackground(ThemeUtils.focusOutlineBackground(this));
         back.setOnClickListener(v->finish()); bar.addView(back,new LinearLayout.LayoutParams(dp(46),dp(48)));
-        TextView title=new TextView(this); title.setText("Choose apps"); title.setTextSize(19); title.setTypeface(null,android.graphics.Typeface.BOLD); title.setTextColor(ThemeUtils.text(this));
+        TextView title=new TextView(this); title.setText("Choose apps"); title.setTextSize(19); title.setTypeface(null,android.graphics.Typeface.BOLD); title.setTextColor(ThemeUtils.text(this)); title.setGravity(Gravity.CENTER);
         bar.addView(title,new LinearLayout.LayoutParams(0,dp(48),1));
+        View balance=new View(this); bar.addView(balance,new LinearLayout.LayoutParams(dp(46),dp(48)));
         root.addView(bar,new LinearLayout.LayoutParams(-1,dp(48)));
 
         scroll=new ScrollView(this); scroll.setFillViewport(true); scroll.setVerticalScrollBarEnabled(false);
