@@ -336,9 +336,26 @@ public class SettingsActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("Background").setSingleChoiceItems(labels,selected,(dialog,which)->{
             int value=values[which];dialog.dismiss();
             if(value==3){prefs.edit().putInt("background",3).apply();choosePalette("Custom background color","custom_background",Color.rgb(25,35,48));}
-            else if(value==4) launchFileBrowser("open","image",PICK_BACKGROUND_IMAGE);
+            else if(value==4) chooseCustomBackgroundSource();
             else {prefs.edit().putInt("background",value).apply();recreate();}
         }).setNegativeButton("Cancel",null).show();
+    }
+
+    private void chooseCustomBackgroundSource() {
+        new AlertDialog.Builder(this).setTitle("Choose background image")
+            .setItems(new String[]{"Gallery", "File manager"}, (dialog, which) -> {
+                Intent intent = new Intent(which == 0 ? Intent.ACTION_GET_CONTENT : Intent.ACTION_OPEN_DOCUMENT);
+                if (which == 1) intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image/*");
+                if (which == 1) intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                try {
+                    startActivityForResult(Intent.createChooser(intent,
+                        which == 0 ? "Choose image from gallery" : "Browse image files"), PICK_BACKGROUND_IMAGE);
+                } catch (Exception e) {
+                    showError("No compatible image picker or file manager is available.");
+                }
+            }).setNegativeButton("Cancel", null).show();
     }
 
     private void chooseTheme() {
@@ -1060,9 +1077,18 @@ public class SettingsActivity extends Activity {
             .setPositiveButton("Apply",(d,which)->{
                 String fit=group.getCheckedRadioButtonId()==fitIds[1]?"fit":(group.getCheckedRadioButtonId()==fitIds[2]?"stretch":"crop");
                 try {
-                    try { getContentResolver().takePersistableUriPermission(imageUri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch(Exception ignored) { }
-                    prefs.edit().putString("custom_background_uri",imageUri.toString()).remove("custom_background_path")
-                        .putString("wallpaper_fit",fit).putInt("background",4).apply();
+                    File savedImage = new File(getFilesDir(), "custom_background.png");
+                    try (InputStream input = getContentResolver().openInputStream(imageUri);
+                         OutputStream output = new FileOutputStream(savedImage)) {
+                        if (input == null) throw new IOException("The selected image could not be opened.");
+                        byte[] buffer = new byte[8192];
+                        int count;
+                        while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                        output.flush();
+                    }
+                    prefs.edit().putString("custom_background_path", savedImage.getAbsolutePath())
+                        .remove("custom_background_uri").putString("wallpaper_fit",fit)
+                        .putInt("background",4).apply();
                     recreate();
                 } catch(Exception e){showError("Could not save that wallpaper: "+e.getMessage());}
             }).setNegativeButton("Cancel",null).create();
