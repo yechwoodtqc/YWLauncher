@@ -57,8 +57,11 @@ public class BootReceiver extends BroadcastReceiver {
                                 float scale="fit".equals(fit)?Math.min(sx,sy):("stretch".equals(fit)?-1f:Math.max(sx,sy));
                                 if (!"stretch".equals(fit)) scale *= Math.max(1f, Math.min(2f, prefs.getFloat("kept_wallpaper_zoom", 1f)));
                                 Rect destination;
-                                if("stretch".equals(fit)) destination=new Rect(0,0,width,height);
-                                else {
+                                if("stretch".equals(fit)) {
+                                    float zoom=Math.max(1f,Math.min(2f,prefs.getFloat("kept_wallpaper_zoom",1f)));
+                                    int dw=Math.round(width*zoom), dh=Math.round(height*zoom);
+                                    destination=new Rect((width-dw)/2,(height-dh)/2,(width+dw)/2,(height+dh)/2);
+                                } else {
                                     int dw=Math.round(bitmap.getWidth()*scale), dh=Math.round(bitmap.getHeight()*scale);
                                     destination=new Rect((width-dw)/2,(height-dh)/2,(width+dw)/2,(height+dh)/2);
                                 }
