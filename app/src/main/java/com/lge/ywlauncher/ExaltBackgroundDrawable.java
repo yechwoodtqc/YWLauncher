@@ -54,8 +54,16 @@ public final class ExaltBackgroundDrawable extends Drawable {
         // Deep blue pool along the lower-left keeps icons legible.
         paint.setShader(new RadialGradient(w * 0.08f, h * 0.98f,
             Math.max(w, h) * 0.63f,
-            new int[] { 0x99051a58, 0x440b286c, 0x00000000 },
+            new int[] { 0xaa061b60, 0x550b286c, 0x00000000 },
             new float[] { 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
+        canvas.drawRect(0, 0, w, h, paint);
+
+        // A distinct violet bloom reaches the bottom-right corner; the
+        // previous right-side glow faded before it reached the lower edge.
+        paint.setShader(new RadialGradient(w * 1.02f, h * 1.04f,
+            Math.max(w, h) * 0.62f,
+            new int[] { 0xaa8b55c9, 0x66804ab7, 0x00000000 },
+            new float[] { 0f, 0.52f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, h, paint);
 
         paint.setShader(null);
