@@ -1095,15 +1095,15 @@ public class WeatherActivity extends Activity {
         private final Path cloudPath = new Path();
         private final Path detailPath = new Path();
         private final Shader sunGradient = new RadialGradient(24, 25, 18,
-            new int[]{0xfffff9b8, 0xffffd52e, 0xffff9b12}, null, Shader.TileMode.CLAMP);
+            new int[]{0xfffff6a8, 0xffffc928, 0xffff8b16}, null, Shader.TileMode.CLAMP);
         private final Shader moonGradient = new RadialGradient(27, 20, 20,
-            new int[]{0xfffff2c6, 0xffe0d9af, 0xffb4b8d0}, null, Shader.TileMode.CLAMP);
+            new int[]{0xfffff4d0, 0xffc9c8ff, 0xff858fe8}, null, Shader.TileMode.CLAMP);
         private final Shader cloudGradient = new LinearGradient(17, 17, 59, 58,
-            new int[]{0xfff8fdff, 0xffb9e2ff, 0xff73b9f3}, null, Shader.TileMode.CLAMP);
+            new int[]{0xffffffff, 0xff67d8ff, 0xff287de8}, null, Shader.TileMode.CLAMP);
         private final Shader dropGradient = new LinearGradient(22, 61, 27, 73,
-            0xffa5e3ff, 0xff2688db, Shader.TileMode.CLAMP);
+            0xff69edff, 0xff1670e8, Shader.TileMode.CLAMP);
         private final Shader boltGradient = new LinearGradient(37, 48, 51, 72,
-            0xfffff1a5, 0xffffb83f, Shader.TileMode.CLAMP);
+            0xfffff27a, 0xffff8c28, Shader.TileMode.CLAMP);
         private final int size;
 
         WeatherIconView(Context context, String forecast, int sizeDp) {
@@ -1124,7 +1124,7 @@ public class WeatherActivity extends Activity {
             paint.setStrokeWidth(3.2f);
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setShader(null);
-            paint.setColor(0xffffc21a);
+            paint.setColor(0xffffb51b);
             for (int i = 0; i < 8; i++) {
                 double angle = Math.PI * i / 4d;
                 float dx = (float) Math.cos(angle);
@@ -1156,7 +1156,7 @@ public class WeatherActivity extends Activity {
             buildCloud();
             paint.setStyle(Paint.Style.FILL);
             paint.setShader(null);
-            paint.setColor(0x402b5c91);
+            paint.setColor(0x66517fc9);
             canvas.save();
             canvas.translate(0, 2.5f);
             canvas.drawPath(cloudPath, paint);
@@ -1194,7 +1194,7 @@ public class WeatherActivity extends Activity {
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(1.6f);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setColor(0xff169eff);
+            paint.setColor(0xff7568f5);
             for (int i = 0; i < 3; i++) {
                 canvas.save();
                 canvas.rotate(i * 60, x, y);
@@ -1224,7 +1224,7 @@ public class WeatherActivity extends Activity {
 
             paint.setShader(null);
             paint.setStyle(Paint.Style.FILL);
-            int halo = thunder ? 0x263e50a5 : (rain || snow || fog ? 0x263b9cd8 : (night ? 0x263c4b86 : 0x26ffbd62));
+            int halo = thunder ? 0x665f49d8 : (rain || snow || fog ? 0x5540bfe8 : (night ? 0x665b63c8 : 0x55ffc44d));
             paint.setColor(halo);
             canvas.drawCircle(40, 40, 37, paint);
             paint.setColor(0x18ffffff);
@@ -1269,7 +1269,7 @@ public class WeatherActivity extends Activity {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(2.5f);
                 paint.setStrokeCap(Paint.Cap.ROUND);
-                paint.setColor(0xff70b9ef);
+                paint.setColor(0xff35bfe8);
                 canvas.drawLine(12, 65, 67, 65, paint);
                 canvas.drawLine(18, 72, 61, 72, paint);
                 paint.setStyle(Paint.Style.FILL);
