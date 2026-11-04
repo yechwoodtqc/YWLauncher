@@ -66,6 +66,12 @@ public class ReorderAppsActivity extends Activity {
         refreshLabels();
     }
 
+    private String labelFor(String name) {
+        for (ResolveInfo app : apps) if (app.activityInfo.name.equals(name))
+            return app.loadLabel(getPackageManager()).toString();
+        return name;
+    }
+
     private void refreshLabels() {
         labels.clear();
         for (String name : order) {
@@ -110,6 +116,21 @@ public class ReorderAppsActivity extends Activity {
         title.setTextColor(ThemeUtils.text(this));
         title.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, dp(48), 1));
+        Button alphabetize = new Button(this);
+        alphabetize.setText("A–Z");
+        alphabetize.setTextSize(12);
+        alphabetize.setContentDescription("Sort apps alphabetically");
+        alphabetize.setTextColor(ThemeUtils.text(this));
+        alphabetize.setBackground(ThemeUtils.focusOutlineBackground(this));
+        alphabetize.setOnClickListener(v -> {
+            Collections.sort(order, (left, right) ->
+                String.CASE_INSENSITIVE_ORDER.compare(labelFor(left), labelFor(right)));
+            selected = 0;
+            refreshLabels();
+            adapter.notifyDataSetChanged();
+            if (!order.isEmpty()) list.setSelection(0);
+        });
+        toolbar.addView(alphabetize, new LinearLayout.LayoutParams(dp(58), dp(44)));
         root.addView(toolbar);
 
         TextView help = new TextView(this);
@@ -178,10 +199,10 @@ public class ReorderAppsActivity extends Activity {
         cancel.setTextColor(ThemeUtils.text(this));
         save.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancel.setBackground(ThemeUtils.focusOutlineBackground(this));
-        footer.addView(upGroup, new LinearLayout.LayoutParams(0, dp(52), 0.9f));
-        footer.addView(downGroup, new LinearLayout.LayoutParams(0, dp(52), 0.9f));
-        footer.addView(save, new LinearLayout.LayoutParams(0, dp(52), 1.35f));
-        footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(52), 1.35f));
+        footer.addView(cancel, new LinearLayout.LayoutParams(0, dp(52), 1.15f));
+        footer.addView(upGroup, new LinearLayout.LayoutParams(0, dp(52), 0.75f));
+        footer.addView(downGroup, new LinearLayout.LayoutParams(0, dp(52), 0.75f));
+        footer.addView(save, new LinearLayout.LayoutParams(0, dp(52), 1.15f));
         root.addView(footer);
 
         save.setOnClickListener(v -> {
