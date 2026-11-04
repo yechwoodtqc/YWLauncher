@@ -857,20 +857,8 @@ public class WeatherActivity extends Activity {
             return;
         }
 
-        // Do not require GPS specifically: many phones provide a usable fix
-        // through the network provider while GPS is disabled or unavailable.
-        LocationManager lm = (LocationManager)getSystemService(LOCATION_SERVICE);
-        boolean gpsEnabled = false;
-        boolean networkEnabled = false;
-        if (lm != null) {
-            try { gpsEnabled = hasFine && lm.isProviderEnabled(LocationManager.GPS_PROVIDER); }
-            catch (Exception ignored) { }
-            try { networkEnabled = hasCoarse && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER); }
-            catch (Exception ignored) { }
-        }
-        // Even when live providers are switched off, findCurrentLocation()
-        // can use a recent cached fix; otherwise it gives the user a clear
-        // city/ZIP fallback instead of failing before checking the cache.
+        // findCurrentLocation() checks both live providers and a recent
+        // cached fix before offering the city/ZIP fallback.
         findCurrentLocation();
     }
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
