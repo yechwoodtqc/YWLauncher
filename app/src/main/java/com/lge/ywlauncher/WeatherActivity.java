@@ -868,18 +868,9 @@ public class WeatherActivity extends Activity {
             try { networkEnabled = hasCoarse && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER); }
             catch (Exception ignored) { }
         }
-        if (!gpsEnabled && !networkEnabled) {
-            setLoading(false, null);
-            new AlertDialog.Builder(this).setTitle("Turn on device location")
-                .setMessage("Android has no enabled location provider available to YW Weather. Turn on Location in Android settings, or choose a city or ZIP code.")
-                .setPositiveButton("Open settings", (d,w) -> {
-                    try { startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
-                    catch (Exception e) { showLocationsPage(); }
-                })
-                .setNegativeButton("Choose city or ZIP", (d,w) -> showLocationsPage())
-                .show();
-            return;
-        }
+        // Even when live providers are switched off, findCurrentLocation()
+        // can use a recent cached fix; otherwise it gives the user a clear
+        // city/ZIP fallback instead of failing before checking the cache.
         findCurrentLocation();
     }
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
