@@ -902,6 +902,20 @@ public class WeatherActivity extends Activity {
         pendingLocationListener = null;
 
         final Location[] best = {null};
+        // Older flip phones may not deliver a fresh callback promptly. Keep a
+        // recent, reasonably accurate cached fix as a bounded fallback.
+        long now = System.currentTimeMillis();
+        String[] providers = {LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER};
+        for (String provider : providers) {
+            try {
+                if ((LocationManager.GPS_PROVIDER.equals(provider) && !hasFine)
+                    || (LocationManager.NETWORK_PROVIDER.equals(provider) && !hasCoarse)) continue;
+                Location cached = manager.getLastKnownLocation(provider);
+                if (cached == null || !cached.hasAccuracy() || cached.getAccuracy() > 5000f) continue;
+                long age = now - cached.getTime();
+                if (age >= 0 && age <= 15L * 60L * 1000L) best[0] = betterLocation(best[0], cached);
+            } catch (Exception ignored) { }
+        }
         final long requestStarted = System.currentTimeMillis();
         final boolean[] finished = {false};
 
@@ -954,7 +968,8 @@ public class WeatherActivity extends Activity {
 
         if (!requested) {
             stopLocationUpdates(manager);
-            locationUnavailable("No usable device location provider is enabled. Turn on Location or choose a city or ZIP code.");
+            if (best[0] != null) onCurrentLocation(best[0]);
+            else locationUnavailable("No usable device location provider is enabled. Turn on Location or choose a city or ZIP code.");
             return;
         }
 
@@ -964,9 +979,8 @@ public class WeatherActivity extends Activity {
             stopLocationUpdates(manager);
             Location result = best[0];
             long fixAge = result == null ? Long.MAX_VALUE : System.currentTimeMillis() - result.getTime();
-            if (result != null && result.getTime() >= requestStarted - 2000L
-                && fixAge >= 0 && fixAge <= 30000L
-                && result.hasAccuracy() && result.getAccuracy() <= 1000f) {
+            if (result != null && fixAge >= 0 && fixAge <= 15L * 60L * 1000L
+                && result.hasAccuracy() && result.getAccuracy() <= 5000f) {
                 onCurrentLocation(result);
             } else {
                 locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again with device Location enabled.");
