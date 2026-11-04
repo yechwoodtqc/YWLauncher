@@ -29,6 +29,9 @@ public class MainActivity extends Activity {
     private final ArrayList<String> uninstallQueue = new ArrayList<>();
     private String currentUninstallPackage;
     private boolean processingUninstalls;
+    private float pageTouchDownX, pageTouchDownY;
+    private boolean pagingGesture;
+    private final int pageTouchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -76,7 +79,7 @@ public class MainActivity extends Activity {
         hideSelected.setBackgroundColor(Color.TRANSPARENT);
         hideSelected.setPadding(dp(8), 0, dp(8), 0);
         hideSelected.setOnFocusChangeListener((v, focused) -> hideSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        hideSelected.setFocusable(false);
+        hideSelected.setFocusable(true);
         toolbar.addView(hideSelected, new LinearLayout.LayoutParams(dp(40), dp(42)));
 
         uninstallSelected = new Button(this);
@@ -88,7 +91,7 @@ public class MainActivity extends Activity {
         uninstallSelected.setBackgroundColor(Color.TRANSPARENT);
         uninstallSelected.setPadding(dp(8), 0, dp(8), 0);
         uninstallSelected.setOnFocusChangeListener((v, focused) -> uninstallSelected.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : new ColorDrawable(Color.TRANSPARENT)));
-        uninstallSelected.setFocusable(false);
+        uninstallSelected.setFocusable(true);
         toolbar.addView(uninstallSelected, new LinearLayout.LayoutParams(dp(40), dp(42)));
 
         settingsButton = new ImageButton(this);
@@ -115,7 +118,39 @@ public class MainActivity extends Activity {
 
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(48)));
 
-        scroll = new ScrollView(this);
+        scroll = new ScrollView(this) {
+            @Override public boolean onInterceptTouchEvent(android.view.MotionEvent event) {
+                int action = event.getActionMasked();
+                if (action == android.view.MotionEvent.ACTION_DOWN) {
+                    pageTouchDownX = event.getX();
+                    pageTouchDownY = event.getY();
+                    pagingGesture = false;
+                } else if (action == android.view.MotionEvent.ACTION_MOVE) {
+                    float dx = event.getX() - pageTouchDownX;
+                    float dy = event.getY() - pageTouchDownY;
+                    if (Math.abs(dx) > pageTouchSlop && Math.abs(dx) > Math.abs(dy) * 1.25f) {
+                        int direction = dx < 0 ? 1 : -1;
+                        if (pageCount() > 1 && ((direction > 0 && currentPage < pageCount() - 1)
+                            || (direction < 0 && currentPage > 0))) {
+                            pagingGesture = true;
+                            return true;
+                        }
+                    }
+                }
+                return super.onInterceptTouchEvent(event);
+            }
+            @Override public boolean onTouchEvent(android.view.MotionEvent event) {
+                if (event.getActionMasked() == android.view.MotionEvent.ACTION_UP && pagingGesture) {
+                    float dx = event.getX() - pageTouchDownX;
+                    int direction = dx < 0 ? 1 : -1;
+                    pagingGesture = false;
+                    changePage(direction, direction > 0 ? 0 : clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6) - 1);
+                    return true;
+                }
+                if (event.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) pagingGesture = false;
+                return pagingGesture || super.onTouchEvent(event);
+            }
+        };
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         appsArea = new LinearLayout(this);
@@ -456,7 +491,7 @@ public class MainActivity extends Activity {
         int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", 40), 18, 56);
         // List mode is icon-only, matching a simple home-screen app list.
         boolean showLabel = grid && cellHeightDp >= 42;
-        if (grid) iconSize = Math.min(iconSize, Math.max(18, cellHeightDp - (showLabel ? 22 : 4)));
+        // Keep icon dimensions constant before and after the first layout pass.
         ImageView icon = new ImageView(this);
         try { icon.setImageDrawable(app.loadIcon(getPackageManager())); }
         catch (Exception ignored) { icon.setImageResource(android.R.drawable.sym_def_app_icon); }
@@ -631,11 +666,14 @@ public class MainActivity extends Activity {
                 int index = -1;
                 for (int i = 0; i < apps.size(); i++) if (apps.get(i).activityInfo.name.equals(focused.getTag())) { index = i; break; }
                 int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
-                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && index % columns == columns - 1 && currentPage + 1 < pageCount()) {
-                    changePage(1, 0); return true;
+                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                    && (index % columns == columns - 1 || index + 1 >= apps.size())) {
+                    if (currentPage + 1 < pageCount()) changePage(1, 0);
+                    return true;
                 }
-                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0 && currentPage > 0) {
-                    changePage(-1, columns - 1); return true;
+                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0) {
+                    if (currentPage > 0) changePage(-1, columns - 1);
+                    return true;
                 }
             }
         }
