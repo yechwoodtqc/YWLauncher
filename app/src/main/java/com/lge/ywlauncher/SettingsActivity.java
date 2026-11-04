@@ -95,12 +95,30 @@ public class SettingsActivity extends Activity {
 
         section("Tweaks");
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
+        addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
     }
 
     @Override protected void onPause() { if(settingsScroll!=null) prefs.edit().putInt("settings_scroll_y",settingsScroll.getScrollY()).apply(); super.onPause(); }
+
+    private String keptWallpaperSummary() {
+        File image = new File(getFilesDir(), "kept_wallpaper.png");
+        return image.isFile() && image.length() > 0
+            ? "Preview, crop, and adjust zoom for the saved image."
+            : "Choose an image first, then adjust its preview and zoom.";
+    }
+
+    private void customizeKeptWallpaper() {
+        File image = new File(getFilesDir(), "kept_wallpaper.png");
+        if (image.isFile() && image.length() > 0) {
+            showKeptWallpaperPreview(Uri.fromFile(image), true);
+        } else {
+            prefs.edit().putBoolean("keep_wallpaper", true).apply();
+            launchFileBrowser("open", "image", PICK_KEPT_WALLPAPER);
+        }
+    }
 
     private void updateKeptWallpaper() {
         // Turning the switch off only disables restoration. Turning it on asks
@@ -861,6 +879,10 @@ public class SettingsActivity extends Activity {
     }
 
     private void showKeptWallpaperPreview(Uri imageUri) {
+        showKeptWallpaperPreview(imageUri, false);
+    }
+
+    private void showKeptWallpaperPreview(Uri imageUri, boolean editingSavedImage) {
         android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         try (InputStream in = getContentResolver().openInputStream(imageUri)) {
@@ -886,9 +908,17 @@ public class SettingsActivity extends Activity {
         ImageView preview = new ImageView(this);
         preview.setImageBitmap(bitmap);
         preview.setBackgroundColor(Color.BLACK);
-        preview.setClipToOutline(true);
         preview.setScaleType(ImageView.ScaleType.MATRIX);
-        panel.addView(preview, new LinearLayout.LayoutParams(-1, dp(190)));
+        int previewWidth = Math.min(dp(230), Math.max(dp(150),
+            getResources().getDisplayMetrics().widthPixels - dp(64)));
+        float screenRatio = getResources().getDisplayMetrics().heightPixels
+            / (float) Math.max(1, getResources().getDisplayMetrics().widthPixels);
+        int previewHeight = Math.min(dp(300), Math.round(previewWidth * screenRatio));
+        if (previewHeight < dp(150)) previewHeight = dp(150);
+        FrameLayout previewFrame = new FrameLayout(this);
+        previewFrame.setBackgroundColor(Color.BLACK);
+        previewFrame.addView(preview, new FrameLayout.LayoutParams(-1, -1));
+        panel.addView(previewFrame, new LinearLayout.LayoutParams(previewWidth, previewHeight));
 
         TextView hint = new TextView(this);
         hint.setText("Preview on the Exalt screen. Choose how the image fills the screen, then zoom to adjust the crop.");
@@ -898,7 +928,7 @@ public class SettingsActivity extends Activity {
 
         String[] modes = {"Fill / crop", "Fit entire image", "Stretch"};
         String savedFit = prefs.getString("kept_wallpaper_fit", "crop");
-        float initialZoom = prefs.getFloat("kept_wallpaper_zoom", 1f);
+        float initialZoom = Math.max(0.5f, Math.min(2f, prefs.getFloat("kept_wallpaper_zoom", 1f)));
         int selected = "fit".equals(savedFit) ? 1 : ("stretch".equals(savedFit) ? 2 : 0);
         RadioGroup fits = new RadioGroup(this);
         fits.setOrientation(RadioGroup.HORIZONTAL);
@@ -921,7 +951,7 @@ public class SettingsActivity extends Activity {
             float sx = viewW / imageW, sy = viewH / imageH;
             float scale = "fit".equals(previewFit[0]) ? Math.min(sx, sy)
                 : ("stretch".equals(previewFit[0]) ? -1f : Math.max(sx, sy));
-            float zoomFactor = Math.max(1f, Math.min(2f, previewZoom[0]));
+            float zoomFactor = Math.max(0.5f, Math.min(2f, previewZoom[0]));
             float scaleX = "stretch".equals(previewFit[0]) ? sx * zoomFactor : scale * zoomFactor;
             float scaleY = "stretch".equals(previewFit[0]) ? sy * zoomFactor : scale * zoomFactor;
             android.graphics.Matrix matrix = new android.graphics.Matrix();
@@ -943,10 +973,10 @@ public class SettingsActivity extends Activity {
         panel.addView(zoomLabel);
         SeekBar zoom = new SeekBar(this);
         zoom.setMax(100);
-        zoom.setProgress(Math.max(0, Math.min(100, Math.round((initialZoom - 1f) * 100f))));
+        zoom.setProgress(Math.max(0, Math.min(100, Math.round((initialZoom - 0.5f) / 1.5f * 100f))));
         zoom.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                float factor = 1f + progress / 100f;
+                float factor = 0.5f + progress * 0.015f;
                 previewZoom[0] = factor;
                 preview.post(updatePreview);
                 zoomLabel.setText("Zoom  " + Math.round(factor * 100) + "%");
@@ -961,13 +991,15 @@ public class SettingsActivity extends Activity {
             .setPositiveButton("Apply", (dialog, which) -> {
                 String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
                     (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
-                float factor = 1f + zoom.getProgress() / 100f;
+                float factor = 0.5f + zoom.getProgress() * 0.015f;
                 try {
-                    try (InputStream in = getContentResolver().openInputStream(imageUri);
-                         OutputStream out = new FileOutputStream(new File(getFilesDir(), "kept_wallpaper.png"))) {
-                        if (in == null) throw new IOException("The selected image could not be opened.");
-                        byte[] buffer = new byte[8192]; int count;
-                        while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                    if (!editingSavedImage) {
+                        try (InputStream in = getContentResolver().openInputStream(imageUri);
+                             OutputStream out = new FileOutputStream(new File(getFilesDir(), "kept_wallpaper.png"))) {
+                            if (in == null) throw new IOException("The selected image could not be opened.");
+                            byte[] buffer = new byte[8192]; int count;
+                            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                        }
                     }
                     prefs.edit().putBoolean("keep_wallpaper", true)
                         .putString("kept_wallpaper_fit", fit)
@@ -979,7 +1011,7 @@ public class SettingsActivity extends Activity {
                     showError("Could not save that wallpaper image: " + e.getMessage());
                 }
             }).setNegativeButton("Cancel", (dialog, which) -> {
-                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                if (!editingSavedImage) prefs.edit().putBoolean("keep_wallpaper", false).apply();
             }).show();
     }
 
