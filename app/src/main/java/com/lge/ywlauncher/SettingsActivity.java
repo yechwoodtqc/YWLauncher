@@ -878,6 +878,7 @@ public class SettingsActivity extends Activity {
             bitmap = in == null ? null : android.graphics.BitmapFactory.decodeStream(in, null, options);
         } catch (Exception e) { bitmap = null; }
         if (bitmap == null) { showError("Could not preview this image."); return; }
+        final android.graphics.Bitmap previewBitmap = bitmap;
 
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -915,7 +916,7 @@ public class SettingsActivity extends Activity {
         final float[] previewZoom = {initialZoom};
         Runnable updatePreview = () -> {
             if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
-            float imageW = bitmap.getWidth(), imageH = bitmap.getHeight();
+            float imageW = previewBitmap.getWidth(), imageH = previewBitmap.getHeight();
             float viewW = preview.getWidth(), viewH = preview.getHeight();
             float sx = viewW / imageW, sy = viewH / imageH;
             float scale = "fit".equals(previewFit[0]) ? Math.min(sx, sy)
