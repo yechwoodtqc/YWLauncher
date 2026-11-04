@@ -130,9 +130,8 @@ public class MainActivity extends Activity {
                     float dx = event.getX() - pageTouchDownX;
                     float dy = event.getY() - pageTouchDownY;
                     if (Math.abs(dx) > pageTouchSlop && Math.abs(dx) > Math.abs(dy) * 1.25f) {
-                        int direction = dx < 0 ? 1 : -1;
-                        if ("grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid")) && pageCount() > 1 && ((direction > 0 && currentPage < pageCount() - 1)
-                            || (direction < 0 && currentPage > 0))) {
+                        if ("grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
+                            && pageCount() > 1) {
                             pagingGesture = true;
                             return true;
                         }
@@ -145,7 +144,11 @@ public class MainActivity extends Activity {
                     float dx = event.getX() - pageTouchDownX;
                     int direction = dx < 0 ? 1 : -1;
                     pagingGesture = false;
-                    changePage(direction, direction > 0 ? 0 : clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6) - 1);
+                    if ((direction > 0 && currentPage < pageCount() - 1)
+                        || (direction < 0 && currentPage > 0)) {
+                        changePage(direction, direction > 0 ? 0 :
+                            clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6) - 1);
+                    }
                     return true;
                 }
                 if (event.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) pagingGesture = false;
