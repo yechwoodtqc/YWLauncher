@@ -551,12 +551,25 @@ public class MainActivity extends Activity {
 
     private void toggleSelection(String name) {
         if (selectedApps.contains(name)) selectedApps.remove(name); else selectedApps.add(name);
+        // Update the existing cell in place. Rebuilding appsArea here detaches
+        // the focused view and makes Android briefly move focus to the toolbar.
+        View target = findAppItem(appsArea, name);
+        if (target != null) {
+            target.setSelected(selectedApps.contains(name));
+            target.setBackground(appItemFocusBackground(target.hasFocus(), selectedApps.contains(name)));
+            if (target instanceof ViewGroup) {
+                for (int i = 0; i < ((ViewGroup) target).getChildCount(); i++) {
+                    View child = ((ViewGroup) target).getChildAt(i);
+                    if (child instanceof TextView) {
+                        ((TextView) child).setTextColor(target.hasFocus() || selectedApps.contains(name)
+                            ? ThemeUtils.focusText(this) : ThemeUtils.text(this));
+                    }
+                    if (child instanceof ImageView) child.setAlpha(target.hasFocus() || selectedApps.contains(name) ? 1f : 0.94f);
+                }
+            }
+        }
         updateSelectionToolbar();
-        renderApps();
-        appsArea.post(() -> {
-            View target = findAppItem(appsArea, name);
-            if (target != null) target.requestFocus();
-        });
+        // Do not request focus again: the original app cell never lost it.
     }
 
     private View findAppItem(ViewGroup parent, String name) {
@@ -579,10 +592,10 @@ public class MainActivity extends Activity {
             selectionCount.setVisibility(View.GONE);
             selectionCount.setText(selectedApps.size() + " selected");
         }
-        if (hideSelected != null) hideSelected.setVisibility(selecting ? View.VISIBLE : View.GONE);
-        if (uninstallSelected != null) uninstallSelected.setVisibility(selecting ? View.VISIBLE : View.GONE);
-        if (cancelSelection != null) cancelSelection.setVisibility(selecting ? View.VISIBLE : View.GONE);
-        if (settingsButton != null) settingsButton.setVisibility(selecting ? View.GONE : View.VISIBLE);
+        if (hideSelected != null) { hideSelected.setVisibility(selecting ? View.VISIBLE : View.GONE); hideSelected.setFocusable(selecting); }
+        if (uninstallSelected != null) { uninstallSelected.setVisibility(selecting ? View.VISIBLE : View.GONE); uninstallSelected.setFocusable(selecting); }
+        if (cancelSelection != null) { cancelSelection.setVisibility(selecting ? View.VISIBLE : View.GONE); cancelSelection.setFocusable(selecting); }
+        if (settingsButton != null) { settingsButton.setVisibility(selecting ? View.GONE : View.VISIBLE); settingsButton.setFocusable(!selecting); }
     }
 
     private void hideSelectedApps() {
