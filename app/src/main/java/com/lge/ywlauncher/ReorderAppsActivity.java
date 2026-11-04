@@ -117,11 +117,12 @@ public class ReorderAppsActivity extends Activity {
         title.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(title, new LinearLayout.LayoutParams(0, dp(48), 1));
         Button alphabetize = new Button(this);
-        alphabetize.setText("A–Z");
+        alphabetize.setText("A–Z Sort");
         alphabetize.setTextSize(12);
         alphabetize.setContentDescription("Sort apps alphabetically");
         alphabetize.setTextColor(ThemeUtils.text(this));
         alphabetize.setBackground(ThemeUtils.focusOutlineBackground(this));
+        alphabetize.setFocusable(true);
         alphabetize.setOnClickListener(v -> {
             Collections.sort(order, (left, right) ->
                 String.CASE_INSENSITIVE_ORDER.compare(labelFor(left), labelFor(right)));
@@ -130,7 +131,7 @@ public class ReorderAppsActivity extends Activity {
             adapter.notifyDataSetChanged();
             if (!order.isEmpty()) list.setSelection(0);
         });
-        toolbar.addView(alphabetize, new LinearLayout.LayoutParams(dp(58), dp(44)));
+        toolbar.addView(alphabetize, new LinearLayout.LayoutParams(dp(92), dp(44)));
         root.addView(toolbar);
 
         TextView help = new TextView(this);
