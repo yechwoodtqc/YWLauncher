@@ -515,6 +515,8 @@ public class MainActivity extends Activity {
         item.setTag(name);
         item.setSelected(selectedApps.contains(name));
         item.setOnFocusChangeListener((view, focused) -> {
+            if (focused) getSharedPreferences("launcher", 0).edit()
+                .putString("last_focused_app", name).apply();
             boolean selected = selectedApps.contains(name);
             label.setTextColor(focused || selected ? ThemeUtils.focusText(this) : ThemeUtils.text(this));
             icon.setAlpha(focused || selected ? 1.0f : 0.94f);
@@ -704,7 +706,8 @@ public class MainActivity extends Activity {
         View focusedBeforeRefresh = getCurrentFocus();
         String focusedAppName = focusedBeforeRefresh != null
             && focusedBeforeRefresh.getTag() instanceof String
-            ? (String) focusedBeforeRefresh.getTag() : null;
+            ? (String) focusedBeforeRefresh.getTag()
+            : getSharedPreferences("launcher", 0).getString("last_focused_app", null);
         applyBackground();
         loadApps();
         if (focusedAppName != null) {
