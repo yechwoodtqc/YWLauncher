@@ -886,7 +886,7 @@ public class SettingsActivity extends Activity {
         preview.setImageBitmap(bitmap);
         preview.setBackgroundColor(Color.BLACK);
         preview.setClipToOutline(true);
-        preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        preview.setScaleType(ImageView.ScaleType.MATRIX);
         panel.addView(preview, new LinearLayout.LayoutParams(-1, dp(190)));
 
         TextView hint = new TextView(this);
@@ -910,9 +910,29 @@ public class SettingsActivity extends Activity {
             fits.addView(option, new RadioGroup.LayoutParams(0, -2, 1));
             if (i == selected) option.setChecked(true);
         }
-        fits.setOnCheckedChangeListener((group, id) -> preview.setScaleType(
-            id == ids[1] ? ImageView.ScaleType.FIT_CENTER :
-            (id == ids[2] ? ImageView.ScaleType.FIT_XY : ImageView.ScaleType.CENTER_CROP)));
+        final String[] previewFit = {savedFit};
+        final float[] previewZoom = {initialZoom};
+        Runnable updatePreview = () -> {
+            if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
+            float imageW = bitmap.getWidth(), imageH = bitmap.getHeight();
+            float viewW = preview.getWidth(), viewH = preview.getHeight();
+            float sx = viewW / imageW, sy = viewH / imageH;
+            float scale = "fit".equals(previewFit[0]) ? Math.min(sx, sy)
+                : ("stretch".equals(previewFit[0]) ? -1f : Math.max(sx, sy));
+            float zoomFactor = Math.max(1f, Math.min(2f, previewZoom[0]));
+            float scaleX = "stretch".equals(previewFit[0]) ? sx * zoomFactor : scale * zoomFactor;
+            float scaleY = "stretch".equals(previewFit[0]) ? sy * zoomFactor : scale * zoomFactor;
+            android.graphics.Matrix matrix = new android.graphics.Matrix();
+            matrix.setScale(scaleX, scaleY);
+            matrix.postTranslate((viewW - imageW * scaleX) / 2f,
+                (viewH - imageH * scaleY) / 2f);
+            preview.setImageMatrix(matrix);
+        };
+        preview.post(updatePreview);
+        fits.setOnCheckedChangeListener((group, id) -> {
+            previewFit[0] = id == ids[1] ? "fit" : (id == ids[2] ? "stretch" : "crop");
+            preview.post(updatePreview);
+        });
         panel.addView(fits);
 
         TextView zoomLabel = new TextView(this);
@@ -926,8 +946,8 @@ public class SettingsActivity extends Activity {
         zoom.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
                 float factor = 1f + progress / 100f;
-                preview.setScaleX(factor);
-                preview.setScaleY(factor);
+                previewZoom[0] = factor;
+                preview.post(updatePreview);
                 zoomLabel.setText("Zoom  " + Math.round(factor * 100) + "%");
             }
             @Override public void onStartTrackingTouch(SeekBar bar) { }
