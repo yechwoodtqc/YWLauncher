@@ -698,7 +698,24 @@ public class MainActivity extends Activity {
         String mode = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         int accent = ThemeUtils.accent(this);
         if (!Objects.equals(appliedTheme, mode) || appliedAccent != accent) { recreate(); return; }
-        applyBackground(); loadApps(); postLaunchNotification();
+        // loadApps() rebuilds the grid. Preserve the focused app by its stable
+        // activity name so returning from Settings does not send D-pad focus
+        // back to the toolbar or lose the user's position.
+        View focusedBeforeRefresh = getCurrentFocus();
+        String focusedAppName = focusedBeforeRefresh != null
+            && focusedBeforeRefresh.getTag() instanceof String
+            ? (String) focusedBeforeRefresh.getTag() : null;
+        applyBackground();
+        loadApps();
+        if (focusedAppName != null) {
+            final String restoreName = focusedAppName;
+            appsArea.post(() -> {
+                View restored = findAppItem(appsArea, restoreName);
+                if (restored != null) restored.requestFocus();
+                else focusFirstApp();
+            });
+        }
+        postLaunchNotification();
         if (processingUninstalls && currentUninstallPackage != null) {
             boolean stillInstalled = true;
             try { getPackageManager().getPackageInfo(currentUninstallPackage, 0); }
