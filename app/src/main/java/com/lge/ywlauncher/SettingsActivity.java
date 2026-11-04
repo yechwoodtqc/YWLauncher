@@ -897,6 +897,7 @@ public class SettingsActivity extends Activity {
 
         String[] modes = {"Fill / crop", "Fit entire image", "Stretch"};
         String savedFit = prefs.getString("kept_wallpaper_fit", "crop");
+        float initialZoom = prefs.getFloat("kept_wallpaper_zoom", 1f);
         int selected = "fit".equals(savedFit) ? 1 : ("stretch".equals(savedFit) ? 2 : 0);
         RadioGroup fits = new RadioGroup(this);
         fits.setOrientation(RadioGroup.HORIZONTAL);
@@ -941,7 +942,6 @@ public class SettingsActivity extends Activity {
         panel.addView(zoomLabel);
         SeekBar zoom = new SeekBar(this);
         zoom.setMax(100);
-        float initialZoom = prefs.getFloat("kept_wallpaper_zoom", 1f);
         zoom.setProgress(Math.max(0, Math.min(100, Math.round((initialZoom - 1f) * 100f))));
         zoom.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
