@@ -773,16 +773,8 @@ public class SettingsActivity extends Activity {
             }
             if(requestCode==PICK_DICTIONARY_FILE) { readDictionaryBackup(uri); return; }
             if(requestCode==PICK_KEPT_WALLPAPER) {
-                try {
-                    try(InputStream in=getContentResolver().openInputStream(uri); OutputStream out=new FileOutputStream(new File(getFilesDir(),"kept_wallpaper.png"))) {
-                        if(in==null) throw new IOException("The selected image could not be opened.");
-                        byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))!=-1) out.write(buffer,0,n);
-                    }
-                    prefs.edit().putBoolean("keep_wallpaper",true).apply();
-                    chooseKeptWallpaperFit();
-                    Toast.makeText(this,"Wallpaper image saved for restoration after restart.",Toast.LENGTH_LONG).show();
-                } catch(Exception e) { prefs.edit().putBoolean("keep_wallpaper",false).apply(); showError("Could not save that wallpaper image: "+e.getMessage()); }
-                recreate(); return;
+                showKeptWallpaperPreview(uri);
+                return;
             }
             if(requestCode==PICK_BACKGROUND_IMAGE) {
                 showWallpaperPreview(uri); return;
@@ -861,6 +853,108 @@ public class SettingsActivity extends Activity {
         try(InputStream in=new FileInputStream(source); OutputStream out=new FileOutputStream(destination)) {
             byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))!=-1) out.write(buffer,0,n);
         }
+    }
+
+    private void showKeptWallpaperPreview(Uri imageUri) {
+        android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        try (InputStream in = getContentResolver().openInputStream(imageUri)) {
+            if (in == null) throw new IOException("Could not open the selected image.");
+            android.graphics.BitmapFactory.decodeStream(in, null, bounds);
+        } catch (Exception e) { showError("Could not inspect this image: " + e.getMessage()); return; }
+        int targetW = Math.max(1, getResources().getDisplayMetrics().widthPixels);
+        int targetH = Math.max(1, getResources().getDisplayMetrics().heightPixels);
+        int sample = 1;
+        while (bounds.outWidth / sample > targetW * 2 || bounds.outHeight / sample > targetH * 2) sample *= 2;
+        android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+        options.inSampleSize = sample;
+        android.graphics.Bitmap bitmap;
+        try (InputStream in = getContentResolver().openInputStream(imageUri)) {
+            bitmap = in == null ? null : android.graphics.BitmapFactory.decodeStream(in, null, options);
+        } catch (Exception e) { bitmap = null; }
+        if (bitmap == null) { showError("Could not preview this image."); return; }
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(12), dp(8), dp(12), dp(4));
+        ImageView preview = new ImageView(this);
+        preview.setImageBitmap(bitmap);
+        preview.setBackgroundColor(Color.BLACK);
+        preview.setClipToOutline(true);
+        preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        panel.addView(preview, new LinearLayout.LayoutParams(-1, dp(190)));
+
+        TextView hint = new TextView(this);
+        hint.setText("Preview on the Exalt screen. Choose how the image fills the screen, then zoom to adjust the crop.");
+        hint.setTextColor(ThemeUtils.text(this));
+        hint.setPadding(0, dp(8), 0, dp(4));
+        panel.addView(hint);
+
+        String[] modes = {"Fill / crop", "Fit entire image", "Stretch"};
+        String savedFit = prefs.getString("kept_wallpaper_fit", "crop");
+        int selected = "fit".equals(savedFit) ? 1 : ("stretch".equals(savedFit) ? 2 : 0);
+        RadioGroup fits = new RadioGroup(this);
+        fits.setOrientation(RadioGroup.HORIZONTAL);
+        int[] ids = {View.generateViewId(), View.generateViewId(), View.generateViewId()};
+        for (int i = 0; i < modes.length; i++) {
+            RadioButton option = new RadioButton(this);
+            option.setText(modes[i]);
+            option.setTextSize(11);
+            option.setTextColor(ThemeUtils.text(this));
+            option.setId(ids[i]);
+            fits.addView(option, new RadioGroup.LayoutParams(0, -2, 1));
+            if (i == selected) option.setChecked(true);
+        }
+        fits.setOnCheckedChangeListener((group, id) -> preview.setScaleType(
+            id == ids[1] ? ImageView.ScaleType.FIT_CENTER :
+            (id == ids[2] ? ImageView.ScaleType.FIT_XY : ImageView.ScaleType.CENTER_CROP)));
+        panel.addView(fits);
+
+        TextView zoomLabel = new TextView(this);
+        zoomLabel.setText("Zoom");
+        zoomLabel.setTextColor(ThemeUtils.text(this));
+        panel.addView(zoomLabel);
+        SeekBar zoom = new SeekBar(this);
+        zoom.setMax(100);
+        float initialZoom = prefs.getFloat("kept_wallpaper_zoom", 1f);
+        zoom.setProgress(Math.max(0, Math.min(100, Math.round((initialZoom - 1f) * 100f))));
+        zoom.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                float factor = 1f + progress / 100f;
+                preview.setScaleX(factor);
+                preview.setScaleY(factor);
+                zoomLabel.setText("Zoom  " + Math.round(factor * 100) + "%");
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) { }
+            @Override public void onStopTrackingTouch(SeekBar bar) { }
+        });
+        zoomLabel.setText("Zoom  " + Math.round(initialZoom * 100) + "%");
+        panel.addView(zoom);
+
+        new AlertDialog.Builder(this).setTitle("Keep wallpaper preview").setView(panel)
+            .setPositiveButton("Apply", (dialog, which) -> {
+                String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
+                    (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
+                float factor = 1f + zoom.getProgress() / 100f;
+                try {
+                    try (InputStream in = getContentResolver().openInputStream(imageUri);
+                         OutputStream out = new FileOutputStream(new File(getFilesDir(), "kept_wallpaper.png"))) {
+                        if (in == null) throw new IOException("The selected image could not be opened.");
+                        byte[] buffer = new byte[8192]; int count;
+                        while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                    }
+                    prefs.edit().putBoolean("keep_wallpaper", true)
+                        .putString("kept_wallpaper_fit", fit)
+                        .putFloat("kept_wallpaper_zoom", factor).apply();
+                    Toast.makeText(this, "Wallpaper saved for restoration after restart.", Toast.LENGTH_LONG).show();
+                    recreate();
+                } catch (Exception e) {
+                    prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                    showError("Could not save that wallpaper image: " + e.getMessage());
+                }
+            }).setNegativeButton("Cancel", (dialog, which) -> {
+                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+            }).show();
     }
 
     private void chooseKeptWallpaperFit() {
