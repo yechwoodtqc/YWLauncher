@@ -241,8 +241,11 @@ public class ReorderAppsActivity extends Activity {
     }
 
     private void selectRow(int position) {
-        if (position < 0 || position >= order.size()) return;
+        if (position < 0 || position >= order.size() || selected == position) return;
         selected = position;
+        // Avoid rebinding the ListView for callbacks that report the same
+        // selected row. Rebinding during onItemSelected can cause repeated
+        // selection callbacks and visible focus/scroll jumps on D-pad devices.
         adapter.notifyDataSetChanged();
     }
 
