@@ -497,28 +497,39 @@ public class WeatherActivity extends Activity {
     }
 
     private void addDailyPeriod(DayForecast day,int index) {
-        if(day==null)return;
-        JSONObject primary=day.day!=null?day.day:day.night;
-        LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(8),dp(7),dp(8),dp(7));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
-        View icon=weatherIcon(primary.optString("shortForecast",""),40);
-        card.addView(icon,new LinearLayout.LayoutParams(dp(48),dp(48)));
-        LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(8),0,dp(3),0);
-        info.addView(text(day.label,14,true));
-        if(day.day!=null) info.addView(text("High "+day.day.optString("temperature","—")+"°"+day.day.optString("temperatureUnit","F")+" · "+day.day.optString("shortForecast",""),12,false));
-        if(day.night!=null) info.addView(text("Low "+day.night.optString("temperature","—")+"°"+day.night.optString("temperatureUnit","F")+" · "+day.night.optString("shortForecast",""),12,false));
-        String wind=primary.optString("windSpeed","—")+" "+primary.optString("windDirection","");
-        JSONObject pp=primary.optJSONObject("probabilityOfPrecipitation");
-        String precip=pp==null||pp.isNull("value")?"—":pp.optString("value")+"%";
-        info.addView(text("Wind "+wind+" · Precip. "+precip,11,false));
-        card.addView(info,new LinearLayout.LayoutParams(0,-2,1));
-        TextView arrow=text("›",24,false);card.addView(arrow,new LinearLayout.LayoutParams(dp(22),-2));
-        card.setOnClickListener(v->{detailIndex=index;showDayDetail(index);});
-        card.setOnFocusChangeListener((v,focused)->{
-            card.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
-            
-        });
-        forecastList.addView(card,rowMargins());
+        if (day == null) return;
+        if (day.day != null) addDailyEntry(day.day, day.label, "High", index);
+        if (day.night != null) addDailyEntry(day.night,
+            day.night.optString("name", "Tonight"), "Low", index);
+    }
+
+    private void addDailyEntry(JSONObject period, String label, String range, int index) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(8), dp(7), dp(8), dp(7));
+        card.setBackground(ThemeUtils.focusBackground(this));
+        card.setFocusable(true);
+        card.setClickable(true);
+        card.addView(weatherIcon(period.optString("shortForecast", ""), 40),
+            new LinearLayout.LayoutParams(dp(48), dp(48)));
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setPadding(dp(8), 0, dp(3), 0);
+        info.addView(text(label, 14, true));
+        info.addView(text(range + " " + period.optString("temperature", "—") + "°"
+            + period.optString("temperatureUnit", "F") + " · "
+            + period.optString("shortForecast", ""), 12, false));
+        JSONObject pp = period.optJSONObject("probabilityOfPrecipitation");
+        String precip = pp == null || pp.isNull("value") ? "—" : pp.optString("value") + "%";
+        info.addView(text("Wind " + period.optString("windSpeed", "—") + " "
+            + period.optString("windDirection", "") + " · Precip. " + precip, 11, false));
+        card.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+        card.addView(text("›", 24, false), new LinearLayout.LayoutParams(dp(22), -2));
+        card.setOnClickListener(v -> { detailIndex = index; showDayDetail(index); });
+        card.setOnFocusChangeListener((v, focused) ->
+            card.setBackground(focused ? outlineFocusBackground() : ThemeUtils.focusBackground(this)));
+        forecastList.addView(card, rowMargins());
     }
 
     private String formatForecastTime(String iso) {
