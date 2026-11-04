@@ -57,7 +57,7 @@ public class ChooseAppsActivity extends Activity {
         LinearLayout footer=new LinearLayout(this); footer.setGravity(Gravity.CENTER);
         Button save=new Button(this); save.setText("Save"); ThemeUtils.tint(save,this); save.setTextColor(ThemeUtils.text(this)); save.setBackground(ThemeUtils.focusOutlineBackground(this));
         Button cancel=new Button(this); cancel.setText("Cancel"); ThemeUtils.tint(cancel,this); cancel.setTextColor(ThemeUtils.text(this)); cancel.setBackground(ThemeUtils.focusOutlineBackground(this));
-        footer.addView(save,new LinearLayout.LayoutParams(0,dp(48),1)); footer.addView(cancel,new LinearLayout.LayoutParams(0,dp(48),1));
+        footer.addView(cancel,new LinearLayout.LayoutParams(0,dp(48),1)); footer.addView(save,new LinearLayout.LayoutParams(0,dp(48),1));
         root.addView(footer,new LinearLayout.LayoutParams(-1,dp(54)));
         save.setOnClickListener(v->{
             ArrayList<String> order=new ArrayList<>(); String raw=prefs.getString("ordered_apps","");
