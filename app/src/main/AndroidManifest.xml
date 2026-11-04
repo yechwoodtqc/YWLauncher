@@ -30,7 +30,6 @@
             android:excludeFromRecents="false"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleTask"
-            android:taskAffinity="com.lge.ywlauncher.main"
             android:icon="@drawable/ic_launcher"
             android:label="YW Launcher">
             <intent-filter>
