@@ -51,9 +51,10 @@ public class WeatherActivity extends Activity {
     }
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
         android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
-        int size = dp(48);
+        int size = 64;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        bitmap.setDensity(Bitmap.DENSITY_NONE);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
