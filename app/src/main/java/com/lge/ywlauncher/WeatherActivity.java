@@ -102,6 +102,12 @@ public class WeatherActivity extends Activity {
     }
     @Override protected void onPause() {
         if(autoRefreshRunnable!=null)handler.removeCallbacks(autoRefreshRunnable);
+        if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);
+        if(pendingLocationListener!=null) {
+            try { ((LocationManager)getSystemService(LOCATION_SERVICE)).removeUpdates(pendingLocationListener); }
+            catch(Exception ignored) { }
+            pendingLocationListener=null;
+        }
         super.onPause();
     }
 
@@ -876,7 +882,7 @@ public class WeatherActivity extends Activity {
             });
         addSetting("Auto refresh",refreshLabel(),()->{
             String[] labels={"Off","5 minutes","10 minutes","15 minutes","30 minutes","60 minutes"};int[] values={0,5,10,15,30,60};int selected=3;
-            int current=prefs().getInt("weather_refresh_minutes",15);for(int i=0;i<values.length;i++)if(values[i]==current)selected=i;
+            int current=prefs().getInt("weather_refresh_minutes",30);for(int i=0;i<values.length;i++)if(values[i]==current)selected=i;
             new AlertDialog.Builder(this).setTitle("Auto refresh interval").setSingleChoiceItems(labels,selected,(d,w)->{prefs().edit().putInt("weather_refresh_minutes",values[w]).apply();d.dismiss();scheduleAutoRefresh();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
         });
         addSetting("Refresh now","Update forecast immediately",()->{
@@ -893,7 +899,7 @@ public class WeatherActivity extends Activity {
     }
 
     private String fontScaleLabel(){return fontScale<0.95f?"Small":fontScale>1.25f?"Extra large":fontScale>1.05f?"Large":"Normal";}
-    private String refreshLabel(){int n=prefs().getInt("weather_refresh_minutes",15);return n==0?"Off":"Every "+n+" minutes";}
+    private String refreshLabel(){int n=prefs().getInt("weather_refresh_minutes",30);return n==0?"Off":"Every "+n+" minutes";}
     private void addSetting(String title,String summary,Runnable action){
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));row.setBackground(ThemeUtils.focusBackground(this));row.setFocusable(true);row.setClickable(true);
         row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
@@ -1011,7 +1017,7 @@ public class WeatherActivity extends Activity {
         if (hasFine) {
             try {
                 if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f,
+                    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10000L, 25f,
                         pendingLocationListener, Looper.getMainLooper());
                     requested = true;
                 }
@@ -1020,7 +1026,7 @@ public class WeatherActivity extends Activity {
         if (hasCoarse) {
             try {
                 if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                    manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000L, 0f,
+                    manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10000L, 25f,
                         pendingLocationListener, Looper.getMainLooper());
                     requested = true;
                 }
@@ -1047,7 +1053,7 @@ public class WeatherActivity extends Activity {
                 locationUnavailable("The phone did not provide a fresh, accurate location. Choose a city or ZIP code, or try again with device Location enabled.");
             }
         };
-        handler.postDelayed(locationTimeout, 45000L);
+        handler.postDelayed(locationTimeout, 20000L);
     }
 
     private Location betterLocation(Location oldLocation,Location newLocation){
@@ -1135,7 +1141,7 @@ public class WeatherActivity extends Activity {
 
     private void scheduleAutoRefresh(){
         if(autoRefreshRunnable!=null)handler.removeCallbacks(autoRefreshRunnable);
-        int minutes=prefs().getInt("weather_refresh_minutes",15);
+        int minutes=prefs().getInt("weather_refresh_minutes",30);
         if(minutes<=0||isFinishing())return;
         autoRefreshRunnable=()->{if("forecast".equals(currentPage)){
             if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
