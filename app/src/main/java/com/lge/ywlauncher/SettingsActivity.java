@@ -136,7 +136,7 @@ public class SettingsActivity extends Activity {
         // Turning the switch off only disables restoration. Turning it on asks
         // for an image; the preference remains enabled only after a successful copy.
         if (!prefs.getBoolean("keep_wallpaper", false)) return;
-        launchFileBrowser("open", "image", PICK_KEPT_WALLPAPER);
+        launchKeptWallpaperBrowser();
     }
 
     private int dp(float value) {
