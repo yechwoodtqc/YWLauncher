@@ -207,20 +207,18 @@ public class WeatherActivity extends Activity {
         updated = new TextView(this);
         updated.setTextColor(ThemeUtils.secondaryText(this));
         updated.setTextSize(textSize(11));
-        updated.setPadding(dp(4), 0, dp(4), dp(2));
-        root.addView(updated, root.indexOfChild(toolbar) + 2, new LinearLayout.LayoutParams(-1, -2));
+        updated.setPadding(dp(4), dp(2), dp(4), dp(1));
         forecasted = new TextView(this);
         forecasted.setTextColor(ThemeUtils.secondaryText(this));
         forecasted.setTextSize(textSize(11));
         forecasted.setPadding(dp(4), 0, dp(4), dp(5));
-        root.addView(forecasted, root.indexOfChild(toolbar) + 3, new LinearLayout.LayoutParams(-1, -2));
         setSelectedPlaceTitle();
     }
 
     private void removeHeaderRows() {
         if (locationTitle != null) root.removeView(locationTitle);
-        if (updated != null) root.removeView(updated);
-        if (forecasted != null) root.removeView(forecasted);
+        if (updated != null) forecastList.removeView(updated);
+        if (forecasted != null) forecastList.removeView(forecasted);
         locationTitle = null; updated = null; forecasted = null;
     }
 
@@ -239,6 +237,8 @@ public class WeatherActivity extends Activity {
         if (refreshButton != null) refreshButton.setEnabled(!value);
         if (value) {
             forecastList.removeAllViews();
+            if (updated != null) forecastList.addView(updated, new LinearLayout.LayoutParams(-1, -2));
+            if (forecasted != null) forecastList.addView(forecasted, new LinearLayout.LayoutParams(-1, -2));
             LinearLayout holder = new LinearLayout(this);
             holder.setOrientation(LinearLayout.VERTICAL);
             holder.setGravity(Gravity.CENTER);
@@ -401,6 +401,8 @@ public class WeatherActivity extends Activity {
     private void renderForecast() {
         if (!"forecast".equals(currentPage)) return;
         forecastList.removeAllViews();
+        if (updated != null) forecastList.addView(updated, new LinearLayout.LayoutParams(-1, -2));
+        if (forecasted != null) forecastList.addView(forecasted, new LinearLayout.LayoutParams(-1, -2));
         if (activeAlerts.length() > 0) {
             addSectionTitle("ACTIVE WEATHER ALERTS");
             for (int i = 0; i < Math.min(4, activeAlerts.length()); i++) {
