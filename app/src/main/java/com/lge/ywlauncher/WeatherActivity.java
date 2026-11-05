@@ -298,8 +298,47 @@ public class WeatherActivity extends Activity {
         else detectLocation();
     }
 
+    private boolean showCachedForecastIfFresh(double latitude, double longitude) {
+        SharedPreferences p = prefs();
+        long savedAt = p.getLong("weather_cache_saved_at", 0L);
+        boolean samePlace = p.contains("weather_data_lat") && p.contains("weather_data_lon")
+            && Math.abs(p.getFloat("weather_data_lat", 999f) - latitude) < 0.03d
+            && Math.abs(p.getFloat("weather_data_lon", 999f) - longitude) < 0.03d;
+        if (!samePlace || savedAt <= 0L || System.currentTimeMillis() - savedAt > 24L * 60L * 60L * 1000L) return false;
+        try {
+            dailyPeriods = new JSONArray(p.getString("weather_cache_daily", "[]"));
+            hourlyPeriods = new JSONArray(p.getString("weather_cache_hourly", "[]"));
+            activeAlerts = new JSONArray(p.getString("weather_cache_alerts", "[]"));
+            if (dailyPeriods.length() == 0) return false;
+            buildDailyDays(dailyPeriods);
+            renderForecast();
+            String cachedAt = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date(savedAt));
+            if (updated != null) updated.setText("Last updated: " + cachedAt + " (saved)");
+            if (forecasted != null) forecasted.setText("Forecast issued/updated: " + p.getString("weather_cache_issued", "time not provided"));
+            return true;
+        } catch (Exception ignored) { return false; }
+    }
+
+    private void showNewForecastNotification() {
+        if (!prefs().getBoolean("weather_new_forecast_notifications", true)) return;
+        try {
+            Intent open = new Intent(this, WeatherActivity.class);
+            open.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent pending = PendingIntent.getActivity(this, 77, open,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+            Notification.Builder builder = new Notification.Builder(this)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("New weather forecast")
+                .setContentText("The forecast has been updated.")
+                .setContentIntent(pending).setAutoCancel(true).setWhen(System.currentTimeMillis());
+            if (Build.VERSION.SDK_INT >= 21) builder.setColor(ThemeUtils.accent(this));
+            ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(77, builder.build());
+        } catch (Exception ignored) { }
+    }
+
     private void fetchForecastAt(double latitude, double longitude) {
-        setLoading(true, "Loading forecast…");
+        boolean showedCache = showCachedForecastIfFresh(latitude, longitude);
+        setLoading(!showedCache, showedCache ? null : "Loading forecast…");
         new Thread(() -> {
             ExecutorService requests = Executors.newFixedThreadPool(3);
             try {
@@ -359,6 +398,10 @@ public class WeatherActivity extends Activity {
                 JSONArray finalAlerts = alerts;
                 String finalGenerated = generated;
                 handler.post(() -> {
+                    String forecastFingerprint = finalDays.toString() + "|" + finalHours.toString();
+                    String previousFingerprint = prefs().getString("weather_cache_fingerprint", "");
+                    boolean forecastChanged = !previousFingerprint.isEmpty()
+                        && !previousFingerprint.equals(forecastFingerprint);
                     dailyPeriods = finalDays;
                     hourlyPeriods = finalHours;
                     activeAlerts = finalAlerts;
@@ -378,6 +421,18 @@ public class WeatherActivity extends Activity {
                         } catch (Exception ignored) { }
                     }
                     if (forecasted != null) forecasted.setText("Forecast issued/updated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
+                    String fingerprint = finalDays.toString() + "|" + finalHours.toString();
+                    prefs().edit()
+                        .putString("weather_cache_daily", finalDays.toString())
+                        .putString("weather_cache_hourly", finalHours.toString())
+                        .putString("weather_cache_alerts", finalAlerts.toString())
+                        .putLong("weather_cache_saved_at", System.currentTimeMillis())
+                        .putFloat("weather_data_lat", (float) latitude)
+                        .putFloat("weather_data_lon", (float) longitude)
+                        .putString("weather_cache_issued", forecastTime)
+                        .putString("weather_cache_fingerprint", fingerprint)
+                        .apply();
+                    if (forecastChanged) showNewForecastNotification();
                     JSONObject first = finalDays.optJSONObject(0);
                     prefs().edit().putString("weather_widget_summary", first == null ? "Forecast ready" : first.optString("shortForecast", "Forecast ready"))
                         .putString("weather_widget_temperature", first == null ? "—" : first.optString("temperature", "—") + "°" + first.optString("temperatureUnit", "F"))
@@ -390,7 +445,13 @@ public class WeatherActivity extends Activity {
             } catch (Exception e) {
                 handler.post(() -> {
                     setLoading(false, null);
-                    showWeatherError("Couldn't load the forecast. Check your connection or choose another saved location.\n\n" + e.getMessage());
+                    if (showedCache) {
+                        if (updated != null) updated.setText("Last updated: " +
+                            new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(
+                                new Date(prefs().getLong("weather_cache_saved_at", System.currentTimeMillis()))) + " (offline copy)");
+                    } else {
+                        showWeatherError("Couldn't load the forecast. Check your connection or choose another saved location.\n\n" + e.getMessage());
+                    }
                 });
             } finally {
                 requests.shutdownNow();
@@ -805,6 +866,13 @@ public class WeatherActivity extends Activity {
             int selected=1;for(int i=0;i<values.length;i++)if(Math.abs(values[i]-fontScale)<0.04f)selected=i;
             new AlertDialog.Builder(this).setTitle("Weather font size").setSingleChoiceItems(labels,selected,(d,w)->{fontScale=values[w];prefs().edit().putFloat("weather_font_scale",fontScale).apply();d.dismiss();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
         });
+        addSetting("New forecast notifications",
+            prefs().getBoolean("weather_new_forecast_notifications", true) ? "On · notify when forecast data changes" : "Off",
+            () -> {
+                boolean enabled = prefs().getBoolean("weather_new_forecast_notifications", true);
+                prefs().edit().putBoolean("weather_new_forecast_notifications", !enabled).apply();
+                showWeatherSettings();
+            });
         addSetting("Auto refresh",refreshLabel(),()->{
             String[] labels={"Off","5 minutes","10 minutes","15 minutes","30 minutes","60 minutes"};int[] values={0,5,10,15,30,60};int selected=3;
             int current=prefs().getInt("weather_refresh_minutes",15);for(int i=0;i<values.length;i++)if(values[i]==current)selected=i;
