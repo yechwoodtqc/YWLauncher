@@ -116,8 +116,20 @@ public class SettingsActivity extends Activity {
             showKeptWallpaperPreview(Uri.fromFile(image), true);
         } else {
             prefs.edit().putBoolean("keep_wallpaper", true).apply();
-            launchFileBrowser("open", "image", PICK_KEPT_WALLPAPER);
+            launchKeptWallpaperBrowser();
         }
+    }
+
+    private void launchKeptWallpaperBrowser() {
+        if (android.os.Build.VERSION.SDK_INT >= 23
+            && checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, 701);
+            return;
+        }
+        Intent browser = new Intent(this, FileBrowserActivity.class);
+        browser.putExtra(FileBrowserActivity.EXTRA_MODE, "open");
+        browser.putExtra(FileBrowserActivity.EXTRA_FILTER, "image");
+        startActivityForResult(browser, PICK_KEPT_WALLPAPER);
     }
 
     private void updateKeptWallpaper() {
@@ -775,7 +787,12 @@ public class SettingsActivity extends Activity {
         if(requestCode==CREATE_DICTIONARY_FILE || requestCode==CREATE_LOG_FILE ||
            requestCode==PICK_DICTIONARY_FILE || requestCode==PICK_KEPT_WALLPAPER ||
            requestCode==PICK_BACKGROUND_IMAGE) {
-            Uri uri=resultCode==RESULT_OK && data!=null ? data.getData() : null;
+            Uri uri = null;
+            if (resultCode == RESULT_OK && data != null) {
+                String selectedPath = data.getStringExtra(FileBrowserActivity.EXTRA_PATH);
+                if (requestCode == PICK_KEPT_WALLPAPER && selectedPath != null) uri = Uri.fromFile(new File(selectedPath));
+                else uri = data.getData();
+            }
             if(uri!=null && android.os.Build.VERSION.SDK_INT>=19 &&
                 requestCode!=CREATE_DICTIONARY_FILE && requestCode!=CREATE_LOG_FILE) {
                 // The restore and image pickers only need read access. Keep the
@@ -869,6 +886,15 @@ public class SettingsActivity extends Activity {
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 701) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted) launchKeptWallpaperBrowser();
+            else {
+                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                showError("Storage access is needed to browse and preview an image on this phone.");
+            }
+            return;
+        }
         if (requestCode == 700) {
             int action = pendingBrowserRequest;
             pendingBrowserRequest = 0;
