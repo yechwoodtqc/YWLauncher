@@ -270,9 +270,13 @@ public class MainActivity extends Activity {
 
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
         android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
-        int size = dp(48);
+        // TaskDescription icons are consumed by the system task switcher,
+        // not by an ImageView. Supply a fixed, square pixel bitmap so older
+        // OEM Recents implementations do not apply a second density scaling.
+        int size = 64;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
+        bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
