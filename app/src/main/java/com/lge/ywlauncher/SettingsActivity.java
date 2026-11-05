@@ -354,20 +354,18 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseCustomBackgroundSource() {
-        new AlertDialog.Builder(this).setTitle("Choose background image")
-            .setItems(new String[]{"Gallery", "File manager"}, (dialog, which) -> {
-                Intent intent = new Intent(which == 0 ? Intent.ACTION_GET_CONTENT : Intent.ACTION_OPEN_DOCUMENT);
-                if (which == 1) intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("image/*");
-                if (which == 1) intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-                try {
-                    startActivityForResult(Intent.createChooser(intent,
-                        which == 0 ? "Choose image from gallery" : "Browse image files"), PICK_BACKGROUND_IMAGE);
-                } catch (Exception e) {
-                    showError("No compatible image picker or file manager is available.");
-                }
-            }).setNegativeButton("Cancel", null).show();
+        // Match YW App Installer: ACTION_GET_CONTENT + a wildcard primary type.
+        // Several Android 6 OEM file managers do not register image/* directly.
+        Intent picker = new Intent(Intent.ACTION_GET_CONTENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.setType("*/*");
+        picker.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*"});
+        try {
+            startActivityForResult(Intent.createChooser(picker, "Choose background image"),
+                PICK_BACKGROUND_IMAGE);
+        } catch (Exception e) {
+            showError("No file picker is available on this device.");
+        }
     }
 
     private void chooseTheme() {
