@@ -72,8 +72,9 @@ public class WeatherActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ThemeUtils.apply(this);
+        // Let the Android 6/LG Recents loader use the manifest activity icon.
         setTaskDescription(new android.app.ActivityManager.TaskDescription(
-            "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
+            "YW Weather", (android.graphics.Bitmap) null, ThemeUtils.accent(this)));
         fontScale = prefs().getFloat("weather_font_scale", 1.0f);
         try { discussionProducts = new JSONArray(prefs().getString("weather_discussion_cache", "[]")); }
         catch (Exception ignored) { discussionProducts = new JSONArray(); }
