@@ -261,8 +261,11 @@ public class MainActivity extends Activity {
         int accent = ThemeUtils.accent(this);
         accent = Color.rgb(Color.red(accent), Color.green(accent), Color.blue(accent));
         try {
+            // Leave the task icon unset so Android 6 Recents loads the
+            // activity icon from the manifest. This avoids the LG SystemUI
+            // path that was failing to display the custom TaskDescription bitmap.
             setTaskDescription(new ActivityManager.TaskDescription(
-                "YW Launcher", createTaskIcon(R.drawable.ic_launcher), accent));
+                "YW Launcher", (android.graphics.Bitmap) null, accent));
         } catch (RuntimeException ignored) {
             setTaskDescription(new ActivityManager.TaskDescription("YW Launcher"));
         }
