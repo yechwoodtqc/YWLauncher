@@ -681,7 +681,7 @@ public class WeatherActivity extends Activity {
         JSONObject p=hourlyPeriods.optJSONObject(index); if(p==null)return;
         JSONObject chance=p.optJSONObject("probabilityOfPrecipitation");
         String rain=chance==null||chance.isNull("value")?"Not available":chance.optString("value")+"%";
-        new AlertDialog.Builder(this).setTitle(weatherEmoji(p.optString("shortForecast",""))+" "+p.optString("shortForecast","Hourly details"))
+        new AlertDialog.Builder(this, dialogTheme()).setTitle(weatherEmoji(p.optString("shortForecast",""))+" "+p.optString("shortForecast","Hourly details"))
             .setMessage(formatForecastTime(p.optString("startTime",""))+"\n"+p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F")+"\nPrecipitation chance: "+rain+"\nWind: "+p.optString("windSpeed","—")+" "+p.optString("windDirection","")+"\n"+p.optString("detailedForecast",""))
             .setPositiveButton("OK",null).show();
     }
@@ -768,7 +768,7 @@ public class WeatherActivity extends Activity {
             LinearLayout textCol=new LinearLayout(this);textCol.setOrientation(LinearLayout.VERTICAL);textCol.addView(text(place.name,15,true));textCol.addView(text("Tap to use this forecast",11,false));row.addView(textCol,new LinearLayout.LayoutParams(0,-2,1));
             TextView check=text(place.name.equals(selectedPlaceName())?"✓":"›",22,true);check.setTextColor(ThemeUtils.accent(this));row.addView(check);
             row.setOnLongClickListener(v -> {
-                new AlertDialog.Builder(this).setTitle("Remove saved location?")
+                new AlertDialog.Builder(this, dialogTheme()).setTitle("Remove saved location?")
                     .setMessage("Remove " + place.name + " from saved locations?")
                     .setNegativeButton("Cancel", null)
                     .setPositiveButton("Remove", (d,w) -> {
@@ -889,14 +889,14 @@ public class WeatherActivity extends Activity {
         addSetting("Font size",fontScaleLabel(),()->{
             String[] labels={"Small","Normal","Large","Extra large"};float[] values={0.85f,1f,1.15f,1.3f};
             int selected=1;for(int i=0;i<values.length;i++)if(Math.abs(values[i]-fontScale)<0.04f)selected=i;
-            new AlertDialog.Builder(this).setTitle("Weather font size").setSingleChoiceItems(labels,selected,(d,w)->{fontScale=values[w];prefs().edit().putFloat("weather_font_scale",fontScale).apply();d.dismiss();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
+            new AlertDialog.Builder(this, dialogTheme()).setTitle("Weather font size").setSingleChoiceItems(labels,selected,(d,w)->{fontScale=values[w];prefs().edit().putFloat("weather_font_scale",fontScale).apply();d.dismiss();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
         });
         addSwitchSetting("New forecast notifications", "Notify only when the forecast issue/update time changes.",
             "weather_new_forecast_notifications", true);
         addSetting("Auto refresh",refreshLabel(),()->{
             String[] labels={"Off","5 minutes","10 minutes","15 minutes","30 minutes","60 minutes"};int[] values={0,5,10,15,30,60};int selected=3;
             int current=prefs().getInt("weather_refresh_minutes",30);for(int i=0;i<values.length;i++)if(values[i]==current)selected=i;
-            new AlertDialog.Builder(this).setTitle("Auto refresh interval").setSingleChoiceItems(labels,selected,(d,w)->{prefs().edit().putInt("weather_refresh_minutes",values[w]).apply();d.dismiss();scheduleAutoRefresh();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
+            new AlertDialog.Builder(this, dialogTheme()).setTitle("Auto refresh interval").setSingleChoiceItems(labels,selected,(d,w)->{prefs().edit().putInt("weather_refresh_minutes",values[w]).apply();d.dismiss();scheduleAutoRefresh();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
         });
         addSetting("Refresh now","Update forecast immediately",()->{
             currentPage="forecast";removeHeaderRows();showForecastPageHeader();
