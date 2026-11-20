@@ -33,7 +33,7 @@ public final class ThemeUtils {
     public static int text(Context context) { return isDark(context) ? Color.WHITE : Color.rgb(24, 28, 33); }
     public static int secondaryText(Context context) { return isDark(context) ? Color.rgb(190, 198, 208) : Color.rgb(85, 95, 105); }
     public static int focusText(Context context) {
-        return context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false)
+        return context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true)
             ? text(context) : onAccent(context);
     }
 
