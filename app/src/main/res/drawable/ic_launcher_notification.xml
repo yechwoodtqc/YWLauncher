@@ -1,3 +1,4 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#FFFFFFFF" android:pathData="M4,4h7v7H4zM13,4h7v7h-7zM4,13h7v7H4zM13,13h7v7h-7z"/>
+    <!-- Monochrome silhouette of the four-square YW Launcher mark. -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M5,5h6v6H5zM13,5h6v6h-6zM5,13h6v6H5zM13,13h6v6h-6zM11,11h2v2h-2z"/>
 </vector>
