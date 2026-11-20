@@ -153,8 +153,12 @@ public final class BackgroundPickerActivity extends Activity {
         Button close=button("Cancel",()->finish());
         root.addView(close,new LinearLayout.LayoutParams(-1,dp(48)));
         setContentView(root);
-        if(grid.getChildCount()>0 && ((LinearLayout)grid.getChildAt(0)).getChildCount()>0)
-            ((LinearLayout)grid.getChildAt(0)).getChildAt(0).requestFocus();
+        int selectedRow = selected / columns;
+        int selectedColumn = selected % columns;
+        if (selectedRow < grid.getChildCount()) {
+            LinearLayout row = (LinearLayout) grid.getChildAt(selectedRow);
+            if (selectedColumn < row.getChildCount()) row.getChildAt(selectedColumn).requestFocus();
+        }
     }
 
     private LinearLayout pageRoot() {
