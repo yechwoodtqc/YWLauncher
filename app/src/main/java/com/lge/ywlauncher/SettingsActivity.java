@@ -134,15 +134,18 @@ public class SettingsActivity extends Activity {
     }
 
     private void launchKeptWallpaperBrowser() {
-        if (android.os.Build.VERSION.SDK_INT >= 23
-            && checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, 701);
-            return;
+        // Use the same Android-6-compatible picker flow as the working custom
+        // launcher background picker, rather than the old internal browser.
+        Intent picker = new Intent(Intent.ACTION_GET_CONTENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.setType("*/*");
+        picker.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*"});
+        try {
+            startActivityForResult(Intent.createChooser(picker, "Choose wallpaper image"),
+                PICK_KEPT_WALLPAPER);
+        } catch (Exception e) {
+            showError("No file picker is available on this device.");
         }
-        Intent browser = new Intent(this, FileBrowserActivity.class);
-        browser.putExtra(FileBrowserActivity.EXTRA_MODE, "open");
-        browser.putExtra(FileBrowserActivity.EXTRA_FILTER, "image");
-        startActivityForResult(browser, PICK_KEPT_WALLPAPER);
     }
 
     private void updateKeptWallpaper() {
