@@ -439,20 +439,22 @@ public class MainActivity extends Activity {
         if (!grid || count <= 1) return;
         for (int i = 0; i < count; i++) {
             final int page = i;
-            TextView dot = new TextView(this);
-            dot.setText("●");
-            dot.setTextSize(i == currentPage ? 13 : 11);
-            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : ThemeUtils.text(this));
-            if (i == currentPage) dot.setTypeface(null, android.graphics.Typeface.BOLD);
-            dot.setGravity(Gravity.CENTER);
+            View dot = new View(this);
+            android.graphics.drawable.GradientDrawable marker = new android.graphics.drawable.GradientDrawable();
+            marker.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            marker.setColor(i == currentPage ? ThemeUtils.accent(this) : 0xfff5f7fa);
+            marker.setStroke(dp(1), i == currentPage ? Color.WHITE : 0xff26364a);
+            dot.setBackground(marker);
             dot.setContentDescription("Page " + (i + 1));
             dot.setFocusable(false);
-            dot.setPadding(dp(4), 0, dp(4), 0);
             dot.setOnClickListener(v -> {
                 int delta = page - currentPage;
                 if (delta != 0) changePage(delta, 0);
             });
-            pageDots.addView(dot, new LinearLayout.LayoutParams(-2, -1));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                dp(i == currentPage ? 10 : 8), dp(i == currentPage ? 10 : 8));
+            params.setMargins(dp(5), 0, dp(5), 0);
+            pageDots.addView(dot, params);
         }
     }
 
@@ -558,7 +560,7 @@ public class MainActivity extends Activity {
         if (!focused && !selected) return ThemeUtils.focusBackground(this);
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setCornerRadius(dp(10));
-        boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false);
+        boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true);
         if (focused && outline) {
             shape.setColor(selected ? 0x4426a7ff : Color.TRANSPARENT);
             shape.setStroke(dp(3), selected ? Color.WHITE : ThemeUtils.accent(this));
