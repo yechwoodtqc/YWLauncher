@@ -70,7 +70,7 @@ public class WeatherActivity extends Activity {
         @Override public AlertDialog show() {
             AlertDialog dialog = super.show();
             if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawable(new GradientDrawable());
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(ThemeUtils.surface(WeatherActivity.this)));
                 dialog.getWindow().setDimAmount(0f);
                 dialog.getWindow().setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT,
                     android.view.WindowManager.LayoutParams.MATCH_PARENT);
