@@ -199,6 +199,7 @@ public final class BackgroundPickerActivity extends Activity {
     }
 
     private Choice currentChoice() { return choices.get(Math.max(0,Math.min(choices.size()-1,previewIndex))); }
+    private Choice currentChoiceForSelected() { return choices.get(Math.max(0,Math.min(choices.size()-1,selected))); }
 
     private void showPreview() {
         previewShowing = true;
@@ -410,7 +411,14 @@ public final class BackgroundPickerActivity extends Activity {
             if (keyCode==KeyEvent.KEYCODE_BACK) { showGrid(); return true; }
         } else {
             if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT || keyCode==KeyEvent.KEYCODE_BACK) { finish(); return true; }
-            if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT) { showPreview(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT) {
+                Choice choice=currentChoiceForSelected();
+                if (choice.value==CUSTOM_IMAGE && pendingImage==null) {
+                    String saved=prefs.getString("custom_background_path","");
+                    if (saved.isEmpty() || !new File(saved).isFile()) { pickImage(); return true; }
+                }
+                showPreview(); return true;
+            }
         }
         return super.onKeyDown(keyCode,event);
     }
