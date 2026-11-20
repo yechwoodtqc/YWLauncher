@@ -72,6 +72,8 @@ public final class BackgroundPickerActivity extends Activity {
 
     private void buildChoices() {
         choices.clear();
+        choices.add(new Choice("Blue", "Classic launcher blue", 1, 0xff12304e));
+        choices.add(new Choice("Black", "Solid black background", 2, Color.BLACK));
         for (int i=0;i<PALETTE.length;i++) choices.add(new Choice(PALETTE_NAMES[i], "Color background", CUSTOM_COLOR, PALETTE[i]));
         choices.add(new Choice("System wallpaper", "Use the phone's wallpaper", SYSTEM, Color.TRANSPARENT));
         choices.add(new Choice("LG Exalt", "Original blue-to-purple gradient", EXALT, 0xff2452b0));
