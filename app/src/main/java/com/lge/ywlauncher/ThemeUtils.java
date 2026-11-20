@@ -82,7 +82,7 @@ public final class ThemeUtils {
     private static GradientDrawable focusShape(Context context, boolean focused) {
         GradientDrawable shape = new GradientDrawable();
         shape.setCornerRadius(10 * context.getResources().getDisplayMetrics().density);
-        boolean outline = context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false);
+        boolean outline = context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true);
         if (outline && focused) {
             shape.setColor(Color.TRANSPARENT);
             shape.setStroke(Math.max(2, Math.round(2 * context.getResources().getDisplayMetrics().density)), accent(context));
