@@ -622,11 +622,42 @@ public class MainActivity extends Activity {
     }
 
     private void hideSelectedApps() {
-        Set<String> saved = getSharedPreferences("launcher", 0).getStringSet("included", null);
-        Set<String> included = normalizedIncludedActivities(saved, queryApps());
-        included.removeAll(selectedApps);
-        getSharedPreferences("launcher", 0).edit().putStringSet("included", included).apply();
-        selectedApps.clear(); currentPage = 0; loadApps(); updateSelectionToolbar();
+        final Set<String> toHide = new HashSet<>(selectedApps);
+        if (toHide.isEmpty()) return;
+        ArrayList<View> disappearing = new ArrayList<>();
+        collectAppViews(appsArea, toHide, disappearing);
+        for (View view : disappearing) {
+            view.animate().alpha(0f).scaleX(0.78f).scaleY(0.78f)
+                .setDuration(180).setInterpolator(new android.view.animation.AccelerateInterpolator()).start();
+        }
+        appsArea.postDelayed(() -> {
+            Set<String> saved = getSharedPreferences("launcher", 0).getStringSet("included", null);
+            Set<String> included = normalizedIncludedActivities(saved, queryApps());
+            included.removeAll(toHide);
+            getSharedPreferences("launcher", 0).edit().putStringSet("included", included).apply();
+            selectedApps.clear(); currentPage = 0; loadApps(); updateSelectionToolbar();
+            ArrayList<View> arriving = new ArrayList<>();
+            collectAppViews(appsArea, null, arriving);
+            for (int i=0;i<arriving.size();i++) {
+                View view=arriving.get(i);
+                view.setAlpha(0f); view.setTranslationY(dp(10));
+                view.animate().alpha(1f).translationY(0f).setStartDelay(Math.min(180,i*14))
+                    .setDuration(190).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            }
+        }, 190);
+    }
+
+    private void collectAppViews(View view, Set<String> names, ArrayList<View> output) {
+        if (view == null) return;
+        Object tag = view.getTag();
+        if (tag instanceof String && (names == null || names.contains((String) tag))) {
+            output.add(view);
+            return;
+        }
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i=0;i<group.getChildCount();i++) collectAppViews(group.getChildAt(i), names, output);
+        }
     }
 
     private void uninstallSelectedApps() {
