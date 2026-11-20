@@ -162,6 +162,19 @@ public class SettingsActivity extends Activity {
         return ThemeUtils.isDark(this) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme;
     }
 
+    private final class FullScreenDialogBuilder extends AlertDialog.Builder {
+        FullScreenDialogBuilder(Activity activity) { super(activity, dialogTheme()); }
+        @Override public AlertDialog show() {
+            AlertDialog dialog = super.show();
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(ThemeUtils.surface(SettingsActivity.this)));
+                dialog.getWindow().setDimAmount(0f);
+                dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+            }
+            return dialog;
+        }
+    }
+
     private int dp(float value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
@@ -295,7 +308,7 @@ public class SettingsActivity extends Activity {
         int[] values = {85, 100, 115, 130, 145};
         int current = prefs.getInt("font_size_percent", 100), selected = 1;
         for (int i=0;i<values.length;i++) if(values[i]==current) selected=i;
-        new AlertDialog.Builder(this, dialogTheme()).setTitle("Launcher font size")
+        new FullScreenDialogBuilder(this).setTitle("Launcher font size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("font_size_percent", values[which]).apply();
                 dialog.dismiss(); recreate();
