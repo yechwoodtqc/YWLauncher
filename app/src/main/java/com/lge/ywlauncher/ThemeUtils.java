@@ -33,7 +33,7 @@ public final class ThemeUtils {
     public static int text(Context context) { return isDark(context) ? Color.WHITE : Color.rgb(24, 28, 33); }
     public static int secondaryText(Context context) { return isDark(context) ? Color.rgb(190, 198, 208) : Color.rgb(85, 95, 105); }
     public static int focusText(Context context) {
-        return context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false)
+        return context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true)
             ? text(context) : onAccent(context);
     }
 
@@ -82,7 +82,7 @@ public final class ThemeUtils {
     private static GradientDrawable focusShape(Context context, boolean focused) {
         GradientDrawable shape = new GradientDrawable();
         shape.setCornerRadius(10 * context.getResources().getDisplayMetrics().density);
-        boolean outline = context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false);
+        boolean outline = context.getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true);
         if (outline && focused) {
             shape.setColor(Color.TRANSPARENT);
             shape.setStroke(Math.max(2, Math.round(2 * context.getResources().getDisplayMetrics().density)), accent(context));

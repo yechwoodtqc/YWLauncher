@@ -8,7 +8,7 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 
-/** Smooth blue-to-purple Exalt home-screen gradient from the supplied reference. */
+/** Exalt gradient sampled from the original side-by-side launcher reference. */
 public final class ExaltBackgroundDrawable extends Drawable {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
@@ -19,40 +19,31 @@ public final class ExaltBackgroundDrawable extends Drawable {
         canvas.save();
         canvas.translate(bounds.left, bounds.top);
 
-        // The reference is a clean vertical sweep: deep blue at the top,
-        // saturated royal blue through the middle, then purple and magenta.
+        // The supplied Exalt reference is much more saturated than the first
+        // approximation: midnight navy at the top, electric royal blue in the
+        // upper-middle, violet below, and a bright pink-magenta lower edge.
         paint.setShader(new LinearGradient(0, 0, 0, height,
             new int[] {
-                0xff173f91,
-                0xff2452b0,
-                0xff5145b5,
-                0xff7839ad,
-                0xff9b399e
+                0xff001e60,
+                0xff00309a,
+                0xff003ec2,
+                0xff0844d8,
+                0xff2838e1,
+                0xff4a2de1,
+                0xff7e2adc,
+                0xffa22ed8,
+                0xffc632da
             },
-            new float[] { 0f, 0.34f, 0.62f, 0.84f, 1f },
+            new float[] { 0f, 0.10f, 0.20f, 0.31f, 0.46f, 0.59f, 0.76f, 0.90f, 1f },
             Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, width, height, paint);
 
-        // Soft blue illumination near the upper-left, without the teal cast
-        // that made the previous version look unlike the supplied screen.
-        paint.setShader(new RadialGradient(width * 0.08f, height * 0.02f,
-            Math.max(width, height) * 0.82f,
-            new int[] { 0x443b8ff0, 0x1a327be0, 0x00000000 },
-            new float[] { 0f, 0.48f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawRect(0, 0, width, height, paint);
-
-        // A restrained violet-magenta bloom at the bottom adds the soft
-        // luminous finish visible in the Exalt reference.
-        paint.setShader(new RadialGradient(width * 0.78f, height * 1.02f,
-            Math.max(width, height) * 0.88f,
-            new int[] { 0x667f35bd, 0x337e36b5, 0x00000000 },
-            new float[] { 0f, 0.52f, 1f }, Shader.TileMode.CLAMP));
-        canvas.drawRect(0, 0, width, height, paint);
-
-        // Gentle edge shading keeps white labels and icons readable.
-        paint.setShader(new LinearGradient(0, 0, width, 0,
-            new int[] { 0x18071235, 0x00000000, 0x120b062d },
-            new float[] { 0f, 0.5f, 1f }, Shader.TileMode.CLAMP));
+        // A restrained blue glow toward the right-center matches the luminous
+        // cobalt area in the reference without introducing visible bands.
+        paint.setShader(new RadialGradient(width * 0.92f, height * 0.46f,
+            Math.max(width, height) * 1.05f,
+            new int[] { 0x332f6cff, 0x142b55ff, 0x00000000 },
+            new float[] { 0f, 0.55f, 1f }, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, width, height, paint);
 
         paint.setShader(null);
