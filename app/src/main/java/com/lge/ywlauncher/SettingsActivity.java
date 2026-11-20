@@ -67,7 +67,7 @@ public class SettingsActivity extends Activity {
         settingsScroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         page.addView(settingsScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(page);
-        settingsScroll.post(() -> settingsScroll.scrollTo(0, prefs.getInt("settings_scroll_y", 0)));
+        settingsScroll.post(() -> { settingsScroll.scrollTo(0, 0); content.requestFocus(); });
 
         section("Notifications");
         String notificationHelp = isLgFlipModel()
@@ -87,7 +87,7 @@ public class SettingsActivity extends Activity {
         addSettingRow("Background", backgroundSummary(), this::chooseBackground);
         addSettingRow("Theme", themeSummary(), this::chooseTheme);
         addSettingRow("Accent color", "Choose the highlight color.", this::chooseAccent);
-        addSettingRow("Focus highlight", prefs.getBoolean("focus_outline_only", false) ? "Outline only" : "Filled highlight", this::chooseFocusStyle);
+        addSettingRow("Focus highlight", prefs.getBoolean("focus_outline_only", true) ? "Outline only" : "Filled highlight", this::chooseFocusStyle);
 
         section("Apps");
         addSettingRow("Choose apps", "Choose apps with launcher icons and check marks.", () -> startActivity(new Intent(this, ChooseAppsActivity.class)));
@@ -96,12 +96,13 @@ public class SettingsActivity extends Activity {
         section("Tweaks");
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
         addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
+        addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
     }
 
-    @Override protected void onPause() { if(settingsScroll!=null) prefs.edit().putInt("settings_scroll_y",settingsScroll.getScrollY()).apply(); super.onPause(); }
+    @Override protected void onPause() { super.onPause(); }
 
     private String keptWallpaperSummary() {
         File image = new File(getFilesDir(), "kept_wallpaper.png");
@@ -341,16 +342,7 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseBackground() {
-        int[] values={0,7,1,2,3,4,5,6};
-        String[] labels={"Device default","System wallpaper","Blue","Black","Custom color","Custom image","Exalt gradient","LG Classic menu"};
-        int current=prefs.getInt("background",defaultBackgroundForDevice()); if(current==0) current=defaultBackgroundForDevice();
-        int selected=0; for(int i=0;i<values.length;i++) if(values[i]==current) selected=i;
-        new AlertDialog.Builder(this).setTitle("Background").setSingleChoiceItems(labels,selected,(dialog,which)->{
-            int value=values[which];dialog.dismiss();
-            if(value==3){prefs.edit().putInt("background",3).apply();choosePalette("Custom background color","custom_background",Color.rgb(25,35,48));}
-            else if(value==4) chooseCustomBackgroundSource();
-            else {prefs.edit().putInt("background",value).apply();recreate();}
-        }).setNegativeButton("Cancel",null).show();
+        startActivity(new Intent(this, BackgroundPickerActivity.class));
     }
 
     private void chooseCustomBackgroundSource() {
@@ -618,6 +610,23 @@ public class SettingsActivity extends Activity {
         manager.notify(42, notification.build());
     }
 
+
+    private void openLgKeyboardSettings() {
+        new AlertDialog.Builder(this)
+            .setTitle("LG Keyboard · Emoticon suggestions")
+            .setMessage("In LG Keyboard settings, open General > Word Suggestions > Emoticons and turn it on. When you type a word with a matching emoji, the emoji can then appear as a T9 suggestion.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Open keyboard settings", (dialog, which) -> {
+                try {
+                    Intent keyboard = new Intent();
+                    keyboard.setComponent(new ComponentName("com.lge.ime", "com.lge.ime.setting.MainSettingsActivity"));
+                    keyboard.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(keyboard);
+                } catch (Exception e) {
+                    showError("LG Keyboard settings are not available on this device.");
+                }
+            }).show();
+    }
 
     private boolean isLgFlipModel() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
