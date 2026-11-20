@@ -1329,26 +1329,32 @@ public class WeatherActivity extends Activity {
             boolean fog = condition.contains("fog") || condition.contains("haze") || condition.contains("smoke");
             boolean partly = condition.contains("partly") || condition.contains("mostly");
             boolean sunny = condition.contains("sun") || condition.contains("clear") || partly;
-            boolean night = condition.contains("night") || condition.contains("tonight");
+            boolean night = condition.contains("night") || condition.contains("tonight") || condition.contains("overnight");
             boolean cloudy = condition.contains("cloud") || condition.contains("overcast") || partly || rain || snow || fog || thunder;
 
-            paint.setShader(null);
+            // Match the weather app tile: vivid blue rounded square by day,
+            // deep blue at night, with clean sun/cloud artwork on top.
             paint.setStyle(Paint.Style.FILL);
-            int halo = thunder ? 0x665f49d8 : (rain || snow || fog ? 0x5540bfe8 : (night ? 0x665b63c8 : 0x55ffc44d));
-            paint.setColor(halo);
-            canvas.drawCircle(40, 40, 37, paint);
-            paint.setColor(0x18ffffff);
-            canvas.drawCircle(28, 22, 14, paint);
+            paint.setShader(night
+                ? new LinearGradient(0, 0, 80, 80,
+                    new int[]{0xff284d91, 0xff19386f, 0xff10264f}, null, Shader.TileMode.CLAMP)
+                : new LinearGradient(0, 0, 80, 80,
+                    new int[]{0xff58b8ff, 0xff2388ee, 0xff0754b8}, null, Shader.TileMode.CLAMP));
+            canvas.drawRoundRect(1.5f, 1.5f, 78.5f, 78.5f, 14, 14, paint);
+            paint.setShader(null);
+            paint.setColor(0x22ffffff);
+            canvas.drawRoundRect(5, 5, 75, 34, 10, 10, paint);
 
             if (night) {
                 paint.setShader(moonGradient);
-                canvas.drawCircle(34, 28, 14, paint);
+                canvas.drawCircle(33, 27, 14, paint);
                 paint.setShader(null);
-                paint.setColor(halo);
-                canvas.drawCircle(41, 22, 13, paint);
-                paint.setColor(0xffe9edff);
-                canvas.drawCircle(53, 18, 1.4f, paint);
-                canvas.drawCircle(60, 31, 1.1f, paint);
+                paint.setColor(0xff19386f);
+                canvas.drawCircle(40, 21, 13, paint);
+                paint.setColor(0xfff3f4ff);
+                canvas.drawCircle(55, 17, 1.5f, paint);
+                canvas.drawCircle(62, 30, 1.1f, paint);
+                canvas.drawCircle(47, 10, 0.9f, paint);
             } else if (sunny) {
                 drawSun(canvas, 28, 29, 12);
             }
@@ -1379,7 +1385,7 @@ public class WeatherActivity extends Activity {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(2.5f);
                 paint.setStrokeCap(Paint.Cap.ROUND);
-                paint.setColor(0xff35bfe8);
+                paint.setColor(0xffbdefff);
                 canvas.drawLine(12, 65, 67, 65, paint);
                 canvas.drawLine(18, 72, 61, 72, paint);
                 paint.setStyle(Paint.Style.FILL);
