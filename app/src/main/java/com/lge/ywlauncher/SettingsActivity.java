@@ -19,6 +19,7 @@ public class SettingsActivity extends Activity {
     private SharedPreferences prefs;
     private static final int CREATE_LOG_FILE = 501;
     private static final int PICK_BACKGROUND_IMAGE = 502;
+    private static final int PICK_BACKGROUND_CHOOSER = 508;
     private static final int PICK_KEPT_WALLPAPER = 503;
     private static final int CREATE_DICTIONARY_FILE = 504;
     private static final int PICK_DICTIONARY_FILE = 505;
@@ -364,7 +365,7 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseBackground() {
-        startActivity(new Intent(this, BackgroundPickerActivity.class));
+        startActivityForResult(new Intent(this, BackgroundPickerActivity.class), PICK_BACKGROUND_CHOOSER);
     }
 
     private void chooseCustomBackgroundSource() {
@@ -813,6 +814,10 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
+        if (requestCode == PICK_BACKGROUND_CHOOSER) {
+            if (resultCode == RESULT_OK) recreate();
+            return;
+        }
         if(requestCode==CREATE_DICTIONARY_FILE || requestCode==CREATE_LOG_FILE ||
            requestCode==PICK_DICTIONARY_FILE || requestCode==PICK_KEPT_WALLPAPER ||
            requestCode==PICK_BACKGROUND_IMAGE) {
