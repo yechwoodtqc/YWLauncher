@@ -644,7 +644,7 @@ public class WeatherActivity extends Activity {
         if(period==null)return;
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
-        card.addView(text(weatherEmoji(period.optString("shortForecast","")),25,true),new LinearLayout.LayoutParams(dp(42),dp(44)));
+        card.addView(text(weatherEmoji(period.optString("shortForecast",""), period.optBoolean("isDaytime", true)),25,true),new LinearLayout.LayoutParams(dp(42),dp(44)));
         LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(7),0,0,0);
         String time=formatForecastTime(period.optString("startTime",""));
         info.addView(text(time+" · "+period.optString("temperature","—")+"°"+period.optString("temperatureUnit","F"),14,true));
@@ -701,7 +701,7 @@ public class WeatherActivity extends Activity {
         JSONObject p=hourlyPeriods.optJSONObject(index); if(p==null)return;
         JSONObject chance=p.optJSONObject("probabilityOfPrecipitation");
         String rain=chance==null||chance.isNull("value")?"Not available":chance.optString("value")+"%";
-        new AlertDialog.Builder(this, dialogTheme()).setTitle(weatherEmoji(p.optString("shortForecast",""))+" "+p.optString("shortForecast","Hourly details"))
+        new AlertDialog.Builder(this, dialogTheme()).setTitle(weatherEmoji(p.optString("shortForecast",""), p.optBoolean("isDaytime", true))+" "+p.optString("shortForecast","Hourly details"))
             .setMessage(formatForecastTime(p.optString("startTime",""))+"\n"+p.optString("temperature","—")+"°"+p.optString("temperatureUnit","F")+"\nPrecipitation chance: "+rain+"\nWind: "+p.optString("windSpeed","—")+" "+p.optString("windDirection","")+"\n"+p.optString("detailedForecast",""))
             .setPositiveButton("OK",null).show();
     }
