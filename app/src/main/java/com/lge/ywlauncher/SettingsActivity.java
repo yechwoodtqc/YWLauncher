@@ -413,7 +413,7 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseFocusStyle() {
-        boolean outline = prefs.getBoolean("focus_outline_only", false);
+        boolean outline = prefs.getBoolean("focus_outline_only", true);
         new AlertDialog.Builder(this, dialogTheme()).setTitle("Focus highlight")
             .setSingleChoiceItems(new String[]{"Filled highlight", "Outline only"}, outline ? 1 : 0, (dialog, which) -> {
                 prefs.edit().putBoolean("focus_outline_only", which == 1).apply();
