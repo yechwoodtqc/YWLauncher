@@ -27,7 +27,7 @@ All implementation changes for this update are kept together on `feature/compreh
 - [ ] Call-connected vibration: deliberately not implemented. Android 6's public call-state API reports OFFHOOK while an outgoing call is still dialing and does not reliably expose the remote-answer event; using it would vibrate too early.
 - [x] Added LG Keyboard settings shortcut to `com.lge.ime/com.lge.ime.setting.MainSettingsActivity`, with General > Word Suggestions > Emoticons instructions.
 - [x] Added a Home-link activity and HTTP/HTTPS manifest deep links for `www.ywhome.go`; updated the YW Launcher vCard URL to that address.
-- [ ] Run Android debug build, lint, and tests on this branch; resolve any failures before considering the update build-complete.
+- [x] CI run #345 (commit `2864f807`) passed: `assembleDebug` succeeded; `lintDebug` succeeded with 0 errors and 81 warnings; `testDebugUnitTest` succeeded but was `NO-SOURCE` because the project currently defines no unit tests.
 - [ ] Install and verify on a physical LG Exalt VN220, especially Recents icons, soft keys, focus navigation, file picker, and Wi-Fi behavior.
 
 ## Device/API notes
