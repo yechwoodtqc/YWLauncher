@@ -292,11 +292,26 @@ public final class BackgroundPickerActivity extends Activity {
                 target.setBackground(new WallpaperDrawable(pendingImage,"crop"));
             else if(choice.value==CUSTOM_IMAGE) {
                 String path=prefs.getString("custom_background_path","");
-                Bitmap bitmap=path.isEmpty()?null:BitmapFactory.decodeFile(path);
+                Bitmap bitmap=path.isEmpty()?null:decodePreviewBitmap(path);
                 if(bitmap!=null) target.setBackground(new WallpaperDrawable(bitmap,prefs.getString("wallpaper_fit","crop")));
                 else target.setBackgroundColor(0xff34495e);
             } else target.setBackgroundColor(choice.color);
         }
+    }
+
+    private Bitmap decodePreviewBitmap(String path) {
+        try {
+            BitmapFactory.Options bounds=new BitmapFactory.Options();
+            bounds.inJustDecodeBounds=true;
+            BitmapFactory.decodeFile(path,bounds);
+            int maxW=Math.max(1,getResources().getDisplayMetrics().widthPixels);
+            int maxH=Math.max(1,getResources().getDisplayMetrics().heightPixels);
+            int sample=1;
+            while(bounds.outWidth/sample>maxW*2 || bounds.outHeight/sample>maxH*2) sample*=2;
+            BitmapFactory.Options options=new BitmapFactory.Options();
+            options.inSampleSize=sample;
+            return BitmapFactory.decodeFile(path,options);
+        } catch (Exception ignored) { return null; }
     }
 
     private void stepPreview(int delta) {
