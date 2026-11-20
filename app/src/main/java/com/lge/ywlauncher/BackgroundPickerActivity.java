@@ -126,7 +126,14 @@ public final class BackgroundPickerActivity extends Activity {
                 TextView title=label(choice.title,14,true);
                 title.setGravity(Gravity.CENTER);
                 tile.addView(title);
-                tile.setOnClickListener(v->{selected=index; if(choice.value==CUSTOM_IMAGE) pickImage(); else showPreview();});
+                tile.setOnClickListener(v->{
+                    selected=index;
+                    if(choice.value==CUSTOM_IMAGE) {
+                        String savedImage=prefs.getString("custom_background_path","");
+                        if(pendingImage!=null || (!savedImage.isEmpty() && new File(savedImage).isFile())) showPreview();
+                        else pickImage();
+                    } else showPreview();
+                });
                 tile.setOnFocusChangeListener((v,f)->{
                     if(f) selected=index;
                     tile.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
