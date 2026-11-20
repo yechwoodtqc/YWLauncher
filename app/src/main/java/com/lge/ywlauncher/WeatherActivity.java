@@ -464,9 +464,14 @@ public class WeatherActivity extends Activity {
                         .apply();
                     if (forecastChanged) showNewForecastNotification();
                     JSONObject first = finalDays.optJSONObject(0);
+                    JSONObject currentPeriod = finalHours.optJSONObject(0);
+                    String widgetForecast = currentPeriod == null
+                        ? (first == null ? "" : first.optString("shortForecast", ""))
+                        : currentPeriod.optString("shortForecast", "");
+                    boolean widgetDaytime = currentPeriod == null || currentPeriod.optBoolean("isDaytime", true);
                     prefs().edit().putString("weather_widget_summary", first == null ? "Forecast ready" : first.optString("shortForecast", "Forecast ready"))
                         .putString("weather_widget_temperature", first == null ? "—" : first.optString("temperature", "—") + "°" + first.optString("temperatureUnit", "F"))
-                        .putString("weather_widget_icon", first == null ? "🌤️" : weatherEmoji(first.optString("shortForecast", "")))
+                        .putString("weather_widget_icon", first == null ? "🌤️" : weatherEmoji(widgetForecast, widgetDaytime))
                         .apply();
                     WeatherWidgetProvider.updateAll(this);
                     fetchDiscussion(forecastOffice);
@@ -1416,10 +1421,11 @@ public class WeatherActivity extends Activity {
         }
     }
 
-    private String weatherEmoji(String f){
+    private String weatherEmoji(String f, boolean isDaytime){
         String v=f==null?"":f.toLowerCase(Locale.US);
         if(v.contains("thunder"))return "⛈️";if(v.contains("snow")||v.contains("sleet")||v.contains("ice")||v.contains("blizzard"))return "🌨️";
         if(v.contains("rain")||v.contains("shower")||v.contains("drizzle"))return "🌧️";if(v.contains("fog")||v.contains("haze")||v.contains("smoke"))return "🌫️";
+        if(!isDaytime) { if(v.contains("cloud")||v.contains("overcast")||v.contains("partly")||v.contains("mostly"))return "☁️"; return "🌙"; }
         if(v.contains("partly")||v.contains("mostly sunny"))return "🌤️";if(v.contains("cloud")||v.contains("overcast"))return "☁️";
         if(v.contains("sun")||v.contains("clear"))return "☀️";if(v.contains("wind"))return "💨";return "🌡️";
     }
