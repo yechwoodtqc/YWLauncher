@@ -51,14 +51,18 @@ public class WeatherActivity extends Activity {
     }
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
         android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
-        int size = 64;
+        int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
-        bitmap.setDensity(Bitmap.DENSITY_NONE);
+        bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
         return bitmap;
+    }
+
+    private int dialogTheme() {
+        return ThemeUtils.isDark(this) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme;
     }
 
     private int dp(float v) { return Math.round(v * getResources().getDisplayMetrics().density); }
@@ -71,6 +75,8 @@ public class WeatherActivity extends Activity {
         setTaskDescription(new android.app.ActivityManager.TaskDescription(
             "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
         fontScale = prefs().getFloat("weather_font_scale", 1.0f);
+        try { discussionProducts = new JSONArray(prefs().getString("weather_discussion_cache", "[]")); }
+        catch (Exception ignored) { discussionProducts = new JSONArray(); }
         loadSavedPlaces();
         buildScreen();
         if (getIntent().getBooleanExtra("configure_location", false)) showLocationsPage();
@@ -334,7 +340,8 @@ public class WeatherActivity extends Activity {
             PendingIntent pending = PendingIntent.getActivity(this, 77, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
             Notification.Builder builder = new Notification.Builder(this)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_weather_notification)
+                .setLargeIcon(NotificationIconUtils.createLargeIcon(this, R.drawable.ic_weather))
                 .setContentTitle("New weather forecast")
                 .setContentText("The forecast has been updated.")
                 .setContentIntent(pending).setAutoCancel(true).setWhen(System.currentTimeMillis());
@@ -405,10 +412,10 @@ public class WeatherActivity extends Activity {
                 JSONArray finalAlerts = alerts;
                 String finalGenerated = generated;
                 handler.post(() -> {
-                    String forecastFingerprint = finalDays.toString() + "|" + finalHours.toString();
-                    String previousFingerprint = prefs().getString("weather_cache_fingerprint", "");
-                    boolean forecastChanged = !previousFingerprint.isEmpty()
-                        && !previousFingerprint.equals(forecastFingerprint);
+                    String previousIssuedTime = prefs().getString("weather_cache_generated_raw", "");
+                    boolean forecastChanged = !finalGenerated.isEmpty()
+                        && !previousIssuedTime.isEmpty()
+                        && !previousIssuedTime.equals(finalGenerated);
                     dailyPeriods = finalDays;
                     hourlyPeriods = finalHours;
                     activeAlerts = finalAlerts;
@@ -437,6 +444,7 @@ public class WeatherActivity extends Activity {
                         .putFloat("weather_data_lat", (float) latitude)
                         .putFloat("weather_data_lon", (float) longitude)
                         .putString("weather_cache_issued", forecastTime)
+                        .putString("weather_cache_generated_raw", finalGenerated)
                         .putString("weather_cache_fingerprint", fingerprint)
                         .apply();
                     if (forecastChanged) showNewForecastNotification();
@@ -457,7 +465,7 @@ public class WeatherActivity extends Activity {
                             new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(
                                 new Date(prefs().getLong("weather_cache_saved_at", System.currentTimeMillis()))) + " (offline copy)");
                     } else {
-                        showWeatherError("Couldn't load the forecast. Check your connection or choose another saved location.\n\n" + e.getMessage());
+                        showWeatherError("Failed to load...");
                     }
                 });
             } finally {
@@ -495,7 +503,7 @@ public class WeatherActivity extends Activity {
                 headlineText.setPadding(0, dp(4), 0, 0);
                 warning.addView(headlineText);
                 final JSONObject selectedAlert = alert;
-                warning.setOnClickListener(v -> new AlertDialog.Builder(this)
+                warning.setOnClickListener(v -> new AlertDialog.Builder(this, dialogTheme())
                     .setTitle(selectedAlert.optString("event", "Weather alert"))
                     .setMessage(selectedAlert.optString("headline", "") + "\n\n" + selectedAlert.optString("description", ""))
                     .setPositiveButton("Close", null).show());
@@ -512,7 +520,7 @@ public class WeatherActivity extends Activity {
             LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
             card.setPadding(dp(9),dp(8),dp(9),dp(8));card.setMinimumWidth(dp(82));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
             String start=period.optString("startTime","");String time=formatForecastTime(start);
-            card.addView(text(time,12,true));card.addView(weatherIcon(period.optString("shortForecast",""),40),new LinearLayout.LayoutParams(dp(52),dp(46)));
+            card.addView(text(time,12,true));card.addView(weatherIcon(period.optString("shortForecast","") + (period.optBoolean("isDaytime", true) ? "" : " night"),40),new LinearLayout.LayoutParams(dp(52),dp(46)));
             card.addView(text(period.optString("temperature","—")+"°",15,true));
             JSONObject hourlyChance=period.optJSONObject("probabilityOfPrecipitation");
             card.addView(text("Rain "+(hourlyChance==null||hourlyChance.isNull("value")?"—":hourlyChance.optString("value")+"%"),11,false));
@@ -532,7 +540,7 @@ public class WeatherActivity extends Activity {
         LinearLayout card = new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(14),dp(12),dp(14),dp(12)); card.setBackground(cardBackground());
         LinearLayout nowRow = new LinearLayout(this);
         nowRow.setGravity(Gravity.CENTER_VERTICAL);
-        nowRow.addView(weatherIcon(current.optString("shortForecast",""),48),new LinearLayout.LayoutParams(dp(58),dp(58)));
+        nowRow.addView(weatherIcon(current.optString("shortForecast","") + (current.optBoolean("isDaytime", true) ? "" : " night"),48),new LinearLayout.LayoutParams(dp(58),dp(58)));
         TextView heading = text("NOW  "+current.optString("temperature","—")+"°"+current.optString("temperatureUnit","F"),22,true);
         nowRow.addView(heading,new LinearLayout.LayoutParams(0,-2,1));
         card.addView(nowRow);
@@ -581,7 +589,7 @@ public class WeatherActivity extends Activity {
         card.setBackground(ThemeUtils.focusBackground(this));
         card.setFocusable(true);
         card.setClickable(true);
-        card.addView(weatherIcon(period.optString("shortForecast", ""), 48),
+        card.addView(weatherIcon(period.optString("shortForecast", "") + (period.optBoolean("isDaytime", true) ? "" : " night"), 48),
             new LinearLayout.LayoutParams(dp(56), dp(56)));
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
@@ -705,7 +713,13 @@ public class WeatherActivity extends Activity {
                         item.put("text",body);item.put("preview",body.length()>360?body.substring(0,360)+"…":body);result.put(item);
                     }
                 }
-                handler.post(()->{discussionProducts=result;if("forecast".equals(currentPage)&&!hourlyMode)renderForecast();});
+                handler.post(()->{
+                    discussionProducts=result;
+                    prefs().edit().putString("weather_discussion_cache", result.toString())
+                        .putLong("weather_discussion_saved_at", System.currentTimeMillis()).apply();
+                    if("forecast".equals(currentPage)&&!hourlyMode)renderForecast();
+                    if("discussion".equals(currentPage)) showDiscussionPage();
+                });
             }catch(Exception ignored){}
         }).start();
     }
@@ -713,7 +727,11 @@ public class WeatherActivity extends Activity {
     private void showDiscussionPage() {
         currentPage="discussion";rebuildToolbar("Forecast discussion",false,false);forecastList.removeAllViews();
         if(forecastScroller!=null)forecastScroller.post(()->forecastScroller.scrollTo(0,0));
-        String body=discussionProducts.length()>0?discussionProducts.optJSONObject(0).optString("text","No discussion available."):"Forecast discussion is not available yet. Refresh the forecast and try again.";
+        if (discussionProducts.length()==0) {
+            try { discussionProducts = new JSONArray(prefs().getString("weather_discussion_cache", "[]")); }
+            catch (Exception ignored) { discussionProducts = new JSONArray(); }
+        }
+        String body=discussionProducts.length()>0?discussionProducts.optJSONObject(0).optString("text","No discussion available."):"Forecast discussion is not available yet. Connect to the internet to download it.";
         TextView content=text(body,textSize(13),false);content.setPadding(dp(6),dp(8),dp(6),dp(24));content.setFocusable(false);content.setTextIsSelectable(false);content.setLineSpacing(dp(3),1.08f);forecastList.addView(content,new LinearLayout.LayoutParams(-1,-2));
         TextView footer=text("End of forecast discussion",11,false);footer.setGravity(Gravity.CENTER);footer.setPadding(0,dp(18),0,dp(24));forecastList.addView(footer);
     }
@@ -873,13 +891,8 @@ public class WeatherActivity extends Activity {
             int selected=1;for(int i=0;i<values.length;i++)if(Math.abs(values[i]-fontScale)<0.04f)selected=i;
             new AlertDialog.Builder(this).setTitle("Weather font size").setSingleChoiceItems(labels,selected,(d,w)->{fontScale=values[w];prefs().edit().putFloat("weather_font_scale",fontScale).apply();d.dismiss();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
         });
-        addSetting("New forecast notifications",
-            prefs().getBoolean("weather_new_forecast_notifications", true) ? "On · notify when forecast data changes" : "Off",
-            () -> {
-                boolean enabled = prefs().getBoolean("weather_new_forecast_notifications", true);
-                prefs().edit().putBoolean("weather_new_forecast_notifications", !enabled).apply();
-                showWeatherSettings();
-            });
+        addSwitchSetting("New forecast notifications", "Notify only when the forecast issue/update time changes.",
+            "weather_new_forecast_notifications", true);
         addSetting("Auto refresh",refreshLabel(),()->{
             String[] labels={"Off","5 minutes","10 minutes","15 minutes","30 minutes","60 minutes"};int[] values={0,5,10,15,30,60};int selected=3;
             int current=prefs().getInt("weather_refresh_minutes",30);for(int i=0;i<values.length;i++)if(values[i]==current)selected=i;
@@ -900,6 +913,26 @@ public class WeatherActivity extends Activity {
 
     private String fontScaleLabel(){return fontScale<0.95f?"Small":fontScale>1.25f?"Extra large":fontScale>1.05f?"Large":"Normal";}
     private String refreshLabel(){int n=prefs().getInt("weather_refresh_minutes",30);return n==0?"Off":"Every "+n+" minutes";}
+    private void addSwitchSetting(String title, String summary, String key, boolean defaultValue) {
+        LinearLayout row=new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12),dp(10),dp(12),dp(10)); row.setBackground(ThemeUtils.focusBackground(this));
+        row.setFocusable(true); row.setClickable(true);
+        LinearLayout labels=new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
+        labels.addView(text(title,15,true)); labels.addView(text(summary,12,false));
+        row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+        android.widget.Switch toggle=new android.widget.Switch(this);
+        toggle.setChecked(prefs().getBoolean(key,defaultValue));
+        toggle.setThumbTintList(android.content.res.ColorStateList.valueOf(ThemeUtils.accent(this)));
+        toggle.setTrackTintList(android.content.res.ColorStateList.valueOf(ThemeUtils.accent(this)));
+        toggle.setOnCheckedChangeListener((button,checked)->prefs().edit().putBoolean(key,checked).apply());
+        row.addView(toggle,new LinearLayout.LayoutParams(-2,-2));
+        row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));
+        row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
+        forecastList.addView(row); View line=new View(this); line.setBackgroundColor(ThemeUtils.divider(this));
+        forecastList.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
+    }
+
     private void addSetting(String title,String summary,Runnable action){
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));row.setBackground(ThemeUtils.focusBackground(this));row.setFocusable(true);row.setClickable(true);
         row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
