@@ -163,7 +163,7 @@ public class SettingsActivity extends Activity {
     }
 
     private final class FullScreenDialogBuilder extends AlertDialog.Builder {
-        FullScreenDialogBuilder(Activity activity) { super(activity, dialogTheme()); }
+        FullScreenDialogBuilder(Activity activity) { super(activity, ThemeUtils.isDark(activity) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme); }
         @Override public AlertDialog show() {
             AlertDialog dialog = super.show();
             if (dialog.getWindow() != null) {
