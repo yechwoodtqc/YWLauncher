@@ -502,6 +502,7 @@ public class MainActivity extends Activity {
     }
 
     private int pageCount() {
+        if ("single_grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))) return 1;
         int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6)
             * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         return Math.max(1, (apps.size() + size - 1) / size);
