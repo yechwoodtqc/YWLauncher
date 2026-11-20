@@ -127,7 +127,10 @@ public final class BackgroundPickerActivity extends Activity {
                 title.setGravity(Gravity.CENTER);
                 tile.addView(title);
                 tile.setOnClickListener(v->{selected=index; if(choice.value==CUSTOM_IMAGE) pickImage(); else showPreview();});
-                tile.setOnFocusChangeListener((v,f)->tile.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
+                tile.setOnFocusChangeListener((v,f)->{
+                    if(f) selected=index;
+                    tile.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
+                });
                 LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(100),1);
                 lp.setMargins(dp(5),dp(5),dp(5),dp(5));
                 row.addView(tile,lp);
