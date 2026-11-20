@@ -715,9 +715,16 @@ public class WeatherActivity extends Activity {
                     }
                 }
                 handler.post(()->{
-                    discussionProducts=result;
-                    prefs().edit().putString("weather_discussion_cache", result.toString())
-                        .putLong("weather_discussion_saved_at", System.currentTimeMillis()).apply();
+                    // Never replace a valid offline copy with an empty or
+                    // incomplete discussion response.
+                    if (result.length() > 0) {
+                        discussionProducts=result;
+                        prefs().edit().putString("weather_discussion_cache", result.toString())
+                            .putLong("weather_discussion_saved_at", System.currentTimeMillis()).apply();
+                    } else if (discussionProducts.length() == 0) {
+                        try { discussionProducts = new JSONArray(prefs().getString("weather_discussion_cache", "[]")); }
+                        catch (Exception ignored) { discussionProducts = new JSONArray(); }
+                    }
                     if("forecast".equals(currentPage)&&!hourlyMode)renderForecast();
                     if("discussion".equals(currentPage)) showDiscussionPage();
                 });
