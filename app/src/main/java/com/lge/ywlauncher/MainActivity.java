@@ -273,10 +273,10 @@ public class MainActivity extends Activity {
         // TaskDescription icons are consumed by the system task switcher,
         // not by an ImageView. Supply a fixed, square pixel bitmap so older
         // OEM Recents implementations do not apply a second density scaling.
-        int size = 64;
+        int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
-        bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
+        bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
@@ -374,7 +374,9 @@ public class MainActivity extends Activity {
         if (appsArea == null) return;
         if (pageDots != null) pageDots.setVisibility(View.GONE);
         appsArea.removeAllViews();
-        boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
+        String layoutMode = getSharedPreferences("launcher", 0).getString("layout_mode", "grid");
+        boolean singleGrid = "single_grid".equals(layoutMode);
+        boolean grid = !"list".equals(layoutMode);
         pageIndicator.setVisibility(View.GONE);
         if (apps.isEmpty()) {
             TextView empty = new TextView(this);
@@ -391,17 +393,20 @@ public class MainActivity extends Activity {
             }
             return;
         }
-        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+        int configuredRows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
+        int rows = singleGrid ? Math.max(1, (apps.size() + columns - 1) / columns) : configuredRows;
         int pageSize = rows * columns;
-        int pageCount = Math.max(1, (apps.size() + pageSize - 1) / pageSize);
+        int pageCount = singleGrid ? 1 : Math.max(1, (apps.size() + pageSize - 1) / pageSize);
         currentPage = clamp(currentPage, 0, pageCount - 1);
         pageIndicator.setText("");
         renderPageDots(pageCount);
         int first = currentPage * pageSize;
         int end = Math.min(apps.size(), first + pageSize);
         int cellHeightDp = 64;
-        if (scroll.getHeight() > 0) {
+        if (singleGrid) {
+            cellHeightDp = Math.max(72, Math.min(92, 78));
+        } else if (scroll.getHeight() > 0) {
             int available = Math.round(scroll.getHeight() / getResources().getDisplayMetrics().density);
             cellHeightDp = Math.max(28, available / rows);
         }
@@ -420,7 +425,9 @@ public class MainActivity extends Activity {
                     row.addView(new View(this), new LinearLayout.LayoutParams(0, -1, 1));
                 }
             }
-            appsArea.addView(row, new LinearLayout.LayoutParams(-1, 0, 1));
+            appsArea.addView(row, singleGrid
+                ? new LinearLayout.LayoutParams(-1, dp(cellHeightDp))
+                : new LinearLayout.LayoutParams(-1, 0, 1));
         }
     }
 
@@ -428,14 +435,14 @@ public class MainActivity extends Activity {
         if (pageDots == null) return;
         pageDots.removeAllViews();
         boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
-        pageDots.setVisibility(grid ? View.VISIBLE : View.GONE);
+        pageDots.setVisibility(grid && count > 1 ? View.VISIBLE : View.GONE);
         if (!grid || count <= 1) return;
         for (int i = 0; i < count; i++) {
             final int page = i;
             TextView dot = new TextView(this);
-            dot.setText(i == currentPage ? "●" : "•");
-            dot.setTextSize(i == currentPage ? 12 : 10);
-            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : (ThemeUtils.isDark(this) ? 0xfff1f4f7 : 0xff34495e));
+            dot.setText("●");
+            dot.setTextSize(i == currentPage ? 13 : 11);
+            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : ThemeUtils.text(this));
             if (i == currentPage) dot.setTypeface(null, android.graphics.Typeface.BOLD);
             dot.setGravity(Gravity.CENTER);
             dot.setContentDescription("Page " + (i + 1));
@@ -676,9 +683,9 @@ public class MainActivity extends Activity {
         Notification.Builder notification = android.os.Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
         boolean showIcon = prefs.getBoolean("status_icon", false);
         notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
+            .setLargeIcon(NotificationIconUtils.createLargeIcon(this, R.drawable.ic_launcher))
             .setContentTitle("YW Launcher").setContentText("Press to open your app launcher")
             .setContentIntent(pending).setAutoCancel(false).setOngoing(true);
-        if (!showIcon) notification.setVisibility(Notification.VISIBILITY_SECRET);
         manager.notify(42, notification.build());
     }
 
