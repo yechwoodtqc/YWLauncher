@@ -104,6 +104,18 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onPause() { super.onPause(); }
 
+    @Override public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) { finish(); return true; }
+        if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_RIGHT) {
+            View focused = getCurrentFocus();
+            if (focused != null && focused.isEnabled() && focused.isClickable()) {
+                focused.performClick();
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
     private String keptWallpaperSummary() {
         File image = new File(getFilesDir(), "kept_wallpaper.png");
         return image.isFile() && image.length() > 0
@@ -138,6 +150,10 @@ public class SettingsActivity extends Activity {
         // for an image; the preference remains enabled only after a successful copy.
         if (!prefs.getBoolean("keep_wallpaper", false)) return;
         launchKeptWallpaperBrowser();
+    }
+
+    private int dialogTheme() {
+        return ThemeUtils.isDark(this) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme;
     }
 
     private int dp(float value) {
@@ -252,7 +268,8 @@ public class SettingsActivity extends Activity {
     }
 
     private String layoutSummary() {
-        return "list".equals(prefs.getString("layout_mode", "grid")) ? "List" : "Grid";
+        String mode = prefs.getString("layout_mode", "grid");
+        return "list".equals(mode) ? "List" : ("single_grid".equals(mode) ? "Single-screen grid" : "Paged grid");
     }
 
     private int defaultGridRows() { String model=(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).toLowerCase(Locale.US); return (model.contains("exalt")||model.contains("vn220")||model.contains("lg-ax"))?4:3; }
@@ -272,7 +289,7 @@ public class SettingsActivity extends Activity {
         int[] values = {85, 100, 115, 130, 145};
         int current = prefs.getInt("font_size_percent", 100), selected = 1;
         for (int i=0;i<values.length;i++) if(values[i]==current) selected=i;
-        new AlertDialog.Builder(this).setTitle("Launcher font size")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Launcher font size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("font_size_percent", values[which]).apply();
                 dialog.dismiss(); recreate();
@@ -307,10 +324,10 @@ public class SettingsActivity extends Activity {
 
     private void chooseLayout() {
         String current = prefs.getString("layout_mode", "grid");
-        int selected = "list".equals(current) ? 1 : 0;
+        int selected = "list".equals(current) ? 1 : ("single_grid".equals(current) ? 2 : 0);
         new AlertDialog.Builder(this).setTitle("Home layout")
-            .setSingleChoiceItems(new String[]{"Grid", "List"}, selected, (dialog, which) -> {
-                prefs.edit().putString("layout_mode", which == 0 ? "grid" : "list").apply();
+            .setSingleChoiceItems(new String[]{"Paged grid", "List", "Single-screen grid"}, selected, (dialog, which) -> {
+                prefs.edit().putString("layout_mode", which == 1 ? "list" : (which == 2 ? "single_grid" : "grid")).apply();
                 dialog.dismiss();
                 recreate();
             }).setNegativeButton("Cancel", null).show();
@@ -602,11 +619,11 @@ public class SettingsActivity extends Activity {
             ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
         boolean showIcon = prefs.getBoolean("status_icon", false);
         notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
+            .setLargeIcon(NotificationIconUtils.createLargeIcon(this, R.drawable.ic_launcher))
             .setContentTitle("YW Launcher")
             .setContentText("Press to open your app launcher")
             .setContentIntent(pending)
             .setOngoing(true);
-        if (!showIcon) notification.setVisibility(Notification.VISIBILITY_SECRET);
         manager.notify(42, notification.build());
     }
 
