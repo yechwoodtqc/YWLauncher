@@ -328,7 +328,7 @@ public class SettingsActivity extends Activity {
     private void chooseLayout() {
         String current = prefs.getString("layout_mode", "grid");
         int selected = "list".equals(current) ? 1 : ("single_grid".equals(current) ? 2 : 0);
-        new AlertDialog.Builder(this).setTitle("Home layout")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Home layout")
             .setSingleChoiceItems(new String[]{"Paged grid", "List", "Single-screen grid"}, selected, (dialog, which) -> {
                 prefs.edit().putString("layout_mode", which == 1 ? "list" : (which == 2 ? "single_grid" : "grid")).apply();
                 dialog.dismiss();
@@ -340,7 +340,7 @@ public class SettingsActivity extends Activity {
         int current = prefs.getInt(key, 3);
         String[] choices = new String[max - min + 1];
         for (int i = min; i <= max; i++) choices[i - min] = String.valueOf(i);
-        new AlertDialog.Builder(this).setTitle(title)
+        new AlertDialog.Builder(this, dialogTheme()).setTitle(title)
             .setSingleChoiceItems(choices, Math.max(0, Math.min(max - min, current - min)), (dialog, which) -> {
                 prefs.edit().putInt(key, min + which).apply();
                 dialog.dismiss();
@@ -353,7 +353,7 @@ public class SettingsActivity extends Activity {
         int[] sizes = {32, 40, 48};
         int current = prefs.getInt("icon_size", defaultIconSize());
         int selected = current <= 32 ? 0 : (current >= 48 ? 2 : 1);
-        new AlertDialog.Builder(this).setTitle("Icon size")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Icon size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("icon_size", sizes[which]).apply();
                 dialog.dismiss();
@@ -383,7 +383,7 @@ public class SettingsActivity extends Activity {
     private void chooseTheme() {
         String mode = prefs.getString("theme_mode", "system");
         int selected = "dark".equals(mode) ? 2 : ("light".equals(mode) ? 1 : 0);
-        new AlertDialog.Builder(this).setTitle("Theme")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Theme")
             .setSingleChoiceItems(new String[]{"System", "Light", "Dark"}, selected, (dialog, which) -> {
                 String[] modes = {"system", "light", "dark"};
                 prefs.edit().putString("theme_mode", modes[which]).apply();
@@ -398,7 +398,7 @@ public class SettingsActivity extends Activity {
 
     private void chooseFocusStyle() {
         boolean outline = prefs.getBoolean("focus_outline_only", false);
-        new AlertDialog.Builder(this).setTitle("Focus highlight")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Focus highlight")
             .setSingleChoiceItems(new String[]{"Filled highlight", "Outline only"}, outline ? 1 : 0, (dialog, which) -> {
                 prefs.edit().putBoolean("focus_outline_only", which == 1).apply();
                 dialog.dismiss();
@@ -417,7 +417,7 @@ public class SettingsActivity extends Activity {
         choices.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroller = new ScrollView(this);
         scroller.addView(choices);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(scroller)
+        AlertDialog dialog = new AlertDialog.Builder(this, dialogTheme()).setTitle(title).setView(scroller)
             .setNegativeButton("Cancel", null).create();
         for (int i = 0; i < names.length; i++) {
             final int color = colors[i];
@@ -493,7 +493,7 @@ public class SettingsActivity extends Activity {
             checked[i] = old == null ? !system :
                 (old.contains(app.activityInfo.name) || old.contains(app.activityInfo.packageName));
         }
-        new AlertDialog.Builder(this).setTitle("Apps to show")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Apps to show")
             .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
             .setPositiveButton("Save", (dialog, which) -> {
                 Set<String> included = new LinkedHashSet<>();
@@ -523,7 +523,7 @@ public class SettingsActivity extends Activity {
         if (raw != null) for (String name : raw.split("\\n")) if (byName.containsKey(name) && !order.contains(name)) order.add(name);
         for (ResolveInfo app : all) if (byName.containsKey(app.activityInfo.name) && !order.contains(app.activityInfo.name)) order.add(app.activityInfo.name);
         if (order.isEmpty()) {
-            new AlertDialog.Builder(this).setMessage("No apps are selected. Use Choose apps first.")
+            new AlertDialog.Builder(this, dialogTheme()).setMessage("No apps are selected. Use Choose apps first.")
                 .setPositiveButton("OK", null).show();
             return;
         }
@@ -570,7 +570,7 @@ public class SettingsActivity extends Activity {
                 list.setItemChecked(selected[0], true);
             }
         });
-        AlertDialog reorderDialog = new AlertDialog.Builder(this).setTitle("App order")
+        AlertDialog reorderDialog = new AlertDialog.Builder(this, dialogTheme()).setTitle("App order")
             .setView(dialogLayout)
             .setPositiveButton("Save", (dialog, which) -> prefs.edit().putString("ordered_apps", joinLines(order)).apply())
             .setNegativeButton("Cancel", null).create();
@@ -632,7 +632,7 @@ public class SettingsActivity extends Activity {
 
 
     private void openLgKeyboardSettings() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this, dialogTheme())
             .setTitle("LG Keyboard · Emoticon suggestions")
             .setMessage("In LG Keyboard settings, open General > Word Suggestions > Emoticons and turn it on. When you type a word with a matching emoji, the emoji can then appear as a T9 suggestion.")
             .setNegativeButton("Cancel", null)
@@ -1059,7 +1059,7 @@ public class SettingsActivity extends Activity {
         ScrollView previewScroll = new ScrollView(this);
         previewScroll.setFillViewport(false);
         previewScroll.addView(panel);
-        new AlertDialog.Builder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Keep wallpaper preview").setView(previewScroll)
             .setPositiveButton("Apply", (dialog, which) -> {
                 String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
                     (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
@@ -1091,7 +1091,7 @@ public class SettingsActivity extends Activity {
         String[] choices={"Fill / crop","Fit entire image","Stretch"};
         String current=prefs.getString("kept_wallpaper_fit","crop");
         int selected="fit".equals(current)?1:("stretch".equals(current)?2:0);
-        new AlertDialog.Builder(this).setTitle("Kept wallpaper appearance")
+        new AlertDialog.Builder(this, dialogTheme()).setTitle("Kept wallpaper appearance")
             .setSingleChoiceItems(choices,selected,(dialog,which)->{
                 String value=which==1?"fit":(which==2?"stretch":"crop");
                 prefs.edit().putString("kept_wallpaper_fit",value).apply();
@@ -1128,7 +1128,7 @@ public class SettingsActivity extends Activity {
         for(int i=0;i<fits.length;i++){RadioButton rb=new RadioButton(this);rb.setText(fits[i]);rb.setTextColor(ThemeUtils.text(this));rb.setId(fitIds[i]);group.addView(rb);if(i==selected)rb.setChecked(true);}
         group.setOnCheckedChangeListener((g,id)->preview.setScaleType(id==fitIds[1]?ImageView.ScaleType.FIT_CENTER:(id==fitIds[2]?ImageView.ScaleType.FIT_XY:ImageView.ScaleType.CENTER_CROP)));
         panel.addView(group);
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Wallpaper preview").setView(panel)
+        AlertDialog dialog=new AlertDialog.Builder(this, dialogTheme()).setTitle("Wallpaper preview").setView(panel)
             .setPositiveButton("Apply",(d,which)->{
                 String fit=group.getCheckedRadioButtonId()==fitIds[1]?"fit":(group.getCheckedRadioButtonId()==fitIds[2]?"stretch":"crop");
                 try {
@@ -1151,6 +1151,6 @@ public class SettingsActivity extends Activity {
     }
 
     private void showError(String message) {
-        new AlertDialog.Builder(this).setMessage(message).setPositiveButton("OK", null).show();
+        new AlertDialog.Builder(this, dialogTheme()).setMessage(message).setPositiveButton("OK", null).show();
     }
 }
