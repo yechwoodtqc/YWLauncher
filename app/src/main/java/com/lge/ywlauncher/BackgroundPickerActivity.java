@@ -78,6 +78,7 @@ public final class BackgroundPickerActivity extends Activity {
         choices.add(new Choice("LG Classic", "Classic flip-phone menu background", CLASSIC, 0xff233d70));
         choices.add(new Choice("Custom image", "Choose a picture from the phone", CUSTOM_IMAGE, 0xff34495e));
         int saved = prefs.getInt("background", defaultBackground());
+        if (saved == 0) saved = defaultBackground();
         int savedColor = prefs.getInt("custom_background", PALETTE[0]);
         for (int i=0;i<choices.size();i++) {
             Choice c=choices.get(i);
@@ -95,6 +96,7 @@ public final class BackgroundPickerActivity extends Activity {
 
     private void showGrid() {
         previewShowing = false;
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
         root = pageRoot();
         addToolbar(root, "Choose background", () -> finish(), null);
         TextView hint = label("Choose a background. Select one to preview it with your apps.", 13, false);
@@ -197,6 +199,7 @@ public final class BackgroundPickerActivity extends Activity {
         previewIndex=selected;
         Choice choice=currentChoice();
         root=pageRoot();
+        if (choice.value==SYSTEM) root.setBackgroundColor(Color.TRANSPARENT);
         addToolbar(root,"Preview · "+choice.title,()->showGrid(),()->stepPreview(1));
         TextView hint=label("Use LEFT / RIGHT to preview other backgrounds. Save applies the selection.",12,false);
         hint.setPadding(dp(12),dp(4),dp(12),dp(6));
@@ -378,8 +381,9 @@ public final class BackgroundPickerActivity extends Activity {
 
     @Override public boolean onKeyDown(int keyCode,KeyEvent event) {
         if (previewShowing) {
-            if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT || keyCode==KeyEvent.KEYCODE_SOFT_LEFT) { stepPreview(-1); return true; }
+            if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT) { stepPreview(-1); return true; }
             if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) { stepPreview(1); return true; }
+            if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT) { showGrid(); return true; }
             if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT || keyCode==KeyEvent.KEYCODE_ENTER
                 || keyCode==KeyEvent.KEYCODE_DPAD_CENTER) { saveChoice(); return true; }
             if (keyCode==KeyEvent.KEYCODE_BACK) { showGrid(); return true; }
