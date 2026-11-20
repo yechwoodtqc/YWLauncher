@@ -46,6 +46,7 @@ public final class BackgroundPickerActivity extends Activity {
     private final ArrayList<Choice> choices = new ArrayList<>();
     private int selected = 0;
     private int previewIndex = 0;
+    private boolean previewShowing = false;
     private Bitmap pendingImage;
     private String pendingImagePath = "";
     private LinearLayout root;
@@ -93,6 +94,7 @@ public final class BackgroundPickerActivity extends Activity {
     }
 
     private void showGrid() {
+        previewShowing = false;
         root = pageRoot();
         addToolbar(root, "Choose background", () -> finish(), null);
         TextView hint = label("Choose a background. Select one to preview it with your apps.", 13, false);
@@ -181,6 +183,7 @@ public final class BackgroundPickerActivity extends Activity {
     private Choice currentChoice() { return choices.get(Math.max(0,Math.min(choices.size()-1,previewIndex))); }
 
     private void showPreview() {
+        previewShowing = true;
         previewIndex=selected;
         Choice choice=currentChoice();
         root=pageRoot();
@@ -364,9 +367,16 @@ public final class BackgroundPickerActivity extends Activity {
     }
 
     @Override public boolean onKeyDown(int keyCode,KeyEvent event) {
-        if(keyCode==KeyEvent.KEYCODE_DPAD_LEFT) { if(root!=null && root.getChildCount()>0 && root.getChildAt(0)!=null && root.getChildAt(0).getContentDescription()!=null){} if(root!=null && root.getChildCount()>0 && root.getChildAt(0).getTag()!=null){} if(previewIndex>=0) { stepPreview(-1); return true; } }
-        if(keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) { if(previewIndex>=0 && getTitle()!=null) { stepPreview(1); return true; } }
-        if(keyCode==KeyEvent.KEYCODE_BACK) { if(root!=null && previewIndex>=0) { showGrid(); return true; } }
+        if (previewShowing) {
+            if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT || keyCode==KeyEvent.KEYCODE_SOFT_LEFT) { stepPreview(-1); return true; }
+            if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) { stepPreview(1); return true; }
+            if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT || keyCode==KeyEvent.KEYCODE_ENTER
+                || keyCode==KeyEvent.KEYCODE_DPAD_CENTER) { saveChoice(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_BACK) { showGrid(); return true; }
+        } else {
+            if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT || keyCode==KeyEvent.KEYCODE_BACK) { finish(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT) { showPreview(); return true; }
+        }
         return super.onKeyDown(keyCode,event);
     }
 }
