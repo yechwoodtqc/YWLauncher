@@ -65,6 +65,20 @@ public class WeatherActivity extends Activity {
         return ThemeUtils.isDark(this) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme;
     }
 
+    private final class FullScreenDialogBuilder extends AlertDialog.Builder {
+        FullScreenDialogBuilder(Activity activity) { super(activity, dialogTheme()); }
+        @Override public AlertDialog show() {
+            AlertDialog dialog = super.show();
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new GradientDrawable());
+                dialog.getWindow().setDimAmount(0f);
+                dialog.getWindow().setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT);
+            }
+            return dialog;
+        }
+    }
+
     private int dp(float v) { return Math.round(v * getResources().getDisplayMetrics().density); }
     private android.content.SharedPreferences prefs() { return getSharedPreferences(PREFS, 0); }
     private float textSize(float base) { return base * fontScale; }
@@ -504,7 +518,7 @@ public class WeatherActivity extends Activity {
                 headlineText.setPadding(0, dp(4), 0, 0);
                 warning.addView(headlineText);
                 final JSONObject selectedAlert = alert;
-                warning.setOnClickListener(v -> new AlertDialog.Builder(this, dialogTheme())
+                warning.setOnClickListener(v -> new FullScreenDialogBuilder(this)
                     .setTitle(selectedAlert.optString("event", "Weather alert"))
                     .setMessage(selectedAlert.optString("headline", "") + "\n\n" + selectedAlert.optString("description", ""))
                     .setPositiveButton("Close", null).show());
