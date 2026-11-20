@@ -666,7 +666,7 @@ public class WeatherActivity extends Activity {
         hero.setGravity(Gravity.CENTER);
         hero.setPadding(dp(14),dp(18),dp(14),dp(18));
         hero.setBackground(cardBackground());
-        hero.addView(weatherIcon(primary.optString("shortForecast",""),76),new LinearLayout.LayoutParams(dp(90),dp(86)));
+        hero.addView(weatherIcon(primary.optString("shortForecast","") + (primary.optBoolean("isDaytime", true) ? "" : " night"),76),new LinearLayout.LayoutParams(dp(90),dp(86)));
         TextView dayTitle = text(day.label,22,true);
         dayTitle.setGravity(Gravity.CENTER);
         hero.addView(dayTitle);
