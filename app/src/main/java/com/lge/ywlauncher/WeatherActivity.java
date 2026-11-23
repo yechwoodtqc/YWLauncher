@@ -1296,6 +1296,10 @@ public class WeatherActivity extends Activity {
             setMeasuredDimension(resolveSize(target, widthSpec), resolveSize(target, heightSpec));
         }
 
+        private boolean windyCondition() {
+            return condition.contains("wind") || condition.contains("breezy");
+        }
+
         private void drawSun(Canvas canvas, float cx, float cy, float radius) {
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(3.2f);
@@ -1334,11 +1338,11 @@ public class WeatherActivity extends Activity {
             // than the thin outlined cartoon cloud used by the old renderer.
             paint.setStyle(Paint.Style.FILL);
             paint.setShader(null);
-            paint.setColor(0x55304f83);
-            canvas.drawRoundRect(14, 47, 72, 66, 10, 10, paint);
-            canvas.drawCircle(28, 47, 13, paint);
-            canvas.drawCircle(45, 40, 17, paint);
-            canvas.drawCircle(61, 48, 13, paint);
+            paint.setColor(0x44304f83);
+            canvas.drawRoundRect(14, 48, 72, 66, 10, 10, paint);
+            canvas.drawCircle(28, 48, 13, paint);
+            canvas.drawCircle(45, 41, 17, paint);
+            canvas.drawCircle(61, 49, 13, paint);
 
             paint.setShader(cloudGradient);
             canvas.drawCircle(27, 45, 13, paint);
@@ -1401,23 +1405,10 @@ public class WeatherActivity extends Activity {
             boolean night = condition.contains("night") || condition.contains("tonight") || condition.contains("overnight");
             boolean cloudy = condition.contains("cloud") || condition.contains("overcast") || partly || rain || snow || fog || thunder;
 
-            // Match the weather app tile: vivid blue rounded square by day,
-            // deep blue at night, with clean sun/cloud artwork on top.
+            // Breezy-inspired flat weather artwork: transparent canvas, clear
+            // condition silhouettes, saturated accents, and distinct day/night forms.
             paint.setStyle(Paint.Style.FILL);
-            paint.setShader(night
-                ? new LinearGradient(0, 0, 80, 80,
-                    new int[]{0xff1b4263, 0xff102b4b, 0xff081a31}, null, Shader.TileMode.CLAMP)
-                : new LinearGradient(0, 0, 80, 80,
-                    new int[]{0xff319cf0, 0xff0873cf, 0xff06458e}, null, Shader.TileMode.CLAMP));
-            canvas.drawRoundRect(1.5f, 1.5f, 78.5f, 78.5f, 14, 14, paint);
             paint.setShader(null);
-            paint.setColor(0x18ffffff);
-            canvas.drawRoundRect(5, 5, 75, 28, 10, 10, paint);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(1f);
-            paint.setColor(0x337dcaff);
-            canvas.drawRoundRect(1.5f, 1.5f, 78.5f, 78.5f, 14, 14, paint);
-            paint.setStyle(Paint.Style.FILL);
 
             if (night) {
                 paint.setShader(moonGradient);
@@ -1430,10 +1421,21 @@ public class WeatherActivity extends Activity {
                 canvas.drawCircle(39, 29, 1.1f, paint);
                 canvas.drawCircle(20, 33, 0.9f, paint);
             } else if (sunny) {
-                drawSun(canvas, 57, 28, 11);
+                drawSun(canvas, 55, 27, 13);
             }
 
-            if (cloudy || !sunny) drawCloud(canvas);
+            if (cloudy || (!sunny && !windyCondition())) drawCloud(canvas);
+
+            if (windyCondition() && !rain && !snow && !thunder) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(3f);
+                paint.setStrokeCap(Paint.Cap.ROUND);
+                paint.setColor(0xff54b9ee);
+                canvas.drawLine(12, 57, 59, 57, paint);
+                canvas.drawLine(22, 67, 69, 67, paint);
+                canvas.drawArc(49, 48, 70, 65, 190, 150, false, paint);
+                paint.setStyle(Paint.Style.FILL);
+            }
 
             if (thunder) {
                 detailPath.reset();
