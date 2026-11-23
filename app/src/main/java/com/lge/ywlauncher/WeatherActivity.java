@@ -352,15 +352,6 @@ public class WeatherActivity extends Activity {
 
     private String relativeTimestamp(long timestamp) {
         long elapsed = Math.max(0L, System.currentTimeMillis() - timestamp);
-        if (elapsed < 60L * 1000L) return "Just now";
-        if (elapsed < 60L * 60L * 1000L) {
-            long minutes = Math.max(1L, elapsed / (60L * 1000L));
-            return minutes == 1 ? "1 minute ago" : minutes + " minutes ago";
-        }
-        if (elapsed < 24L * 60L * 60L * 1000L) {
-            long hours = Math.max(1L, elapsed / (60L * 60L * 1000L));
-            return hours == 1 ? "1 hour ago" : hours + " hours ago";
-        }
         Calendar then = Calendar.getInstance();
         then.setTimeInMillis(timestamp);
         Calendar today = Calendar.getInstance();
@@ -373,6 +364,15 @@ public class WeatherActivity extends Activity {
         if (then.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR)
             && then.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR))
             return "Yesterday at " + clock.format(new Date(timestamp));
+        if (elapsed < 60L * 1000L) return "Just now";
+        if (elapsed < 60L * 60L * 1000L) {
+            long minutes = Math.max(1L, elapsed / (60L * 1000L));
+            return minutes == 1 ? "1 minute ago" : minutes + " minutes ago";
+        }
+        if (elapsed < 24L * 60L * 60L * 1000L) {
+            long hours = Math.max(1L, elapsed / (60L * 60L * 1000L));
+            return hours == 1 ? "an hour ago" : hours + " hours ago";
+        }
         return new SimpleDateFormat("MMM d 'at' h:mm a", Locale.getDefault()).format(new Date(timestamp));
     }
 
