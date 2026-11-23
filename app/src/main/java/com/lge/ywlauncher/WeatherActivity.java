@@ -345,7 +345,7 @@ public class WeatherActivity extends Activity {
             buildDailyDays(dailyPeriods);
             renderForecast();
             if (updated != null) updated.setText("Last updated: " + relativeTimestamp(savedAt));
-            if (forecasted != null) forecasted.setText("Forecast issued/updated: " + p.getString("weather_cache_issued", "time not provided"));
+            if (forecasted != null) forecasted.setText("Forecast issued: " + relativeForecastTimestamp(p.getString("weather_cache_generated_raw", "")));
             return true;
         } catch (Exception ignored) { return false; }
     }
@@ -374,6 +374,17 @@ public class WeatherActivity extends Activity {
             return hours == 1 ? "an hour ago" : hours + " hours ago";
         }
         return new SimpleDateFormat("MMM d 'at' h:mm a", Locale.getDefault()).format(new Date(timestamp));
+    }
+
+    private String relativeForecastTimestamp(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "time not provided";
+        try {
+            String normalized = raw.replaceFirst("([+-]\\\\d{2}):(\\\\d{2})$", "$1$2").replaceFirst("Z$", "+0000");
+            normalized = normalized.replaceFirst("\\\\.\\\\d+(?=[+-]\\\\d{4}$)", "");
+            SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
+            Date parsed = parser.parse(normalized);
+            return parsed == null ? raw : relativeTimestamp(parsed.getTime());
+        } catch (Exception ignored) { return raw; }
     }
 
     private void showNewForecastNotification() {
@@ -478,7 +489,7 @@ public class WeatherActivity extends Activity {
                             forecastTime = date == null ? forecastTime : new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(date);
                         } catch (Exception ignored) { }
                     }
-                    if (forecasted != null) forecasted.setText("Forecast issued/updated: " + (forecastTime.isEmpty() ? "time not provided" : forecastTime));
+                    if (forecasted != null) forecasted.setText("Forecast issued: " + relativeForecastTimestamp(finalGenerated));
                     String fingerprint = finalDays.toString() + "|" + finalHours.toString();
                     prefs().edit()
                         .putString("weather_cache_daily", finalDays.toString())
@@ -511,8 +522,7 @@ public class WeatherActivity extends Activity {
                     setLoading(false, null);
                     if (showedCache) {
                         if (updated != null) updated.setText("Last updated: " +
-                            new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(
-                                new Date(prefs().getLong("weather_cache_saved_at", System.currentTimeMillis()))) + " (offline copy)");
+                            relativeTimestamp(prefs().getLong("weather_cache_saved_at", System.currentTimeMillis())) + " (offline copy)");
                     } else {
                         showWeatherError("Failed to load...");
                     }
