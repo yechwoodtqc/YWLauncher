@@ -54,7 +54,7 @@ public class WeatherActivity extends Activity {
         int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
-        bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
+        bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
@@ -86,9 +86,10 @@ public class WeatherActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ThemeUtils.apply(this);
-        // Let the Android 6/LG Recents loader use the manifest activity icon.
+        // Supply an explicit bitmap: LG Android 6 Recents does not reliably
+        // fall back to the manifest icon for TaskDescription entries.
         setTaskDescription(new android.app.ActivityManager.TaskDescription(
-            "YW Weather", (android.graphics.Bitmap) null, ThemeUtils.accent(this)));
+            "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
         fontScale = prefs().getFloat("weather_font_scale", 1.0f);
         try { discussionProducts = new JSONArray(prefs().getString("weather_discussion_cache", "[]")); }
         catch (Exception ignored) { discussionProducts = new JSONArray(); }
