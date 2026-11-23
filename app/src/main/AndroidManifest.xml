@@ -60,9 +60,16 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="www.ywlauncher.go" />
             </intent-filter>
-            <!-- Home4Flip-compatible contact link: resolve directly to the
-                 launcher activity, without requiring a separate Home4Flip app
-                 or a trampoline activity. -->
+        </activity>
+
+        <!-- Home4Flip contact URL opens a dedicated activity that dispatches
+             Android's HOME action, rather than opening YW Launcher's app grid. -->
+        <activity
+            android:name=".HomeLinkActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:label="YW Home">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
