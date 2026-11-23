@@ -1308,8 +1308,12 @@ public class WeatherActivity extends Activity {
             canvas.drawRoundRect(14, 46, 73, 64, 9, 9, paint);
             paint.setShader(null);
 
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2.2f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setColor(0x99ffffff);
-            canvas.drawArc(31, 27, 53, 51, 195, 125, false, paint);
+            canvas.drawArc(31, 27, 53, 51, 205, 105, false, paint);
+            paint.setStyle(Paint.Style.FILL);
             paint.setColor(0x22ffffff);
             canvas.drawRoundRect(19, 49, 67, 53, 2, 2, paint);
         }
