@@ -2,5 +2,5 @@ BEGIN:VCARD
 VERSION:3.0
 N:Home;YW;;;
 FN:YW Home
-URL:ywlauncher://home
+URL:http://home4flip.go
 END:VCARD
