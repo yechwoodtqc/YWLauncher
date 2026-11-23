@@ -443,7 +443,7 @@ public class WeatherActivity extends Activity {
                     JSONObject first = finalDays.optJSONObject(0);
                     prefs().edit().putString("weather_widget_summary", first == null ? "Forecast ready" : first.optString("shortForecast", "Forecast ready"))
                         .putString("weather_widget_temperature", first == null ? "—" : first.optString("temperature", "—") + "°" + first.optString("temperatureUnit", "F"))
-                        .putString("weather_widget_icon", first == null ? "🌤️" : weatherEmoji(first.optString("shortForecast", "")))
+                        .putString("weather_widget_condition", first == null ? "Partly Cloudy" : first.optString("shortForecast", "Partly Cloudy"))
                         .apply();
                     WeatherWidgetProvider.updateAll(this);
                     fetchDiscussion(forecastOffice);
@@ -616,7 +616,7 @@ public class WeatherActivity extends Activity {
         if(period==null)return;
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackground(ThemeUtils.focusBackground(this));card.setFocusable(true);card.setClickable(true);
-        card.addView(text(weatherEmoji(period.optString("shortForecast","")),25,true),new LinearLayout.LayoutParams(dp(42),dp(44)));
+        card.addView(weatherIcon(period.optString("shortForecast",""),42),new LinearLayout.LayoutParams(dp(42),dp(44)));
         LinearLayout info=new LinearLayout(this);info.setOrientation(LinearLayout.VERTICAL);info.setPadding(dp(7),0,0,0);
         String time=formatForecastTime(period.optString("startTime",""));
         info.addView(text(time+" · "+period.optString("temperature","—")+"°"+period.optString("temperatureUnit","F"),14,true));
@@ -1162,8 +1162,30 @@ public class WeatherActivity extends Activity {
     private LinearLayout.LayoutParams rowMargins(){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(7);return p;}
     private GradientDrawable cardBackground(){GradientDrawable d=new GradientDrawable();d.setColor(ThemeUtils.isDark(this)?0xff18232f:0xfff5f8fc);d.setCornerRadius(dp(10));d.setStroke(dp(1),ThemeUtils.divider(this));return d;}
 
+    private int weatherDrawableForForecast(String forecast) {
+        String value = forecast == null ? "" : forecast.toLowerCase(Locale.US);
+        if (value.contains("thunder")) return R.drawable.breezy_weather_thunderstorm;
+        if (value.contains("hail")) return R.drawable.breezy_weather_hail;
+        if (value.contains("sleet") || value.contains("freezing")) return R.drawable.breezy_weather_sleet;
+        if (value.contains("snow") || value.contains("blizzard")) return R.drawable.breezy_weather_snow;
+        if (value.contains("rain") || value.contains("shower") || value.contains("drizzle")) return R.drawable.breezy_weather_rain;
+        if (value.contains("fog")) return R.drawable.breezy_weather_fog;
+        if (value.contains("haze") || value.contains("smoke")) return R.drawable.breezy_weather_haze;
+        if (value.contains("wind")) return R.drawable.breezy_weather_wind;
+        boolean night = value.contains("night") || value.contains("tonight");
+        if (value.contains("partly") || value.contains("mostly")) return night
+            ? R.drawable.breezy_weather_partly_cloudy_night : R.drawable.breezy_weather_partly_cloudy_day;
+        if (value.contains("cloud") || value.contains("overcast")) return R.drawable.breezy_weather_cloudy;
+        return night ? R.drawable.breezy_weather_clear_night : R.drawable.breezy_weather_clear_day;
+    }
+
     private View weatherIcon(String forecast, int sizeDp) {
-        return new WeatherIconView(this, forecast, sizeDp);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(weatherDrawableForForecast(forecast));
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        icon.setAdjustViewBounds(true);
+        icon.setContentDescription(forecast == null || forecast.trim().isEmpty() ? "Weather" : forecast);
+        return icon;
     }
 
     private final class WeatherIconView extends View {
