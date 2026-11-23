@@ -20,7 +20,8 @@ public class MainActivity extends Activity {
     private ImageButton settingsButton;
     private TextView pageIndicator, selectionCount;
     private LinearLayout pageDots;
-    private Button hideSelected, uninstallSelected, cancelSelection;
+    private Button hideSelected, uninstallSelected;
+    private ImageButton cancelSelection;
     private final ArrayList<ResolveInfo> apps = new ArrayList<>();
     private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
     private int currentPage = 0;
@@ -106,11 +107,11 @@ public class MainActivity extends Activity {
 
         // Keep the clear-selection X as the final control, flush to the
         // right edge of the toolbar on narrow flip-phone screens.
-        cancelSelection = new Button(this);
-        cancelSelection.setText("");
+        cancelSelection = new ImageButton(this);
+        cancelSelection.setImageResource(R.drawable.ic_close_modern);
+        cancelSelection.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         cancelSelection.setContentDescription("Clear selection");
-        cancelSelection.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_close_modern, 0, 0, 0);
-        cancelSelection.setPadding(0, 0, 0, 0);
+        cancelSelection.setPadding(dp(8), dp(8), dp(8), dp(8));
         cancelSelection.setGravity(Gravity.CENTER);
         cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancelSelection.setOnClickListener(v -> clearSelection());
