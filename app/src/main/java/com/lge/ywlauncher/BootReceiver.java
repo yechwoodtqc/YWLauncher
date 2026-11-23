@@ -87,7 +87,8 @@ public class BootReceiver extends BroadcastReceiver {
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, open, flags);
         Notification.Builder notification = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(context, "yw_launcher") : new Notification.Builder(context);
         boolean showIcon = prefs.getBoolean("status_icon", false);
-        notification.setSmallIcon(showIcon ? android.R.drawable.ic_menu_view : R.drawable.ic_notification_hidden)
+        notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
+            .setLargeIcon(NotificationIconUtils.createLargeIcon(context, R.drawable.ic_launcher))
             .setContentTitle("YW Launcher").setContentText("Press to open your app launcher")
             .setContentIntent(pendingIntent).setOngoing(true);
         manager.notify(42, notification.build());

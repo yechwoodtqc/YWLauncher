@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/comprehensive-launcher-update ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -52,6 +52,8 @@ jobs:
             echo "No lint text report found."
           fi
           exit "$status"
+      - name: Run unit tests
+        run: gradle --no-daemon testDebugUnitTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -61,6 +63,7 @@ jobs:
             app/build/reports/lint-results-debug.html
             app/build/reports/lint-results-debug.txt
             app/build/intermediates/lint_intermediate_text_report/debug/lint-results-debug.txt
+            app/build/test-results/testDebugUnitTest/*.xml
           if-no-files-found: warn
       - name: Publish latest YWLauncher release
         if: success() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))

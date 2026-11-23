@@ -15,13 +15,14 @@ public class VCardProvider extends ContentProvider {
     @Override public String getType(Uri uri) { return "text/x-vcard"; }
 
     @Override public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {
-        if (!"r".equals(mode) || uri == null || !"contact.vcf".equals(uri.getLastPathSegment())) {
+        if (!"r".equals(mode) || uri == null || !("launcher.vcf".equals(uri.getLastPathSegment()) || "home.vcf".equals(uri.getLastPathSegment()))) {
             throw new FileNotFoundException("Unknown contact card");
         }
         try {
             ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createPipe();
             Thread writer = new Thread(() -> {
-                try (InputStream input = getContext().getAssets().open("YWlauncher.vcf");
+                String assetName = "home.vcf".equals(uri.getLastPathSegment()) ? "YWHome.vcf" : "YWLauncher.vcf";
+                try (InputStream input = getContext().getAssets().open(assetName);
                      OutputStream output = new ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])) {
                     byte[] buffer = new byte[8192];
                     int count;

@@ -36,3 +36,9 @@ gradle --no-daemon lintDebug
 - Current-location detection requires location permission and an enabled provider capable of returning a fresh fix. If it cannot obtain one, choose a city or ZIP code; the app does not substitute an IP-based location estimate.
 - Widgets are hosted by the phone's existing Home app, not inside YW Launcher.
 - A successful CI build and lint run do not replace testing on the target LG device. Wallpaper rendering, file access, notification behavior, dictionary-provider access, and keypad navigation still require physical-device verification.
+
+## Recent compatibility refinements
+
+- Settings choice screens use opaque full-screen pages instead of transparent floating dialogs.
+- Recent Apps task descriptions provide explicit launcher and weather icon bitmaps for LG Android 6.
+- Page indicators use larger, high-contrast inactive dots; the Exalt gradient and weather tiles are tuned against the supplied launcher reference.

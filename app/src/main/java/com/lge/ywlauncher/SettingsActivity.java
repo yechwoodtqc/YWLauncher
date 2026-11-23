@@ -19,6 +19,7 @@ public class SettingsActivity extends Activity {
     private SharedPreferences prefs;
     private static final int CREATE_LOG_FILE = 501;
     private static final int PICK_BACKGROUND_IMAGE = 502;
+    private static final int PICK_BACKGROUND_CHOOSER = 508;
     private static final int PICK_KEPT_WALLPAPER = 503;
     private static final int CREATE_DICTIONARY_FILE = 504;
     private static final int PICK_DICTIONARY_FILE = 505;
@@ -35,6 +36,7 @@ public class SettingsActivity extends Activity {
         super.onCreate(state);
         ThemeUtils.apply(this);
         prefs = getSharedPreferences("launcher", 0);
+        updateCameraHomeHandler();
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -67,7 +69,7 @@ public class SettingsActivity extends Activity {
         settingsScroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         page.addView(settingsScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(page);
-        settingsScroll.post(() -> settingsScroll.scrollTo(0, prefs.getInt("settings_scroll_y", 0)));
+        settingsScroll.post(() -> { settingsScroll.scrollTo(0, 0); content.requestFocus(); });
 
         section("Notifications");
         String notificationHelp = isLgFlipModel()
@@ -75,8 +77,10 @@ public class SettingsActivity extends Activity {
             : "Keep a notification that opens the app.";
         addSwitchRow("Persistent launcher notification", notificationHelp, "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
-        if (isLgFlipModel()) addSettingRow("Add YW Launcher contact",
-            "For LG Classic Flip / LG Exalt. Save this contact to open YW Launcher from Contacts.", this::addLauncherContact);
+        if (isLgFlipModel()) {
+            addSettingRow("Add YW Launcher contact", "Save a separate contact that opens YW Launcher.", () -> addLauncherContact("launcher.vcf"));
+            addSettingRow("Add YW Home contact", "Save a separate contact that opens the main launcher screen.", () -> addLauncherContact("home.vcf"));
+        }
 
         section("Appearance");
         addSettingRow("Home layout", layoutSummary(), this::chooseLayout);
@@ -87,7 +91,7 @@ public class SettingsActivity extends Activity {
         addSettingRow("Background", backgroundSummary(), this::chooseBackground);
         addSettingRow("Theme", themeSummary(), this::chooseTheme);
         addSettingRow("Accent color", "Choose the highlight color.", this::chooseAccent);
-        addSettingRow("Focus highlight", prefs.getBoolean("focus_outline_only", false) ? "Outline only" : "Filled highlight", this::chooseFocusStyle);
+        addSettingRow("Focus highlight", prefs.getBoolean("focus_outline_only", true) ? "Outline only" : "Filled highlight", this::chooseFocusStyle);
 
         section("Apps");
         addSettingRow("Choose apps", "Choose apps with launcher icons and check marks.", () -> startActivity(new Intent(this, ChooseAppsActivity.class)));
@@ -96,12 +100,26 @@ public class SettingsActivity extends Activity {
         section("Tweaks");
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
         addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
+        addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
+        addSwitchRow("Make YW Home a camera option", "Adds YW Home to apps that handle the standard camera capture intent. Android 6 cannot reliably limit this to phone calls, so this option is available whenever enabled. The phone's dedicated camera button is not affected and will still open its normal camera without offering YW Home.", "camera_home_enabled", false, this::updateCameraHomeHandler);
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
     }
 
-    @Override protected void onPause() { if(settingsScroll!=null) prefs.edit().putInt("settings_scroll_y",settingsScroll.getScrollY()).apply(); super.onPause(); }
+    @Override protected void onPause() { super.onPause(); }
+
+    @Override public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) { finish(); return true; }
+        if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_RIGHT) {
+            View focused = getCurrentFocus();
+            if (focused != null && focused.isEnabled() && focused.isClickable()) {
+                focused.performClick();
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
 
     private String keptWallpaperSummary() {
         File image = new File(getFilesDir(), "kept_wallpaper.png");
@@ -121,15 +139,18 @@ public class SettingsActivity extends Activity {
     }
 
     private void launchKeptWallpaperBrowser() {
-        if (android.os.Build.VERSION.SDK_INT >= 23
-            && checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, 701);
-            return;
+        // Use the same Android-6-compatible picker flow as the working custom
+        // launcher background picker, rather than the old internal browser.
+        Intent picker = new Intent(Intent.ACTION_GET_CONTENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.setType("*/*");
+        picker.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*"});
+        try {
+            startActivityForResult(Intent.createChooser(picker, "Choose wallpaper image"),
+                PICK_KEPT_WALLPAPER);
+        } catch (Exception e) {
+            showError("No file picker is available on this device.");
         }
-        Intent browser = new Intent(this, FileBrowserActivity.class);
-        browser.putExtra(FileBrowserActivity.EXTRA_MODE, "open");
-        browser.putExtra(FileBrowserActivity.EXTRA_FILTER, "image");
-        startActivityForResult(browser, PICK_KEPT_WALLPAPER);
     }
 
     private void updateKeptWallpaper() {
@@ -137,6 +158,24 @@ public class SettingsActivity extends Activity {
         // for an image; the preference remains enabled only after a successful copy.
         if (!prefs.getBoolean("keep_wallpaper", false)) return;
         launchKeptWallpaperBrowser();
+    }
+
+    private int dialogTheme() {
+        return ThemeUtils.isDark(this) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme;
+    }
+
+    private final class FullScreenDialogBuilder extends AlertDialog.Builder {
+        FullScreenDialogBuilder(Activity activity) { super(activity, ThemeUtils.isDark(activity) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme); }
+        @Override public AlertDialog show() {
+            AlertDialog dialog = super.show();
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(ThemeUtils.surface(SettingsActivity.this)));
+                dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+                dialog.getWindow().setDimAmount(1.0f);
+                dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+            }
+            return dialog;
+        }
     }
 
     private int dp(float value) {
@@ -251,7 +290,8 @@ public class SettingsActivity extends Activity {
     }
 
     private String layoutSummary() {
-        return "list".equals(prefs.getString("layout_mode", "grid")) ? "List" : "Grid";
+        String mode = prefs.getString("layout_mode", "grid");
+        return "list".equals(mode) ? "List" : ("single_grid".equals(mode) ? "Single-screen grid" : "Paged grid");
     }
 
     private int defaultGridRows() { String model=(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).toLowerCase(Locale.US); return (model.contains("exalt")||model.contains("vn220")||model.contains("lg-ax"))?4:3; }
@@ -271,7 +311,7 @@ public class SettingsActivity extends Activity {
         int[] values = {85, 100, 115, 130, 145};
         int current = prefs.getInt("font_size_percent", 100), selected = 1;
         for (int i=0;i<values.length;i++) if(values[i]==current) selected=i;
-        new AlertDialog.Builder(this).setTitle("Launcher font size")
+        new FullScreenDialogBuilder(this).setTitle("Launcher font size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("font_size_percent", values[which]).apply();
                 dialog.dismiss(); recreate();
@@ -306,10 +346,10 @@ public class SettingsActivity extends Activity {
 
     private void chooseLayout() {
         String current = prefs.getString("layout_mode", "grid");
-        int selected = "list".equals(current) ? 1 : 0;
-        new AlertDialog.Builder(this).setTitle("Home layout")
-            .setSingleChoiceItems(new String[]{"Grid", "List"}, selected, (dialog, which) -> {
-                prefs.edit().putString("layout_mode", which == 0 ? "grid" : "list").apply();
+        int selected = "list".equals(current) ? 1 : ("single_grid".equals(current) ? 2 : 0);
+        new FullScreenDialogBuilder(this).setTitle("Home layout")
+            .setSingleChoiceItems(new String[]{"Paged grid", "List", "Single-screen grid"}, selected, (dialog, which) -> {
+                prefs.edit().putString("layout_mode", which == 1 ? "list" : (which == 2 ? "single_grid" : "grid")).apply();
                 dialog.dismiss();
                 recreate();
             }).setNegativeButton("Cancel", null).show();
@@ -319,7 +359,7 @@ public class SettingsActivity extends Activity {
         int current = prefs.getInt(key, 3);
         String[] choices = new String[max - min + 1];
         for (int i = min; i <= max; i++) choices[i - min] = String.valueOf(i);
-        new AlertDialog.Builder(this).setTitle(title)
+        new FullScreenDialogBuilder(this).setTitle(title)
             .setSingleChoiceItems(choices, Math.max(0, Math.min(max - min, current - min)), (dialog, which) -> {
                 prefs.edit().putInt(key, min + which).apply();
                 dialog.dismiss();
@@ -332,7 +372,7 @@ public class SettingsActivity extends Activity {
         int[] sizes = {32, 40, 48};
         int current = prefs.getInt("icon_size", defaultIconSize());
         int selected = current <= 32 ? 0 : (current >= 48 ? 2 : 1);
-        new AlertDialog.Builder(this).setTitle("Icon size")
+        new FullScreenDialogBuilder(this).setTitle("Icon size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("icon_size", sizes[which]).apply();
                 dialog.dismiss();
@@ -341,16 +381,7 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseBackground() {
-        int[] values={0,7,1,2,3,4,5,6};
-        String[] labels={"Device default","System wallpaper","Blue","Black","Custom color","Custom image","Exalt gradient","LG Classic menu"};
-        int current=prefs.getInt("background",defaultBackgroundForDevice()); if(current==0) current=defaultBackgroundForDevice();
-        int selected=0; for(int i=0;i<values.length;i++) if(values[i]==current) selected=i;
-        new AlertDialog.Builder(this).setTitle("Background").setSingleChoiceItems(labels,selected,(dialog,which)->{
-            int value=values[which];dialog.dismiss();
-            if(value==3){prefs.edit().putInt("background",3).apply();choosePalette("Custom background color","custom_background",Color.rgb(25,35,48));}
-            else if(value==4) chooseCustomBackgroundSource();
-            else {prefs.edit().putInt("background",value).apply();recreate();}
-        }).setNegativeButton("Cancel",null).show();
+        startActivityForResult(new Intent(this, BackgroundPickerActivity.class), PICK_BACKGROUND_CHOOSER);
     }
 
     private void chooseCustomBackgroundSource() {
@@ -371,7 +402,7 @@ public class SettingsActivity extends Activity {
     private void chooseTheme() {
         String mode = prefs.getString("theme_mode", "system");
         int selected = "dark".equals(mode) ? 2 : ("light".equals(mode) ? 1 : 0);
-        new AlertDialog.Builder(this).setTitle("Theme")
+        new FullScreenDialogBuilder(this).setTitle("Theme")
             .setSingleChoiceItems(new String[]{"System", "Light", "Dark"}, selected, (dialog, which) -> {
                 String[] modes = {"system", "light", "dark"};
                 prefs.edit().putString("theme_mode", modes[which]).apply();
@@ -385,8 +416,8 @@ public class SettingsActivity extends Activity {
     }
 
     private void chooseFocusStyle() {
-        boolean outline = prefs.getBoolean("focus_outline_only", false);
-        new AlertDialog.Builder(this).setTitle("Focus highlight")
+        boolean outline = prefs.getBoolean("focus_outline_only", true);
+        new FullScreenDialogBuilder(this).setTitle("Focus highlight")
             .setSingleChoiceItems(new String[]{"Filled highlight", "Outline only"}, outline ? 1 : 0, (dialog, which) -> {
                 prefs.edit().putBoolean("focus_outline_only", which == 1).apply();
                 dialog.dismiss();
@@ -405,7 +436,7 @@ public class SettingsActivity extends Activity {
         choices.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroller = new ScrollView(this);
         scroller.addView(choices);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(scroller)
+        AlertDialog dialog = new FullScreenDialogBuilder(this).setTitle(title).setView(scroller)
             .setNegativeButton("Cancel", null).create();
         for (int i = 0; i < names.length; i++) {
             final int color = colors[i];
@@ -481,7 +512,7 @@ public class SettingsActivity extends Activity {
             checked[i] = old == null ? !system :
                 (old.contains(app.activityInfo.name) || old.contains(app.activityInfo.packageName));
         }
-        new AlertDialog.Builder(this).setTitle("Apps to show")
+        new FullScreenDialogBuilder(this).setTitle("Apps to show")
             .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
             .setPositiveButton("Save", (dialog, which) -> {
                 Set<String> included = new LinkedHashSet<>();
@@ -511,7 +542,7 @@ public class SettingsActivity extends Activity {
         if (raw != null) for (String name : raw.split("\\n")) if (byName.containsKey(name) && !order.contains(name)) order.add(name);
         for (ResolveInfo app : all) if (byName.containsKey(app.activityInfo.name) && !order.contains(app.activityInfo.name)) order.add(app.activityInfo.name);
         if (order.isEmpty()) {
-            new AlertDialog.Builder(this).setMessage("No apps are selected. Use Choose apps first.")
+            new FullScreenDialogBuilder(this).setMessage("No apps are selected. Use Choose apps first.")
                 .setPositiveButton("OK", null).show();
             return;
         }
@@ -558,7 +589,7 @@ public class SettingsActivity extends Activity {
                 list.setItemChecked(selected[0], true);
             }
         });
-        AlertDialog reorderDialog = new AlertDialog.Builder(this).setTitle("App order")
+        AlertDialog reorderDialog = new FullScreenDialogBuilder(this).setTitle("App order")
             .setView(dialogLayout)
             .setPositiveButton("Save", (dialog, which) -> prefs.edit().putString("ordered_apps", joinLines(order)).apply())
             .setNegativeButton("Cancel", null).create();
@@ -610,14 +641,31 @@ public class SettingsActivity extends Activity {
             ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
         boolean showIcon = prefs.getBoolean("status_icon", false);
         notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
+            .setLargeIcon(NotificationIconUtils.createLargeIcon(this, R.drawable.ic_launcher))
             .setContentTitle("YW Launcher")
             .setContentText("Press to open your app launcher")
             .setContentIntent(pending)
             .setOngoing(true);
-        if (!showIcon) notification.setVisibility(Notification.VISIBILITY_SECRET);
         manager.notify(42, notification.build());
     }
 
+
+    private void openLgKeyboardSettings() {
+        new FullScreenDialogBuilder(this)
+            .setTitle("LG Keyboard · Emoticon suggestions")
+            .setMessage("In LG Keyboard settings, open General > Word Suggestions > Emoticons and turn it on. When you type a word with a matching emoji, the emoji can then appear as a T9 suggestion.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Open keyboard settings", (dialog, which) -> {
+                try {
+                    Intent keyboard = new Intent();
+                    keyboard.setComponent(new ComponentName("com.lge.ime", "com.lge.ime.setting.MainSettingsActivity"));
+                    keyboard.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(keyboard);
+                } catch (Exception e) {
+                    showError("LG Keyboard settings are not available on this device.");
+                }
+            }).show();
+    }
 
     private boolean isLgFlipModel() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
@@ -625,15 +673,24 @@ public class SettingsActivity extends Activity {
             || model.contains("exalt") || model.contains("lg-ax");
     }
 
-    private void addLauncherContact() {
-        Uri uri = Uri.parse("content://com.lge.ywlauncher.vcard/contact.vcf");
+    private void addLauncherContact(String card) {
+        Uri uri = Uri.parse("content://com.lge.ywlauncher.vcard/" + card);
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "text/x-vcard");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try { startActivity(intent); }
         catch (Exception e) {
-            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWlauncher.vcf file instead.");
+            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWLauncher.vcf or YWHome.vcf file instead.");
         }
+    }
+
+    private void updateCameraHomeHandler() {
+        int state = prefs.getBoolean("camera_home_enabled", false)
+            ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+        getPackageManager().setComponentEnabledSetting(
+            new android.content.ComponentName(this, CameraHomeActivity.class), state,
+            android.content.pm.PackageManager.DONT_KILL_APP);
     }
 
     private boolean hasUserDictionaryProvider() {
@@ -782,6 +839,10 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
+        if (requestCode == PICK_BACKGROUND_CHOOSER) {
+            if (resultCode == RESULT_OK) recreate();
+            return;
+        }
         if(requestCode==CREATE_DICTIONARY_FILE || requestCode==CREATE_LOG_FILE ||
            requestCode==PICK_DICTIONARY_FILE || requestCode==PICK_KEPT_WALLPAPER ||
            requestCode==PICK_BACKGROUND_IMAGE) {
@@ -1030,7 +1091,7 @@ public class SettingsActivity extends Activity {
         ScrollView previewScroll = new ScrollView(this);
         previewScroll.setFillViewport(false);
         previewScroll.addView(panel);
-        new AlertDialog.Builder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
+        new FullScreenDialogBuilder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
             .setPositiveButton("Apply", (dialog, which) -> {
                 String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
                     (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
@@ -1062,7 +1123,7 @@ public class SettingsActivity extends Activity {
         String[] choices={"Fill / crop","Fit entire image","Stretch"};
         String current=prefs.getString("kept_wallpaper_fit","crop");
         int selected="fit".equals(current)?1:("stretch".equals(current)?2:0);
-        new AlertDialog.Builder(this).setTitle("Kept wallpaper appearance")
+        new FullScreenDialogBuilder(this).setTitle("Kept wallpaper appearance")
             .setSingleChoiceItems(choices,selected,(dialog,which)->{
                 String value=which==1?"fit":(which==2?"stretch":"crop");
                 prefs.edit().putString("kept_wallpaper_fit",value).apply();
@@ -1099,7 +1160,7 @@ public class SettingsActivity extends Activity {
         for(int i=0;i<fits.length;i++){RadioButton rb=new RadioButton(this);rb.setText(fits[i]);rb.setTextColor(ThemeUtils.text(this));rb.setId(fitIds[i]);group.addView(rb);if(i==selected)rb.setChecked(true);}
         group.setOnCheckedChangeListener((g,id)->preview.setScaleType(id==fitIds[1]?ImageView.ScaleType.FIT_CENTER:(id==fitIds[2]?ImageView.ScaleType.FIT_XY:ImageView.ScaleType.CENTER_CROP)));
         panel.addView(group);
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Wallpaper preview").setView(panel)
+        AlertDialog dialog=new FullScreenDialogBuilder(this).setTitle("Wallpaper preview").setView(panel)
             .setPositiveButton("Apply",(d,which)->{
                 String fit=group.getCheckedRadioButtonId()==fitIds[1]?"fit":(group.getCheckedRadioButtonId()==fitIds[2]?"stretch":"crop");
                 try {
@@ -1122,6 +1183,6 @@ public class SettingsActivity extends Activity {
     }
 
     private void showError(String message) {
-        new AlertDialog.Builder(this).setMessage(message).setPositiveButton("OK", null).show();
+        new FullScreenDialogBuilder(this).setMessage(message).setPositiveButton("OK", null).show();
     }
 }

@@ -20,7 +20,8 @@ public class MainActivity extends Activity {
     private ImageButton settingsButton;
     private TextView pageIndicator, selectionCount;
     private LinearLayout pageDots;
-    private Button hideSelected, uninstallSelected, cancelSelection;
+    private Button hideSelected, uninstallSelected;
+    private ImageButton cancelSelection;
     private final ArrayList<ResolveInfo> apps = new ArrayList<>();
     private final LinkedHashSet<String> selectedApps = new LinkedHashSet<>();
     private int currentPage = 0;
@@ -106,12 +107,11 @@ public class MainActivity extends Activity {
 
         // Keep the clear-selection X as the final control, flush to the
         // right edge of the toolbar on narrow flip-phone screens.
-        cancelSelection = new Button(this);
-        cancelSelection.setText("");
+        cancelSelection = new ImageButton(this);
+        cancelSelection.setImageResource(R.drawable.ic_close_modern);
+        cancelSelection.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         cancelSelection.setContentDescription("Clear selection");
-        cancelSelection.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_close_modern, 0, 0, 0);
-        cancelSelection.setPadding(0, 0, 0, 0);
-        cancelSelection.setGravity(Gravity.CENTER);
+        cancelSelection.setPadding(dp(8), dp(8), dp(8), dp(8));
         cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancelSelection.setOnClickListener(v -> clearSelection());
         toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(dp(42), dp(42)));
@@ -164,7 +164,7 @@ public class MainActivity extends Activity {
         pageDots.setGravity(Gravity.CENTER);
         pageDots.setOrientation(LinearLayout.HORIZONTAL);
         pageDots.setPadding(0, dp(3), 0, dp(3));
-        root.addView(pageDots, new LinearLayout.LayoutParams(-1, dp(18)));
+        root.addView(pageDots, new LinearLayout.LayoutParams(-1, dp(26)));
         setContentView(root);
         updateSelectionToolbar();
     }
@@ -261,6 +261,9 @@ public class MainActivity extends Activity {
         int accent = ThemeUtils.accent(this);
         accent = Color.rgb(Color.red(accent), Color.green(accent), Color.blue(accent));
         try {
+            // LG's Android 6 Recents build does not consistently fall back to
+            // ActivityInfo.icon when TaskDescription has no bitmap. Always
+            // provide the actual launcher artwork as an explicit task icon.
             setTaskDescription(new ActivityManager.TaskDescription(
                 "YW Launcher", createTaskIcon(R.drawable.ic_launcher), accent));
         } catch (RuntimeException ignored) {
@@ -273,7 +276,7 @@ public class MainActivity extends Activity {
         // TaskDescription icons are consumed by the system task switcher,
         // not by an ImageView. Supply a fixed, square pixel bitmap so older
         // OEM Recents implementations do not apply a second density scaling.
-        int size = 64;
+        int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
         bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
@@ -374,7 +377,9 @@ public class MainActivity extends Activity {
         if (appsArea == null) return;
         if (pageDots != null) pageDots.setVisibility(View.GONE);
         appsArea.removeAllViews();
-        boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
+        String layoutMode = getSharedPreferences("launcher", 0).getString("layout_mode", "grid");
+        boolean singleGrid = "single_grid".equals(layoutMode);
+        boolean grid = !"list".equals(layoutMode);
         pageIndicator.setVisibility(View.GONE);
         if (apps.isEmpty()) {
             TextView empty = new TextView(this);
@@ -391,17 +396,20 @@ public class MainActivity extends Activity {
             }
             return;
         }
-        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+        int configuredRows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
+        int rows = singleGrid ? Math.max(1, (apps.size() + columns - 1) / columns) : configuredRows;
         int pageSize = rows * columns;
-        int pageCount = Math.max(1, (apps.size() + pageSize - 1) / pageSize);
+        int pageCount = singleGrid ? 1 : Math.max(1, (apps.size() + pageSize - 1) / pageSize);
         currentPage = clamp(currentPage, 0, pageCount - 1);
         pageIndicator.setText("");
         renderPageDots(pageCount);
         int first = currentPage * pageSize;
         int end = Math.min(apps.size(), first + pageSize);
         int cellHeightDp = 64;
-        if (scroll.getHeight() > 0) {
+        if (singleGrid) {
+            cellHeightDp = Math.max(72, Math.min(92, 78));
+        } else if (scroll.getHeight() > 0) {
             int available = Math.round(scroll.getHeight() / getResources().getDisplayMetrics().density);
             cellHeightDp = Math.max(28, available / rows);
         }
@@ -420,7 +428,9 @@ public class MainActivity extends Activity {
                     row.addView(new View(this), new LinearLayout.LayoutParams(0, -1, 1));
                 }
             }
-            appsArea.addView(row, new LinearLayout.LayoutParams(-1, 0, 1));
+            appsArea.addView(row, singleGrid
+                ? new LinearLayout.LayoutParams(-1, dp(cellHeightDp))
+                : new LinearLayout.LayoutParams(-1, 0, 1));
         }
     }
 
@@ -428,24 +438,27 @@ public class MainActivity extends Activity {
         if (pageDots == null) return;
         pageDots.removeAllViews();
         boolean grid = "grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"));
-        pageDots.setVisibility(grid ? View.VISIBLE : View.GONE);
+        pageDots.setVisibility(grid && count > 1 ? View.VISIBLE : View.GONE);
         if (!grid || count <= 1) return;
         for (int i = 0; i < count; i++) {
             final int page = i;
-            TextView dot = new TextView(this);
-            dot.setText(i == currentPage ? "●" : "•");
-            dot.setTextSize(i == currentPage ? 12 : 10);
-            dot.setTextColor(i == currentPage ? ThemeUtils.accent(this) : (ThemeUtils.isDark(this) ? 0xfff1f4f7 : 0xff34495e));
-            if (i == currentPage) dot.setTypeface(null, android.graphics.Typeface.BOLD);
-            dot.setGravity(Gravity.CENTER);
+            View dot = new View(this);
+            android.graphics.drawable.GradientDrawable marker = new android.graphics.drawable.GradientDrawable();
+            marker.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            marker.setColor(i == currentPage ? ThemeUtils.accent(this) : Color.WHITE);
+            marker.setStroke(dp(2), i == currentPage ? Color.WHITE : 0xff172536);
+            dot.setBackground(marker);
+            if (android.os.Build.VERSION.SDK_INT >= 21) dot.setElevation(dp(2));
             dot.setContentDescription("Page " + (i + 1));
             dot.setFocusable(false);
-            dot.setPadding(dp(4), 0, dp(4), 0);
             dot.setOnClickListener(v -> {
                 int delta = page - currentPage;
                 if (delta != 0) changePage(delta, 0);
             });
-            pageDots.addView(dot, new LinearLayout.LayoutParams(-2, -1));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                dp(i == currentPage ? 13 : 11), dp(i == currentPage ? 13 : 11));
+            params.setMargins(dp(5), 0, dp(5), 0);
+            pageDots.addView(dot, params);
         }
     }
 
@@ -495,6 +508,7 @@ public class MainActivity extends Activity {
     }
 
     private int pageCount() {
+        if ("single_grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))) return 1;
         int size = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6)
             * clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         return Math.max(1, (apps.size() + size - 1) / size);
@@ -550,7 +564,7 @@ public class MainActivity extends Activity {
         if (!focused && !selected) return ThemeUtils.focusBackground(this);
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setCornerRadius(dp(10));
-        boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", false);
+        boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true);
         if (focused && outline) {
             shape.setColor(selected ? 0x4426a7ff : Color.TRANSPARENT);
             shape.setStroke(dp(3), selected ? Color.WHITE : ThemeUtils.accent(this));
@@ -614,11 +628,42 @@ public class MainActivity extends Activity {
     }
 
     private void hideSelectedApps() {
-        Set<String> saved = getSharedPreferences("launcher", 0).getStringSet("included", null);
-        Set<String> included = normalizedIncludedActivities(saved, queryApps());
-        included.removeAll(selectedApps);
-        getSharedPreferences("launcher", 0).edit().putStringSet("included", included).apply();
-        selectedApps.clear(); currentPage = 0; loadApps(); updateSelectionToolbar();
+        final Set<String> toHide = new HashSet<>(selectedApps);
+        if (toHide.isEmpty()) return;
+        ArrayList<View> disappearing = new ArrayList<>();
+        collectAppViews(appsArea, toHide, disappearing);
+        for (View view : disappearing) {
+            view.animate().alpha(0f).scaleX(0.78f).scaleY(0.78f)
+                .setDuration(180).setInterpolator(new android.view.animation.AccelerateInterpolator()).start();
+        }
+        appsArea.postDelayed(() -> {
+            Set<String> saved = getSharedPreferences("launcher", 0).getStringSet("included", null);
+            Set<String> included = normalizedIncludedActivities(saved, queryApps());
+            included.removeAll(toHide);
+            getSharedPreferences("launcher", 0).edit().putStringSet("included", included).apply();
+            selectedApps.clear(); currentPage = 0; loadApps(); updateSelectionToolbar();
+            ArrayList<View> arriving = new ArrayList<>();
+            collectAppViews(appsArea, null, arriving);
+            for (int i=0;i<arriving.size();i++) {
+                View view=arriving.get(i);
+                view.setAlpha(0f); view.setTranslationY(dp(10));
+                view.animate().alpha(1f).translationY(0f).setStartDelay(Math.min(180,i*14))
+                    .setDuration(190).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+            }
+        }, 190);
+    }
+
+    private void collectAppViews(View view, Set<String> names, ArrayList<View> output) {
+        if (view == null) return;
+        Object tag = view.getTag();
+        if (tag instanceof String && (names == null || names.contains((String) tag))) {
+            output.add(view);
+            return;
+        }
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i=0;i<group.getChildCount();i++) collectAppViews(group.getChildAt(i), names, output);
+        }
     }
 
     private void uninstallSelectedApps() {
@@ -676,9 +721,9 @@ public class MainActivity extends Activity {
         Notification.Builder notification = android.os.Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "yw_launcher") : new Notification.Builder(this);
         boolean showIcon = prefs.getBoolean("status_icon", false);
         notification.setSmallIcon(showIcon ? R.drawable.ic_launcher_notification : R.drawable.ic_notification_hidden)
+            .setLargeIcon(NotificationIconUtils.createLargeIcon(this, R.drawable.ic_launcher))
             .setContentTitle("YW Launcher").setContentText("Press to open your app launcher")
             .setContentIntent(pending).setAutoCancel(false).setOngoing(true);
-        if (!showIcon) notification.setVisibility(Notification.VISIBILITY_SECRET);
         manager.notify(42, notification.build());
     }
 
