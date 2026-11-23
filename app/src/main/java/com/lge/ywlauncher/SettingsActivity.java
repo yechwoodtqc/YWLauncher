@@ -80,10 +80,7 @@ public class SettingsActivity extends Activity {
         });
 
         section("Notifications");
-        String notificationHelp = isLgFlipModel()
-            ? "Keep quick access to YW Launcher in the notification shade on this LG flip phone."
-            : "Keep a notification that opens the app.";
-        addSwitchRow("Persistent launcher notification", notificationHelp, "notify", true, this::refreshNotification);
+        addSwitchRow("Show notification to access the launcher", "", "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
         if (isLgFlipModel()) {
             addSettingRow("Add YW contacts", "Import both YW Launcher and YW Home contacts together.", () -> addLauncherContact("contacts.vcf"));
@@ -179,17 +176,42 @@ public class SettingsActivity extends Activity {
     }
 
     private final class FullScreenDialogBuilder extends AlertDialog.Builder {
-        FullScreenDialogBuilder(Activity activity) { super(activity, ThemeUtils.isDark(activity) ? R.style.FullScreenDialogDarkTheme : R.style.FullScreenDialogTheme); }
-        @Override public AlertDialog show() {
-            AlertDialog dialog = super.show();
-            if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(ThemeUtils.surface(SettingsActivity.this)));
-                dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-                dialog.getWindow().setDimAmount(1.0f);
-                dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
-            }
+        FullScreenDialogBuilder(Activity activity) {
+            super(activity, ThemeUtils.isDark(activity) ? R.style.AppDialogDarkTheme : R.style.AppDialogTheme);
+        }
+        private void styleDialog(AlertDialog dialog) {
+            Window window = dialog.getWindow();
+            if (window == null) return;
+            android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
+            card.setColor(ThemeUtils.surface(SettingsActivity.this));
+            card.setCornerRadius(dp(15));
+            card.setStroke(dp(1), ThemeUtils.divider(SettingsActivity.this));
+            window.setBackgroundDrawable(card);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0.62f);
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int width = Math.max(dp(120), Math.min(dp(420), screenWidth - dp(28)));
+            window.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.CENTER);
+        }
+        @Override public AlertDialog create() {
+            AlertDialog dialog = super.create();
+            dialog.setOnShowListener(ignored -> styleDialog(dialog));
             return dialog;
         }
+        @Override public AlertDialog show() {
+            AlertDialog dialog = super.show();
+            styleDialog(dialog);
+            return dialog;
+        }
+    }
+
+    private android.graphics.drawable.GradientDrawable settingsCard(boolean focused) {
+        android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
+        card.setColor(ThemeUtils.surface(this));
+        card.setCornerRadius(dp(11));
+        card.setStroke(dp(focused ? 2 : 1), focused ? ThemeUtils.accent(this) : ThemeUtils.divider(this));
+        return card;
     }
 
     private int dp(float value) {
@@ -198,11 +220,11 @@ public class SettingsActivity extends Activity {
 
     private void section(String label) {
         TextView heading = new TextView(this);
-        heading.setText(label.toUpperCase(Locale.US));
-        heading.setTextColor(ThemeUtils.accent(this));
-        heading.setTextSize(11);
-        heading.setLetterSpacing(0.08f);
-        heading.setPadding(dp(16), dp(18), dp(16), dp(8));
+        heading.setText(label);
+        heading.setTextColor(ThemeUtils.secondaryText(this));
+        heading.setTextSize(12);
+        heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        heading.setPadding(dp(16), dp(16), dp(16), dp(7));
         content.addView(heading, new LinearLayout.LayoutParams(-1, -2));
     }
 
@@ -219,10 +241,10 @@ public class SettingsActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(16), dp(11), dp(14), dp(11));
+        row.setPadding(dp(14), dp(11), dp(12), dp(11));
         row.setFocusable(true);
         row.setClickable(true);
-        row.setBackground(ThemeUtils.focusBackground(this));
+        row.setBackground(settingsCard(false));
 
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
@@ -251,11 +273,13 @@ public class SettingsActivity extends Activity {
             int secondary = focused ? ThemeUtils.focusText(this) : ThemeUtils.secondaryText(this);
             title.setTextColor(primary);
             summary.setTextColor(secondary);
-            chevron.setTextColor(secondary);
+            chevron.setTextColor(focused ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
+            row.setBackground(settingsCard(focused));
         });
         row.setOnClickListener(v -> action.run());
-        content.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        addSeparator();
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+        cardParams.setMargins(dp(10), dp(3), dp(10), dp(3));
+        content.addView(row, cardParams);
     }
 
     private void addSwitchRow(String titleText, String summaryText, String key, boolean defaultValue, Runnable changed) {
@@ -270,10 +294,10 @@ public class SettingsActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(16), dp(10), dp(14), dp(10));
-        row.setFocusable(true);
+        row.setPadding(dp(14), dp(10), dp(12), dp(10));
+        row.setFocusable(false);
         row.setClickable(true);
-        row.setBackground(ThemeUtils.focusBackground(this));
+        row.setBackground(settingsCard(false));
 
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
@@ -287,7 +311,11 @@ public class SettingsActivity extends Activity {
         summary.setTextColor(ThemeUtils.secondaryText(this));
         summary.setPadding(0, dp(3), 0, 0);
         labels.addView(title);
-        labels.addView(summary);
+        if (summaryText == null || summaryText.trim().isEmpty()) {
+            summary.setVisibility(View.GONE);
+        } else {
+            labels.addView(summary);
+        }
         row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
 
         Switch toggle = new Switch(this);
@@ -295,6 +323,8 @@ public class SettingsActivity extends Activity {
         toggle.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
             new int[]{ThemeUtils.accent(this), ThemeUtils.isDark(this) ? Color.rgb(100, 110, 120) : Color.rgb(175, 185, 195)}));
         toggle.setTrackTintList(ColorStateList.valueOf(ThemeUtils.accent(this)));
+        toggle.setFocusable(true);
+        toggle.setOnFocusChangeListener((view, focused) -> row.setBackground(settingsCard(focused)));
         toggle.setOnCheckedChangeListener((button, checked) -> {
             prefs.edit().putBoolean(key, checked).apply();
             changed.run();
@@ -304,24 +334,22 @@ public class SettingsActivity extends Activity {
             info.setImageResource(android.R.drawable.ic_menu_info_details);
             info.setColorFilter(ThemeUtils.secondaryText(this));
             info.setContentDescription("Camera setup instructions");
-            info.setBackground(ThemeUtils.focusBackground(this));
+            info.setBackground(ThemeUtils.focusOutlineBackground(this));
             info.setFocusable(true);
+            info.setFocusableInTouchMode(false);
+            info.setClickable(true);
+            info.setOnFocusChangeListener((view, focused) -> row.setBackground(settingsCard(focused)));
             info.setOnClickListener(v -> new FullScreenDialogBuilder(this)
                 .setTitle("Using YWHome during a call")
                 .setMessage(infoText)
                 .setPositiveButton("OK", null).show());
-            row.addView(info, new LinearLayout.LayoutParams(dp(40), dp(42)));
+            row.addView(info, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
         row.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
         row.setOnClickListener(v -> toggle.setChecked(!toggle.isChecked()));
-        row.setOnFocusChangeListener((view, focused) -> {
-            int primary = focused ? ThemeUtils.focusText(this) : ThemeUtils.text(this);
-            int secondary = focused ? ThemeUtils.focusText(this) : ThemeUtils.secondaryText(this);
-            title.setTextColor(primary);
-            summary.setTextColor(secondary);
-        });
-        content.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        addSeparator();
+        LinearLayout.LayoutParams switchCardParams = new LinearLayout.LayoutParams(-1, -2);
+        switchCardParams.setMargins(dp(10), dp(3), dp(10), dp(3));
+        content.addView(row, switchCardParams);
     }
 
     private String layoutSummary() {
@@ -369,8 +397,12 @@ public class SettingsActivity extends Activity {
         int value = prefs.getInt("background", defaultBackgroundForDevice());
         if (value == 0) value = defaultBackgroundForDevice();
         if (value == 6) return "LG Classic menu";
-        if (value == 5) return "Exalt gradient";
+        if (value == 5) return "Aurora";
         if (value == 7) return "System wallpaper";
+        if (value >= 8 && value <= 12) {
+            String[] presets = {"Midnight", "Ocean", "Sunset", "Forest", "Graphite"};
+            return presets[value - 8];
+        }
         return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : "System wallpaper")));
     }
 
@@ -461,72 +493,89 @@ public class SettingsActivity extends Activity {
     }
 
     private void choosePalette(String title, String key, int defaultColor) {
-        String[] names = {"Blue", "Sky blue", "Indigo", "Deep purple", "Purple", "Pink", "Red", "Orange",
-            "Amber", "Yellow", "Lime", "Green", "Teal", "Cyan", "Slate", "Black", "White"};
-        int[] colors = {0xff1a73e8, 0xff039be5, 0xff3949ab, 0xff5e35b1, 0xff8e24aa, 0xffd81b60,
-            0xffe53935, 0xfff4511e, 0xffffb300, 0xfffdd835, 0xff7cb342, 0xff43a047,
-            0xff00897b, 0xff00acc1, 0xff607d8b, Color.BLACK, Color.WHITE};
+        String[] names = {"Blue", "Sky", "Indigo", "Violet", "Purple", "Pink", "Red", "Coral",
+            "Orange", "Amber", "Yellow", "Lime", "Green", "Teal", "Cyan", "Slate", "Black", "White"};
+        int[] colors = {0xff1a73e8, 0xff039be5, 0xff3949ab, 0xff673ab7, 0xff8e24aa, 0xffd81b60,
+            0xffe53935, 0xffff7043, 0xfff4511e, 0xffffb300, 0xfffdd835, 0xff7cb342,
+            0xff43a047, 0xff00897b, 0xff00acc1, 0xff607d8b, Color.BLACK, Color.WHITE};
         int current = prefs.getInt(key, defaultColor);
         LinearLayout choices = new LinearLayout(this);
         choices.setOrientation(LinearLayout.VERTICAL);
+        choices.setPadding(dp(5), dp(5), dp(5), dp(5));
         ScrollView scroller = new ScrollView(this);
+        scroller.setFillViewport(true);
+        scroller.setVerticalScrollBarEnabled(false);
         scroller.addView(choices);
         AlertDialog dialog = new FullScreenDialogBuilder(this).setTitle(title).setView(scroller)
             .setNegativeButton("Cancel", null).create();
-        for (int i = 0; i < names.length; i++) {
+
+        int selectedIndex = 0;
+        for (int i = 0; i < colors.length; i++) if (colors[i] == current) selectedIndex = i;
+        final int initialFocus = selectedIndex;
+        LinearLayout line = null;
+        for (int i = 0; i < colors.length; i++) {
+            if (i % 2 == 0) {
+                line = new LinearLayout(this);
+                line.setOrientation(LinearLayout.HORIZONTAL);
+                choices.addView(line, new LinearLayout.LayoutParams(-1, -2));
+            }
             final int color = colors[i];
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(18), dp(11), dp(18), dp(11));
+            LinearLayout tile = new LinearLayout(this);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setGravity(Gravity.CENTER);
+            tile.setPadding(dp(4), dp(7), dp(4), dp(6));
+            tile.setFocusable(true);
+            tile.setClickable(true);
+            tile.setBackground(settingsCard(color == current));
+
             View swatch = new View(this);
-            android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-            shape.setColor(color);
-            shape.setCornerRadius(dp(5));
-            shape.setStroke(dp(1), 0xff9aa3ad);
-            swatch.setBackground(shape);
-            row.addView(swatch, new LinearLayout.LayoutParams(dp(36), dp(36)));
+            android.graphics.drawable.GradientDrawable dot = new android.graphics.drawable.GradientDrawable();
+            dot.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            dot.setColor(color);
+            dot.setStroke(dp(1), color == Color.WHITE ? 0xff8b949e : 0x668b949e);
+            swatch.setBackground(dot);
+            tile.addView(swatch, new LinearLayout.LayoutParams(dp(28), dp(28)));
+
             TextView label = new TextView(this);
-            label.setText(names[i] + (current == color ? "  ✓" : ""));
+            label.setText(names[i] + (color == current ? "  ✓" : ""));
             label.setTextColor(ThemeUtils.text(this));
-            label.setTextSize(15);
-            label.setPadding(dp(14), 0, 0, 0);
-            row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
-            TextView hex = new TextView(this);
-            hex.setText(String.format(Locale.US, "#%06X", color & 0xFFFFFF));
-            hex.setTextColor(ThemeUtils.secondaryText(this));
-            hex.setTextSize(10);
-            row.addView(hex, new LinearLayout.LayoutParams(-2, -2));
-            android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
-            card.setColor(ThemeUtils.surface(this));
-            card.setCornerRadius(dp(9));
-            card.setStroke(dp(current == color ? 2 : 1), current == color ? ThemeUtils.accent(this) : ThemeUtils.divider(this));
-            row.setBackground(card);
-            row.setFocusable(true);
-            row.setClickable(true);
-            row.setOnFocusChangeListener((view, focused) -> {
-                android.graphics.drawable.GradientDrawable focusedCard = new android.graphics.drawable.GradientDrawable();
-                focusedCard.setColor(ThemeUtils.surface(this));
-                focusedCard.setCornerRadius(dp(9));
-                focusedCard.setStroke(dp(focused || current == color ? 2 : 1),
-                    focused ? ThemeUtils.accent(this) : (current == color ? ThemeUtils.accent(this) : ThemeUtils.divider(this)));
-                row.setBackground(focusedCard);
+            label.setTextSize(11);
+            label.setGravity(Gravity.CENTER);
+            label.setSingleLine(true);
+            label.setPadding(0, dp(4), 0, 0);
+            tile.addView(label, new LinearLayout.LayoutParams(-1, -2));
+
+            tile.setOnFocusChangeListener((view, focused) -> {
+                tile.setBackground(settingsCard(focused || color == current));
+                label.setTextColor(focused ? ThemeUtils.accent(this) : ThemeUtils.text(this));
             });
-            row.setOnClickListener(v -> {
+            tile.setOnClickListener(view -> {
                 prefs.edit().putInt(key, color).apply();
                 dialog.dismiss();
                 recreate();
             });
-            LinearLayout.LayoutParams paletteRowParams = new LinearLayout.LayoutParams(-1, -2);
-            paletteRowParams.setMargins(dp(10), dp(4), dp(10), dp(4));
-            choices.addView(row, paletteRowParams);
+            LinearLayout.LayoutParams tileParams = new LinearLayout.LayoutParams(0, dp(68), 1f);
+            tileParams.setMargins(dp(3), dp(3), dp(3), dp(3));
+            line.addView(tile, tileParams);
         }
-        int selectedPaletteIndex = 0;
-        for (int i = 0; i < colors.length; i++) if (colors[i] == current) { selectedPaletteIndex = i; break; }
-        final int focusPaletteIndex = selectedPaletteIndex;
+        if (colors.length % 2 != 0 && line != null)
+            line.addView(new View(this), new LinearLayout.LayoutParams(0, dp(68), 1f));
         dialog.show();
+        if (dialog.getWindow() != null) {
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int screenHeight = getResources().getDisplayMetrics().heightPixels;
+            dialog.getWindow().setLayout(Math.max(dp(120), Math.min(dp(420), screenWidth - dp(28))),
+                Math.max(dp(150), Math.min(dp(430), screenHeight - dp(64))));
+        }
+        final int focusIndex = initialFocus;
         choices.post(() -> {
-            if (focusPaletteIndex >= 0 && focusPaletteIndex < choices.getChildCount())
-                choices.getChildAt(focusPaletteIndex).requestFocus();
+            int rowIndex = focusIndex / 2;
+            int colIndex = focusIndex % 2;
+            if (rowIndex < choices.getChildCount()) {
+                View row = choices.getChildAt(rowIndex);
+                if (row instanceof LinearLayout && colIndex < ((LinearLayout) row).getChildCount())
+                    ((LinearLayout) row).getChildAt(colIndex).requestFocus();
+            }
         });
     }
 
@@ -1049,159 +1098,147 @@ public class SettingsActivity extends Activity {
         try (InputStream in = getContentResolver().openInputStream(imageUri)) {
             if (in == null) throw new IOException("Could not open the selected image.");
             android.graphics.BitmapFactory.decodeStream(in, null, bounds);
-        } catch (Exception e) { showError("Could not inspect this image: " + e.getMessage()); return; }
+        } catch (Exception e) {
+            showError("Could not inspect this image: " + e.getMessage());
+            return;
+        }
         int targetW = Math.max(1, getResources().getDisplayMetrics().widthPixels);
         int targetH = Math.max(1, getResources().getDisplayMetrics().heightPixels);
         int sample = 1;
         while (bounds.outWidth / sample > targetW * 2 || bounds.outHeight / sample > targetH * 2) sample *= 2;
         android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
         options.inSampleSize = sample;
-        android.graphics.Bitmap bitmap;
+        final android.graphics.Bitmap bitmap;
         try (InputStream in = getContentResolver().openInputStream(imageUri)) {
             bitmap = in == null ? null : android.graphics.BitmapFactory.decodeStream(in, null, options);
-        } catch (Exception e) { bitmap = null; }
-        if (bitmap == null) { showError("Could not preview this image."); return; }
-        final android.graphics.Bitmap previewBitmap = bitmap;
+        } catch (Exception e) {
+            showError("Could not load the selected picture.");
+            return;
+        }
+        if (bitmap == null) {
+            showError("Could not preview this picture.");
+            return;
+        }
 
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(12), dp(8), dp(12), dp(4));
+        Dialog previewDialog = new Dialog(this, dialogTheme());
+        LinearLayout frame = new LinearLayout(this);
+        frame.setOrientation(LinearLayout.VERTICAL);
+        frame.setBackgroundColor(Color.BLACK);
+
+        TextView heading = new TextView(this);
+        heading.setText("CUSTOMIZE WALLPAPER");
+        heading.setTextColor(Color.WHITE);
+        heading.setTextSize(13);
+        heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        heading.setGravity(Gravity.CENTER);
+        heading.setPadding(dp(8), dp(9), dp(8), dp(9));
+        heading.setBackgroundColor(0xff18232f);
+        frame.addView(heading, new LinearLayout.LayoutParams(-1, -2));
+
         ImageView preview = new ImageView(this);
         preview.setImageBitmap(bitmap);
-        preview.setBackgroundColor(Color.BLACK);
         preview.setScaleType(ImageView.ScaleType.MATRIX);
-        float screenRatio = getResources().getDisplayMetrics().heightPixels
-            / (float) Math.max(1, getResources().getDisplayMetrics().widthPixels);
-        int previewHeight = Math.min(dp(300), Math.max(dp(180),
-            getResources().getDisplayMetrics().heightPixels - dp(250)));
-        int previewWidth = Math.min(dp(230), Math.max(dp(110), Math.round(previewHeight / screenRatio)));
-        FrameLayout previewFrame = new FrameLayout(this);
-        previewFrame.setBackgroundColor(Color.BLACK);
-        previewFrame.addView(preview, new FrameLayout.LayoutParams(-1, -1));
-        panel.addView(previewFrame, new LinearLayout.LayoutParams(previewWidth, previewHeight));
+        preview.setBackgroundColor(Color.BLACK);
+        frame.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        TextView hint = new TextView(this);
-        hint.setText("Preview on the Exalt screen. Choose how the image fills the screen, then zoom to adjust the crop.");
-        hint.setTextColor(ThemeUtils.text(this));
-        hint.setPadding(0, dp(8), 0, dp(4));
-        panel.addView(hint);
-
-        String[] modes = {"Fill / crop", "Fit entire image", "Stretch"};
-        String savedFit = prefs.getString("kept_wallpaper_fit", "crop");
         float initialZoom = Math.max(0.5f, Math.min(2f, prefs.getFloat("kept_wallpaper_zoom", 1f)));
-        int selected = "fit".equals(savedFit) ? 1 : ("stretch".equals(savedFit) ? 2 : 0);
-        RadioGroup fits = new RadioGroup(this);
-        fits.setOrientation(RadioGroup.HORIZONTAL);
-        int[] ids = {View.generateViewId(), View.generateViewId(), View.generateViewId()};
-        for (int i = 0; i < modes.length; i++) {
-            RadioButton option = new RadioButton(this);
-            option.setText(modes[i]);
-            option.setTextSize(11);
-            option.setTextColor(ThemeUtils.text(this));
-            option.setId(ids[i]);
-            fits.addView(option, new RadioGroup.LayoutParams(0, -2, 1));
-            if (i == selected) option.setChecked(true);
-        }
-        final String[] previewFit = {savedFit};
-        final float[] previewZoom = {initialZoom};
+        final float[] zoom = {initialZoom};
         Runnable updatePreview = () -> {
             if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
-            float imageW = previewBitmap.getWidth(), imageH = previewBitmap.getHeight();
-            float viewW = preview.getWidth(), viewH = preview.getHeight();
-            float sx = viewW / imageW, sy = viewH / imageH;
-            float scale = "fit".equals(previewFit[0]) ? Math.min(sx, sy)
-                : ("stretch".equals(previewFit[0]) ? -1f : Math.max(sx, sy));
-            float zoomFactor = Math.max(0.5f, Math.min(2f, previewZoom[0]));
-            float scaleX = "stretch".equals(previewFit[0]) ? sx * zoomFactor : scale * zoomFactor;
-            float scaleY = "stretch".equals(previewFit[0]) ? sy * zoomFactor : scale * zoomFactor;
+            float sx = preview.getWidth() / (float) bitmap.getWidth();
+            float sy = preview.getHeight() / (float) bitmap.getHeight();
+            float scale = Math.max(sx, sy) * zoom[0];
             android.graphics.Matrix matrix = new android.graphics.Matrix();
-            matrix.setScale(scaleX, scaleY);
-            matrix.postTranslate((viewW - imageW * scaleX) / 2f,
-                (viewH - imageH * scaleY) / 2f);
+            matrix.setScale(scale, scale);
+            matrix.postTranslate((preview.getWidth() - bitmap.getWidth() * scale) / 2f,
+                (preview.getHeight() - bitmap.getHeight() * scale) / 2f);
             preview.setImageMatrix(matrix);
         };
         preview.post(updatePreview);
-        fits.setOnCheckedChangeListener((group, id) -> {
-            previewFit[0] = id == ids[1] ? "fit" : (id == ids[2] ? "stretch" : "crop");
-            preview.post(updatePreview);
-        });
-        panel.addView(fits);
 
-        TextView zoomLabel = new TextView(this);
-        zoomLabel.setText("Zoom");
-        zoomLabel.setTextColor(ThemeUtils.text(this));
-        panel.addView(zoomLabel);
-        SeekBar zoom = new SeekBar(this);
-        zoom.setMax(100);
-        zoom.setProgress(Math.max(0, Math.min(100, Math.round((initialZoom - 0.5f) / 1.5f * 100f))));
-        zoom.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                float factor = 0.5f + progress * 0.015f;
-                previewZoom[0] = factor;
-                preview.post(updatePreview);
-                zoomLabel.setText("Zoom  " + Math.round(factor * 100) + "%");
-            }
-            @Override public void onStartTrackingTouch(SeekBar bar) { }
-            @Override public void onStopTrackingTouch(SeekBar bar) { }
-        });
-        zoomLabel.setText("Zoom  " + Math.round(initialZoom * 100) + "%");
-        panel.addView(zoom);
-        TextView softKeyHelp = new TextView(this);
-        softKeyHelp.setText("LEFT: ZOOM OUT        OK: SAVE        RIGHT: ZOOM IN");
-        softKeyHelp.setTextColor(Color.WHITE);
-        softKeyHelp.setTextSize(10);
-        softKeyHelp.setGravity(Gravity.CENTER);
-        softKeyHelp.setPadding(dp(4), dp(12), dp(4), dp(12));
-        softKeyHelp.setBackgroundColor(0xff777777);
-        panel.addView(softKeyHelp, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout softKeys = new LinearLayout(this);
+        softKeys.setGravity(Gravity.CENTER_VERTICAL);
+        softKeys.setBackgroundColor(0xff18232f);
+        String[] keyLabels = {"ZOOM −", "SAVE", "ZOOM +"};
+        TextView[] keyViews = new TextView[3];
+        for (int i = 0; i < keyLabels.length; i++) {
+            TextView key = new TextView(this);
+            key.setText(keyLabels[i]);
+            key.setTextColor(Color.WHITE);
+            key.setTextSize(11);
+            key.setTypeface(null, android.graphics.Typeface.BOLD);
+            key.setGravity(Gravity.CENTER);
+            key.setPadding(dp(2), dp(13), dp(2), dp(13));
+            softKeys.addView(key, new LinearLayout.LayoutParams(0, -2, 1f));
+            keyViews[i] = key;
+        }
+        frame.addView(softKeys, new LinearLayout.LayoutParams(-1, -2));
 
-        ScrollView previewScroll = new ScrollView(this);
-        previewScroll.setFillViewport(false);
-        previewScroll.addView(panel);
-        AlertDialog previewDialog = new FullScreenDialogBuilder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
-            .setPositiveButton("Save", (dialog, which) -> {
-                String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
-                    (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
-                float factor = 0.5f + zoom.getProgress() * 0.015f;
-                try {
-                    if (!editingSavedImage) {
-                        try (InputStream in = getContentResolver().openInputStream(imageUri);
-                             OutputStream out = new FileOutputStream(new File(getFilesDir(), "kept_wallpaper.png"))) {
-                            if (in == null) throw new IOException("The selected image could not be opened.");
-                            byte[] buffer = new byte[8192]; int count;
-                            while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
-                        }
+        Runnable saveWallpaper = () -> {
+            try {
+                if (!editingSavedImage) {
+                    try (InputStream in = getContentResolver().openInputStream(imageUri);
+                         OutputStream out = new FileOutputStream(new File(getFilesDir(), "kept_wallpaper.png"))) {
+                        if (in == null) throw new IOException("The selected picture could not be opened.");
+                        byte[] buffer = new byte[8192];
+                        int count;
+                        while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
                     }
-                    prefs.edit().putBoolean("keep_wallpaper", true)
-                        .putString("kept_wallpaper_fit", fit)
-                        .putFloat("kept_wallpaper_zoom", factor).apply();
-                    Toast.makeText(this, "Wallpaper saved for restoration after restart.", Toast.LENGTH_LONG).show();
-                    recreate();
-                } catch (Exception e) {
-                    prefs.edit().putBoolean("keep_wallpaper", false).apply();
-                    showError("Could not save that wallpaper image: " + e.getMessage());
                 }
-            }).setNegativeButton("Cancel", (dialog, which) -> {
-                if (!editingSavedImage) prefs.edit().putBoolean("keep_wallpaper", false).apply();
-            }).create();
+                prefs.edit().putBoolean("keep_wallpaper", true)
+                    .putString("kept_wallpaper_fit", "crop")
+                    .putFloat("kept_wallpaper_zoom", zoom[0]).apply();
+                previewDialog.dismiss();
+                Toast.makeText(this, "Wallpaper saved.", Toast.LENGTH_LONG).show();
+                recreate();
+            } catch (Exception e) {
+                prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                showError("Could not save that wallpaper image: " + e.getMessage());
+            }
+        };
+        keyViews[0].setOnClickListener(v -> {
+            zoom[0] = Math.max(0.5f, zoom[0] - 0.1f);
+            updatePreview.run();
+        });
+        keyViews[1].setOnClickListener(v -> saveWallpaper.run());
+        keyViews[2].setOnClickListener(v -> {
+            zoom[0] = Math.min(2f, zoom[0] + 0.1f);
+            updatePreview.run();
+        });
+
+        previewDialog.setContentView(frame);
+        previewDialog.setCancelable(true);
         previewDialog.setOnKeyListener((dialog, keyCode, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return true;
             if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) {
-                zoom.setProgress(Math.max(0, zoom.getProgress() - 5));
+                zoom[0] = Math.max(0.5f, zoom[0] - 0.1f);
+                updatePreview.run();
                 return true;
             }
             if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_RIGHT) {
-                zoom.setProgress(Math.min(100, zoom.getProgress() + 5));
+                zoom[0] = Math.min(2f, zoom[0] + 0.1f);
+                updatePreview.run();
                 return true;
             }
-            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
-                android.widget.Button save = previewDialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                if (save != null) save.performClick();
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                saveWallpaper.run();
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                previewDialog.dismiss();
+                if (!editingSavedImage) prefs.edit().putBoolean("keep_wallpaper", false).apply();
                 return true;
             }
             return false;
         });
         previewDialog.show();
+        if (previewDialog.getWindow() != null) {
+            previewDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+            previewDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT);
+            previewDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
     }
 
     private void chooseKeptWallpaperFit() {
