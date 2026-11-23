@@ -84,6 +84,9 @@
         <activity android:name=".CameraHomeActivity" android:enabled="false" android:exported="true" android:excludeFromRecents="true" android:label="YW Home">
             <intent-filter>
                 <action android:name="android.media.action.IMAGE_CAPTURE" />
+                <action android:name="android.media.action.STILL_IMAGE_CAMERA" />
+                <action android:name="android.media.action.VIDEO_CAMERA" />
+                <action android:name="android.media.action.IMAGE_CAPTURE_SECURE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
