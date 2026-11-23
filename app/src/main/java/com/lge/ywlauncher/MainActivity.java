@@ -780,11 +780,13 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (android.os.Build.VERSION.SDK_INT >= 21) {
-            updateRecentTaskDescription();
             try {
                 for (ActivityManager.AppTask task : ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getAppTasks())
                     task.setExcludeFromRecents(false);
             } catch (Exception ignored) { }
+            // Re-apply after OEM task metadata updates; LG Android 6 Recents
+            // can otherwise replace the launcher task's explicit icon.
+            updateRecentTaskDescription();
         }
         if (root == null) return;
         String mode = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
