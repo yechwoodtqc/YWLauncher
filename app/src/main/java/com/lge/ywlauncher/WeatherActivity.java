@@ -379,8 +379,8 @@ public class WeatherActivity extends Activity {
     private String relativeForecastTimestamp(String raw) {
         if (raw == null || raw.trim().isEmpty()) return "time not provided";
         try {
-            String normalized = raw.replaceFirst("([+-]\\\\d{2}):(\\\\d{2})$", "$1$2").replaceFirst("Z$", "+0000");
-            normalized = normalized.replaceFirst("\\\\.\\\\d+(?=[+-]\\\\d{4}$)", "");
+            String normalized = raw.replaceFirst("([+-]\\d{2}):(\\d{2})$", "$1$2").replaceFirst("Z$", "+0000");
+            normalized = normalized.replaceFirst("\\.\\d+(?=[+-]\\d{4}$)", "");
             SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US);
             Date parsed = parser.parse(normalized);
             return parsed == null ? raw : relativeTimestamp(parsed.getTime());
