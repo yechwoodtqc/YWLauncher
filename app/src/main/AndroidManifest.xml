@@ -84,6 +84,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="ywlauncher" android:host="home" />
             </intent-filter>
+            <!-- Home4Flip contact method: the Exalt's in-call Contacts app
+                 opens the website field as http://home4flip.go. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="home4flip.go" />
+            </intent-filter>
         </activity>
         <activity android:name=".CameraHomeActivity" android:enabled="false" android:exported="true" android:excludeFromRecents="true" android:label="YW Home">
             <intent-filter>
