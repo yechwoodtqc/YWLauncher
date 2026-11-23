@@ -35,6 +35,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.2'
+      - name: Fetch pinned Breezy Weather icons and license
+        run: python3 scripts/fetch_breezy_weather_assets.py
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
       - name: Run Android lint
