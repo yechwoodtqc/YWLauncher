@@ -164,7 +164,7 @@ public class MainActivity extends Activity {
         pageDots.setGravity(Gravity.CENTER);
         pageDots.setOrientation(LinearLayout.HORIZONTAL);
         pageDots.setPadding(0, dp(3), 0, dp(3));
-        root.addView(pageDots, new LinearLayout.LayoutParams(-1, dp(18)));
+        root.addView(pageDots, new LinearLayout.LayoutParams(-1, dp(26)));
         setContentView(root);
         updateSelectionToolbar();
     }
@@ -261,11 +261,11 @@ public class MainActivity extends Activity {
         int accent = ThemeUtils.accent(this);
         accent = Color.rgb(Color.red(accent), Color.green(accent), Color.blue(accent));
         try {
-            // Leave the task icon unset so Android 6 Recents loads the
-            // activity icon from the manifest. This avoids the LG SystemUI
-            // path that was failing to display the custom TaskDescription bitmap.
+            // LG's Android 6 Recents build does not consistently fall back to
+            // ActivityInfo.icon when TaskDescription has no bitmap. Always
+            // provide the actual launcher artwork as an explicit task icon.
             setTaskDescription(new ActivityManager.TaskDescription(
-                "YW Launcher", (android.graphics.Bitmap) null, accent));
+                "YW Launcher", createTaskIcon(R.drawable.ic_launcher), accent));
         } catch (RuntimeException ignored) {
             setTaskDescription(new ActivityManager.TaskDescription("YW Launcher"));
         }
@@ -279,7 +279,7 @@ public class MainActivity extends Activity {
         int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
-        bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
+        bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
@@ -445,8 +445,9 @@ public class MainActivity extends Activity {
             View dot = new View(this);
             android.graphics.drawable.GradientDrawable marker = new android.graphics.drawable.GradientDrawable();
             marker.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-            marker.setColor(i == currentPage ? ThemeUtils.accent(this) : 0xfff5f7fa);
-            marker.setStroke(dp(1), i == currentPage ? Color.WHITE : 0xff26364a);
+            marker.setColor(i == currentPage ? ThemeUtils.accent(this) : Color.WHITE);
+            marker.setStroke(dp(2), i == currentPage ? Color.WHITE : 0xff172536);
+            marker.setShadowLayer(dp(2), 0, dp(1), 0x99000000);
             dot.setBackground(marker);
             dot.setContentDescription("Page " + (i + 1));
             dot.setFocusable(false);
@@ -455,7 +456,7 @@ public class MainActivity extends Activity {
                 if (delta != 0) changePage(delta, 0);
             });
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                dp(i == currentPage ? 10 : 8), dp(i == currentPage ? 10 : 8));
+                dp(i == currentPage ? 13 : 11), dp(i == currentPage ? 13 : 11));
             params.setMargins(dp(5), 0, dp(5), 0);
             pageDots.addView(dot, params);
         }
