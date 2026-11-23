@@ -257,12 +257,16 @@ public final class BackgroundPickerActivity extends Activity {
         previewIndex=selected;
         Choice choice=currentChoice();
         root=pageRoot();
-        if (choice.value==SYSTEM) root.setBackgroundColor(Color.TRANSPARENT);
+        if (choice.value==SYSTEM) {
+            root.setBackgroundColor(Color.TRANSPARENT);
+            getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
         addToolbar(root,"Preview · "+choice.title,()->showGrid(),()->stepPreview(1));
         TextView hint=label("Use LEFT / RIGHT to preview other backgrounds. Save applies the selection.",12,false);
         hint.setPadding(dp(12),dp(4),dp(12),dp(6));
         root.addView(hint);
         ScrollView previewScroll=new ScrollView(this);
+        previewScroll.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout mock=new LinearLayout(this);
         mock.setOrientation(LinearLayout.VERTICAL);
         mock.setPadding(dp(4),dp(4),dp(4),dp(4));
@@ -301,17 +305,8 @@ public final class BackgroundPickerActivity extends Activity {
         mock.addView(appGrid,new LinearLayout.LayoutParams(-1,-2));
         previewScroll.addView(mock);
         root.addView(previewScroll,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout actions=new LinearLayout(this);
-        actions.setPadding(dp(8),dp(4),dp(8),dp(4));
-        Button previous=button("‹ Previous",()->stepPreview(-1));
-        Button save=button("Save",()->saveChoice());
-        Button next=button("Next ›",()->stepPreview(1));
-        actions.addView(previous,new LinearLayout.LayoutParams(0,dp(48),1));
-        actions.addView(save,new LinearLayout.LayoutParams(0,dp(48),1));
-        actions.addView(next,new LinearLayout.LayoutParams(0,dp(48),1));
-        root.addView(actions);
+        root.addView(softKeyBar("PREVIOUS", "SAVE", () -> stepPreview(-1), () -> saveChoice()));
         setContentView(root);
-        save.requestFocus();
     }
 
     private List<ResolveInfo> visibleApps() {
