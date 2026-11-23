@@ -451,7 +451,7 @@ public final class BackgroundPickerActivity extends Activity {
         if (previewShowing) {
             if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT) { stepPreview(-1); return true; }
             if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) { stepPreview(1); return true; }
-            if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT) { showGrid(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT) { stepPreview(-1); return true; }
             if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT || keyCode==KeyEvent.KEYCODE_ENTER
                 || keyCode==KeyEvent.KEYCODE_DPAD_CENTER) { saveChoice(); return true; }
             if (keyCode==KeyEvent.KEYCODE_BACK) { showGrid(); return true; }
