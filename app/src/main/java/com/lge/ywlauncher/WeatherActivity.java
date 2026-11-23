@@ -71,7 +71,8 @@ public class WeatherActivity extends Activity {
             AlertDialog dialog = super.show();
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(ThemeUtils.surface(WeatherActivity.this)));
-                dialog.getWindow().setDimAmount(0f);
+                dialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+                dialog.getWindow().setDimAmount(1.0f);
                 dialog.getWindow().setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT,
                     android.view.WindowManager.LayoutParams.MATCH_PARENT);
             }
