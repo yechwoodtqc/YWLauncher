@@ -491,20 +491,34 @@ public class SettingsActivity extends Activity {
             label.setTextSize(15);
             label.setPadding(dp(14), 0, 0, 0);
             row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
-            row.setBackground(ThemeUtils.focusBackground(this));
+            TextView hex = new TextView(this);
+            hex.setText(String.format(Locale.US, "#%06X", color & 0xFFFFFF));
+            hex.setTextColor(ThemeUtils.secondaryText(this));
+            hex.setTextSize(10);
+            row.addView(hex, new LinearLayout.LayoutParams(-2, -2));
+            android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
+            card.setColor(ThemeUtils.surface(this));
+            card.setCornerRadius(dp(9));
+            card.setStroke(dp(current == color ? 2 : 1), current == color ? ThemeUtils.accent(this) : ThemeUtils.divider(this));
+            row.setBackground(card);
             row.setFocusable(true);
             row.setClickable(true);
-            row.setOnFocusChangeListener((view, focused) -> row.setBackground(
-                focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
+            row.setOnFocusChangeListener((view, focused) -> {
+                android.graphics.drawable.GradientDrawable focusedCard = new android.graphics.drawable.GradientDrawable();
+                focusedCard.setColor(ThemeUtils.surface(this));
+                focusedCard.setCornerRadius(dp(9));
+                focusedCard.setStroke(dp(focused || current == color ? 2 : 1),
+                    focused ? ThemeUtils.accent(this) : (current == color ? ThemeUtils.accent(this) : ThemeUtils.divider(this)));
+                row.setBackground(focusedCard);
+            });
             row.setOnClickListener(v -> {
                 prefs.edit().putInt(key, color).apply();
                 dialog.dismiss();
                 recreate();
             });
-            choices.addView(row, new LinearLayout.LayoutParams(-1, -2));
-            View line = new View(this);
-            line.setBackgroundColor(ThemeUtils.divider(this));
-            choices.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+            LinearLayout.LayoutParams paletteRowParams = new LinearLayout.LayoutParams(-1, -2);
+            paletteRowParams.setMargins(dp(10), dp(4), dp(10), dp(4));
+            choices.addView(row, paletteRowParams);
         }
         dialog.show();
         choices.post(() -> { if (choices.getChildCount() > 0) choices.getChildAt(0).requestFocus(); });
@@ -1126,12 +1140,20 @@ public class SettingsActivity extends Activity {
         });
         zoomLabel.setText("Zoom  " + Math.round(initialZoom * 100) + "%");
         panel.addView(zoom);
+        TextView softKeyHelp = new TextView(this);
+        softKeyHelp.setText("LEFT: ZOOM OUT        OK: SAVE        RIGHT: ZOOM IN");
+        softKeyHelp.setTextColor(Color.WHITE);
+        softKeyHelp.setTextSize(10);
+        softKeyHelp.setGravity(Gravity.CENTER);
+        softKeyHelp.setPadding(dp(4), dp(12), dp(4), dp(12));
+        softKeyHelp.setBackgroundColor(0xff777777);
+        panel.addView(softKeyHelp, new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView previewScroll = new ScrollView(this);
         previewScroll.setFillViewport(false);
         previewScroll.addView(panel);
-        new FullScreenDialogBuilder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
-            .setPositiveButton("Apply", (dialog, which) -> {
+        AlertDialog previewDialog = new FullScreenDialogBuilder(this).setTitle("Keep wallpaper preview").setView(previewScroll)
+            .setPositiveButton("Save", (dialog, which) -> {
                 String fit = fits.getCheckedRadioButtonId() == ids[1] ? "fit" :
                     (fits.getCheckedRadioButtonId() == ids[2] ? "stretch" : "crop");
                 float factor = 0.5f + zoom.getProgress() * 0.015f;
@@ -1155,7 +1177,25 @@ public class SettingsActivity extends Activity {
                 }
             }).setNegativeButton("Cancel", (dialog, which) -> {
                 if (!editingSavedImage) prefs.edit().putBoolean("keep_wallpaper", false).apply();
-            }).show();
+            }).create();
+        previewDialog.setOnKeyListener((dialog, keyCode, event) -> {
+            if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return true;
+            if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) {
+                zoom.setProgress(Math.max(0, zoom.getProgress() - 5));
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_RIGHT) {
+                zoom.setProgress(Math.min(100, zoom.getProgress() + 5));
+                return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                android.widget.Button save = previewDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                if (save != null) save.performClick();
+                return true;
+            }
+            return false;
+        });
+        previewDialog.show();
     }
 
     private void chooseKeptWallpaperFit() {
