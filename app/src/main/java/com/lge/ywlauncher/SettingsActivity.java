@@ -76,7 +76,16 @@ public class SettingsActivity extends Activity {
         settingsScroll.post(() -> {
             int savedScroll = state == null ? 0 : state.getInt("settings_scroll_y", 0);
             settingsScroll.scrollTo(0, savedScroll);
-            if (state == null && content.getChildCount() > 1) content.getChildAt(1).requestFocus();
+            if (state == null && content.getChildCount() > 1) {
+                View firstSetting = content.getChildAt(1);
+                if (firstSetting instanceof android.view.ViewGroup) {
+                    android.view.ViewGroup group = (android.view.ViewGroup) firstSetting;
+                    for (int i = 0; i < group.getChildCount(); i++) {
+                        View child = group.getChildAt(i);
+                        if (child.isFocusable()) { child.requestFocus(); break; }
+                    }
+                } else firstSetting.requestFocus();
+            }
         });
 
         section("Notifications");
@@ -324,6 +333,7 @@ public class SettingsActivity extends Activity {
             new int[]{ThemeUtils.accent(this), ThemeUtils.isDark(this) ? Color.rgb(100, 110, 120) : Color.rgb(175, 185, 195)}));
         toggle.setTrackTintList(ColorStateList.valueOf(ThemeUtils.accent(this)));
         toggle.setFocusable(true);
+        toggle.setFocusableInTouchMode(true);
         toggle.setOnFocusChangeListener((view, focused) -> row.setBackground(settingsCard(focused)));
         toggle.setOnCheckedChangeListener((button, checked) -> {
             prefs.edit().putBoolean(key, checked).apply();
@@ -336,7 +346,7 @@ public class SettingsActivity extends Activity {
             info.setContentDescription("Camera setup instructions");
             info.setBackground(ThemeUtils.focusOutlineBackground(this));
             info.setFocusable(true);
-            info.setFocusableInTouchMode(false);
+            info.setFocusableInTouchMode(true);
             info.setClickable(true);
             info.setOnFocusChangeListener((view, focused) -> row.setBackground(settingsCard(focused)));
             info.setOnClickListener(v -> new FullScreenDialogBuilder(this)
