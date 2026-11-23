@@ -112,7 +112,6 @@ public class MainActivity extends Activity {
         cancelSelection.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         cancelSelection.setContentDescription("Clear selection");
         cancelSelection.setPadding(dp(8), dp(8), dp(8), dp(8));
-        cancelSelection.setGravity(Gravity.CENTER);
         cancelSelection.setBackground(ThemeUtils.focusOutlineBackground(this));
         cancelSelection.setOnClickListener(v -> clearSelection());
         toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(dp(42), dp(42)));
@@ -448,8 +447,8 @@ public class MainActivity extends Activity {
             marker.setShape(android.graphics.drawable.GradientDrawable.OVAL);
             marker.setColor(i == currentPage ? ThemeUtils.accent(this) : Color.WHITE);
             marker.setStroke(dp(2), i == currentPage ? Color.WHITE : 0xff172536);
-            marker.setShadowLayer(dp(2), 0, dp(1), 0x99000000);
             dot.setBackground(marker);
+            if (android.os.Build.VERSION.SDK_INT >= 21) dot.setElevation(dp(2));
             dot.setContentDescription("Page " + (i + 1));
             dot.setFocusable(false);
             dot.setOnClickListener(v -> {
