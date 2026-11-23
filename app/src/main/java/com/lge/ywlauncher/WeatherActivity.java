@@ -244,6 +244,7 @@ public class WeatherActivity extends Activity {
         forecasted.setTextColor(ThemeUtils.secondaryText(this));
         forecasted.setTextSize(textSize(11));
         forecasted.setPadding(dp(4), 0, dp(4), dp(5));
+        forecasted.setText("Forecast issued: " + relativeForecastTimestamp(prefs().getString("weather_cache_generated_raw", "")));
         setSelectedPlaceTitle();
     }
 
