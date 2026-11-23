@@ -60,32 +60,9 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="www.ywlauncher.go" />
             </intent-filter>
-        </activity>
-
-        <activity android:name=".ChooseAppsActivity" android:exported="false" android:label="Choose apps" />
-        <activity android:name=".SettingsActivity" android:exported="false" android:label="Settings" />
-        <activity android:name=".BackgroundPickerActivity" android:exported="false" android:label="Choose background" />
-        <activity android:name=".HomeLinkActivity" android:exported="true" android:excludeFromRecents="true" android:label="YW Home link">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="www.ywhome.go" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:host="www.ywhome.go" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="ywlauncher" android:host="home" />
-            </intent-filter>
-            <!-- Home4Flip contact method: the Exalt's in-call Contacts app
-                 opens the website field as http://home4flip.go. -->
+            <!-- Home4Flip-compatible contact link: resolve directly to the
+                 launcher activity, without requiring a separate Home4Flip app
+                 or a trampoline activity. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -93,6 +70,10 @@
                 <data android:scheme="http" android:host="home4flip.go" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".ChooseAppsActivity" android:exported="false" android:label="Choose apps" />
+        <activity android:name=".SettingsActivity" android:exported="false" android:label="Settings" />
+        <activity android:name=".BackgroundPickerActivity" android:exported="false" android:label="Choose background" />
         <activity android:name=".CameraHomeActivity" android:enabled="false" android:exported="true" android:excludeFromRecents="true" android:label="YW Home">
             <intent-filter>
                 <action android:name="android.media.action.IMAGE_CAPTURE" />
