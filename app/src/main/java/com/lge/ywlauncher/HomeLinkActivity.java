@@ -4,13 +4,24 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 
-/** Deep-link trampoline that opens the main YW Launcher screen. */
+/**
+ * Home4Flip-compatible contact-link entry point.
+ *
+ * This activity is deliberately separate from MainActivity: opening the
+ * home4flip.go contact URL asks Android to show the device's configured HOME
+ * screen instead of opening YW Launcher's application grid.
+ */
 public final class HomeLinkActivity extends Activity {
-    @Override protected void onCreate(Bundle state) {
+    @Override
+    protected void onCreate(Bundle state) {
         super.onCreate(state);
-        Intent home = new Intent(this, MainActivity.class);
-        home.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        startActivity(home);
+
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        startActivity(homeIntent);
         finish();
     }
 }
