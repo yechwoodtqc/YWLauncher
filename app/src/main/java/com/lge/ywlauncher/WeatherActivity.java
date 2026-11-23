@@ -1291,29 +1291,27 @@ public class WeatherActivity extends Activity {
         }
 
         private void drawCloud(Canvas canvas) {
-            buildCloud();
+            // Puffy, layered cloud matching the launcher weather tile rather
+            // than the thin outlined cartoon cloud used by the old renderer.
             paint.setStyle(Paint.Style.FILL);
             paint.setShader(null);
-            paint.setColor(0x66517fc9);
-            canvas.save();
-            canvas.translate(0, 2.5f);
-            canvas.drawPath(cloudPath, paint);
-            canvas.restore();
+            paint.setColor(0x55304f83);
+            canvas.drawRoundRect(14, 47, 72, 66, 10, 10, paint);
+            canvas.drawCircle(28, 47, 13, paint);
+            canvas.drawCircle(45, 40, 17, paint);
+            canvas.drawCircle(61, 48, 13, paint);
 
             paint.setShader(cloudGradient);
-            canvas.drawPath(cloudPath, paint);
+            canvas.drawCircle(27, 45, 13, paint);
+            canvas.drawCircle(44, 39, 17, paint);
+            canvas.drawCircle(60, 47, 13, paint);
+            canvas.drawRoundRect(14, 46, 73, 64, 9, 9, paint);
             paint.setShader(null);
 
-            detailPath.reset();
-            detailPath.moveTo(20, 35);
-            detailPath.cubicTo(25, 27, 34, 27, 38, 32);
-            detailPath.cubicTo(43, 28, 50, 30, 53, 37);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(1.3f);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setColor(0xaaffffff);
-            canvas.drawPath(detailPath, paint);
-            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0x99ffffff);
+            canvas.drawArc(31, 27, 53, 51, 195, 125, false, paint);
+            paint.setColor(0x22ffffff);
+            canvas.drawRoundRect(19, 49, 67, 53, 2, 2, paint);
         }
 
         private void drawDrop(Canvas canvas, float x, float y) {
@@ -1365,26 +1363,31 @@ public class WeatherActivity extends Activity {
             paint.setStyle(Paint.Style.FILL);
             paint.setShader(night
                 ? new LinearGradient(0, 0, 80, 80,
-                    new int[]{0xff284d91, 0xff19386f, 0xff10264f}, null, Shader.TileMode.CLAMP)
+                    new int[]{0xff1b4263, 0xff102b4b, 0xff081a31}, null, Shader.TileMode.CLAMP)
                 : new LinearGradient(0, 0, 80, 80,
-                    new int[]{0xff58b8ff, 0xff2388ee, 0xff0754b8}, null, Shader.TileMode.CLAMP));
+                    new int[]{0xff319cf0, 0xff0873cf, 0xff06458e}, null, Shader.TileMode.CLAMP));
             canvas.drawRoundRect(1.5f, 1.5f, 78.5f, 78.5f, 14, 14, paint);
             paint.setShader(null);
-            paint.setColor(0x22ffffff);
-            canvas.drawRoundRect(5, 5, 75, 34, 10, 10, paint);
+            paint.setColor(0x18ffffff);
+            canvas.drawRoundRect(5, 5, 75, 28, 10, 10, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(1f);
+            paint.setColor(0x337dcaff);
+            canvas.drawRoundRect(1.5f, 1.5f, 78.5f, 78.5f, 14, 14, paint);
+            paint.setStyle(Paint.Style.FILL);
 
             if (night) {
                 paint.setShader(moonGradient);
-                canvas.drawCircle(33, 27, 14, paint);
+                canvas.drawCircle(57, 27, 14, paint);
                 paint.setShader(null);
                 paint.setColor(0xff19386f);
-                canvas.drawCircle(40, 21, 13, paint);
+                canvas.drawCircle(64, 21, 13, paint);
                 paint.setColor(0xfff3f4ff);
-                canvas.drawCircle(55, 17, 1.5f, paint);
-                canvas.drawCircle(62, 30, 1.1f, paint);
-                canvas.drawCircle(47, 10, 0.9f, paint);
+                canvas.drawCircle(28, 18, 1.5f, paint);
+                canvas.drawCircle(39, 29, 1.1f, paint);
+                canvas.drawCircle(20, 33, 0.9f, paint);
             } else if (sunny) {
-                drawSun(canvas, 28, 29, 12);
+                drawSun(canvas, 57, 28, 11);
             }
 
             if (cloudy || !sunny) drawCloud(canvas);
