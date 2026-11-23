@@ -43,6 +43,7 @@ public final class BackgroundPickerActivity extends Activity {
         "Purple", "Violet", "Teal", "Forest"
     };
     private static final int SYSTEM = 7, EXALT = 5, CLASSIC = 6, CUSTOM_IMAGE = 4, CUSTOM_COLOR = 3;
+    private static final int PRESET_FIRST = 8, PRESET_LAST = 12;
     private final ArrayList<Choice> choices = new ArrayList<>();
     private int selected = 0;
     private int previewIndex = 0;
@@ -75,8 +76,13 @@ public final class BackgroundPickerActivity extends Activity {
         choices.add(new Choice("Blue", "Classic launcher blue", 1, 0xff12304e));
         choices.add(new Choice("Black", "Solid black background", 2, Color.BLACK));
         for (int i=0;i<PALETTE.length;i++) choices.add(new Choice(PALETTE_NAMES[i], "Color background", CUSTOM_COLOR, PALETTE[i]));
+        choices.add(new Choice("Aurora", "Deep purple with flowing green and cyan light", EXALT, 0xff2452b0));
+        choices.add(new Choice("Midnight", "Deep navy with a violet glow", 8, 0xff30265d));
+        choices.add(new Choice("Ocean", "Layered blue with a cool cyan glow", 9, 0xff075f83));
+        choices.add(new Choice("Sunset", "Warm amber fading into plum", 10, 0xff82476d));
+        choices.add(new Choice("Forest", "Deep evergreen with emerald light", 11, 0xff145b4c));
+        choices.add(new Choice("Graphite", "Soft charcoal with slate highlights", 12, 0xff354454));
         choices.add(new Choice("System wallpaper", "Use the phone's wallpaper", SYSTEM, Color.TRANSPARENT));
-        choices.add(new Choice("LG Exalt", "Original blue-to-purple gradient", EXALT, 0xff2452b0));
         choices.add(new Choice("LG Classic", "Classic flip-phone menu background", CLASSIC, 0xff233d70));
         choices.add(new Choice("Custom image", "Choose a picture from the phone", CUSTOM_IMAGE, 0xff34495e));
         int saved = prefs.getInt("background", defaultBackground());
@@ -125,6 +131,8 @@ public final class BackgroundPickerActivity extends Activity {
 
             View swatch = new View(this);
             if (choice.value == EXALT) swatch.setBackground(new ExaltBackgroundDrawable());
+            else if (choice.value >= PRESET_FIRST && choice.value <= PRESET_LAST)
+                swatch.setBackground(new PresetBackgroundDrawable(choice.value));
             else if (choice.value == CLASSIC) swatch.setBackgroundResource(R.drawable.bg_lg_classic_menu);
             else if (choice.value == SYSTEM) {
                 swatch.setBackground(new android.graphics.drawable.GradientDrawable(
@@ -340,6 +348,8 @@ public final class BackgroundPickerActivity extends Activity {
         } else {
             getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             if(choice.value==EXALT) target.setBackground(new ExaltBackgroundDrawable());
+            else if(choice.value>=PRESET_FIRST && choice.value<=PRESET_LAST)
+                target.setBackground(new PresetBackgroundDrawable(choice.value));
             else if(choice.value==CLASSIC) target.setBackgroundResource(R.drawable.bg_lg_classic_menu);
             else if(choice.value==CUSTOM_IMAGE && pendingImage!=null)
                 target.setBackground(new WallpaperDrawable(pendingImage,"crop"));
