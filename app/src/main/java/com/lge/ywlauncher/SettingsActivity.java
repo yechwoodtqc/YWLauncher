@@ -48,7 +48,9 @@ public class SettingsActivity extends Activity {
         back.setImageResource(R.drawable.ic_back_modern);
         back.setColorFilter(ThemeUtils.text(this));
         back.setContentDescription("Back");
-        back.setBackground(ThemeUtils.focusOutlineBackground(this));
+        back.setBackground(ThemeUtils.focusBackground(this));
+        back.setOnFocusChangeListener((v, focused) -> back.setBackground(
+            focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
         back.setOnClickListener(v -> finish());
         toolbar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
         TextView title = new TextView(this);
@@ -69,7 +71,13 @@ public class SettingsActivity extends Activity {
         settingsScroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         page.addView(settingsScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(page);
-        settingsScroll.post(() -> { settingsScroll.scrollTo(0, 0); content.requestFocus(); });
+        page.setFocusableInTouchMode(true);
+        page.requestFocus();
+        settingsScroll.post(() -> {
+            int savedScroll = state == null ? 0 : state.getInt("settings_scroll_y", 0);
+            settingsScroll.scrollTo(0, savedScroll);
+            if (state == null && content.getChildCount() > 1) content.getChildAt(1).requestFocus();
+        });
 
         section("Notifications");
         String notificationHelp = isLgFlipModel()
@@ -78,8 +86,7 @@ public class SettingsActivity extends Activity {
         addSwitchRow("Persistent launcher notification", notificationHelp, "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
         if (isLgFlipModel()) {
-            addSettingRow("Add YW Launcher contact", "Save a separate contact that opens YW Launcher.", () -> addLauncherContact("launcher.vcf"));
-            addSettingRow("Add YW Home contact", "Save a separate contact that opens the main launcher screen.", () -> addLauncherContact("home.vcf"));
+            addSettingRow("Add YW contacts", "Import both YW Launcher and YW Home contacts together.", () -> addLauncherContact("contacts.vcf"));
         }
 
         section("Appearance");
@@ -101,10 +108,17 @@ public class SettingsActivity extends Activity {
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
         addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
         addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
-        addSwitchRow("Make YW Home a camera option", "Adds YW Home to apps that handle the standard camera capture intent. Android 6 cannot reliably limit this to phone calls, so this option is available whenever enabled. The phone's dedicated camera button is not affected and will still open its normal camera without offering YW Home.", "camera_home_enabled", false, this::updateCameraHomeHandler);
+        addSwitchRowWithInfo("Enable YWHome to be camera app", "camera_home_enabled", false,
+            this::updateCameraHomeHandler,
+            "During a phone call: press the top-right soft key and choose Camera. Press the top-left soft key to open Gallery. Press the top-left soft key again to return to Camera. Choose YWHome from the camera choices to open the YW Launcher main screen.");
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
+    }
+
+    @Override protected void onSaveInstanceState(Bundle outState) {
+        if (settingsScroll != null) outState.putInt("settings_scroll_y", settingsScroll.getScrollY());
+        super.onSaveInstanceState(outState);
     }
 
     @Override protected void onPause() { super.onPause(); }
@@ -245,6 +259,14 @@ public class SettingsActivity extends Activity {
     }
 
     private void addSwitchRow(String titleText, String summaryText, String key, boolean defaultValue, Runnable changed) {
+        addSwitchRowWithInfo(titleText, summaryText, key, defaultValue, changed, null);
+    }
+
+    private void addSwitchRowWithInfo(String titleText, String key, boolean defaultValue, Runnable changed, String infoText) {
+        addSwitchRowWithInfo(titleText, "", key, defaultValue, changed, infoText);
+    }
+
+    private void addSwitchRowWithInfo(String titleText, String summaryText, String key, boolean defaultValue, Runnable changed, String infoText) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -277,6 +299,19 @@ public class SettingsActivity extends Activity {
             prefs.edit().putBoolean(key, checked).apply();
             changed.run();
         });
+        if (infoText != null) {
+            ImageButton info = new ImageButton(this);
+            info.setImageResource(android.R.drawable.ic_menu_info_details);
+            info.setColorFilter(ThemeUtils.secondaryText(this));
+            info.setContentDescription("Camera setup instructions");
+            info.setBackground(ThemeUtils.focusBackground(this));
+            info.setFocusable(true);
+            info.setOnClickListener(v -> new FullScreenDialogBuilder(this)
+                .setTitle("Using YWHome during a call")
+                .setMessage(infoText)
+                .setPositiveButton("OK", null).show());
+            row.addView(info, new LinearLayout.LayoutParams(dp(40), dp(42)));
+        }
         row.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
         row.setOnClickListener(v -> toggle.setChecked(!toggle.isChecked()));
         row.setOnFocusChangeListener((view, focused) -> {
@@ -442,14 +477,14 @@ public class SettingsActivity extends Activity {
             final int color = colors[i];
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(18), dp(8), dp(18), dp(8));
+            row.setPadding(dp(18), dp(11), dp(18), dp(11));
             View swatch = new View(this);
             android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
             shape.setColor(color);
             shape.setCornerRadius(dp(5));
             shape.setStroke(dp(1), 0xff9aa3ad);
             swatch.setBackground(shape);
-            row.addView(swatch, new LinearLayout.LayoutParams(dp(28), dp(28)));
+            row.addView(swatch, new LinearLayout.LayoutParams(dp(36), dp(36)));
             TextView label = new TextView(this);
             label.setText(names[i] + (current == color ? "  ✓" : ""));
             label.setTextColor(ThemeUtils.text(this));
@@ -458,6 +493,9 @@ public class SettingsActivity extends Activity {
             row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
             row.setBackground(ThemeUtils.focusBackground(this));
             row.setFocusable(true);
+            row.setClickable(true);
+            row.setOnFocusChangeListener((view, focused) -> row.setBackground(
+                focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
             row.setOnClickListener(v -> {
                 prefs.edit().putInt(key, color).apply();
                 dialog.dismiss();
@@ -469,6 +507,7 @@ public class SettingsActivity extends Activity {
             choices.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
         }
         dialog.show();
+        choices.post(() -> { if (choices.getChildCount() > 0) choices.getChildAt(0).requestFocus(); });
     }
 
     private ArrayList<ResolveInfo> queryApps() {
@@ -680,7 +719,7 @@ public class SettingsActivity extends Activity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try { startActivity(intent); }
         catch (Exception e) {
-            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWLauncher.vcf or YWHome.vcf file instead.");
+            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWContacts.vcf file instead.");
         }
     }
 
