@@ -238,6 +238,8 @@ public class WeatherActivity extends Activity {
         updated.setTextColor(ThemeUtils.secondaryText(this));
         updated.setTextSize(textSize(11));
         updated.setPadding(dp(4), dp(2), dp(4), dp(1));
+        long cachedAt = prefs().getLong("weather_cache_saved_at", 0L);
+        if (cachedAt > 0L) updated.setText("Last updated: " + relativeTimestamp(cachedAt));
         forecasted = new TextView(this);
         forecasted.setTextColor(ThemeUtils.secondaryText(this));
         forecasted.setTextSize(textSize(11));
@@ -342,11 +344,36 @@ public class WeatherActivity extends Activity {
             if (dailyPeriods.length() == 0) return false;
             buildDailyDays(dailyPeriods);
             renderForecast();
-            String cachedAt = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date(savedAt));
-            if (updated != null) updated.setText("Last updated: " + cachedAt + " (saved)");
+            if (updated != null) updated.setText("Last updated: " + relativeTimestamp(savedAt));
             if (forecasted != null) forecasted.setText("Forecast issued/updated: " + p.getString("weather_cache_issued", "time not provided"));
             return true;
         } catch (Exception ignored) { return false; }
+    }
+
+    private String relativeTimestamp(long timestamp) {
+        long elapsed = Math.max(0L, System.currentTimeMillis() - timestamp);
+        if (elapsed < 60L * 1000L) return "Just now";
+        if (elapsed < 60L * 60L * 1000L) {
+            long minutes = Math.max(1L, elapsed / (60L * 1000L));
+            return minutes == 1 ? "1 minute ago" : minutes + " minutes ago";
+        }
+        if (elapsed < 24L * 60L * 60L * 1000L) {
+            long hours = Math.max(1L, elapsed / (60L * 60L * 1000L));
+            return hours == 1 ? "1 hour ago" : hours + " hours ago";
+        }
+        Calendar then = Calendar.getInstance();
+        then.setTimeInMillis(timestamp);
+        Calendar today = Calendar.getInstance();
+        Calendar yesterday = (Calendar) today.clone();
+        yesterday.add(Calendar.DAY_OF_YEAR, -1);
+        SimpleDateFormat clock = new SimpleDateFormat("h:mm a", Locale.getDefault());
+        if (then.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+            && then.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR))
+            return "Today at " + clock.format(new Date(timestamp));
+        if (then.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR)
+            && then.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR))
+            return "Yesterday at " + clock.format(new Date(timestamp));
+        return new SimpleDateFormat("MMM d 'at' h:mm a", Locale.getDefault()).format(new Date(timestamp));
     }
 
     private void showNewForecastNotification() {
@@ -439,8 +466,8 @@ public class WeatherActivity extends Activity {
                     buildDailyDays(finalDays);
                     setLoading(false, null);
                     renderForecast();
-                    String now = new SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(new Date());
-                    if (updated != null) updated.setText("Last updated: " + now);
+                    long savedAt = System.currentTimeMillis();
+                    if (updated != null) updated.setText("Last updated: " + relativeTimestamp(savedAt));
                     String forecastTime = finalGenerated;
                     if (!forecastTime.isEmpty()) {
                         try {
@@ -457,7 +484,7 @@ public class WeatherActivity extends Activity {
                         .putString("weather_cache_daily", finalDays.toString())
                         .putString("weather_cache_hourly", finalHours.toString())
                         .putString("weather_cache_alerts", finalAlerts.toString())
-                        .putLong("weather_cache_saved_at", System.currentTimeMillis())
+                        .putLong("weather_cache_saved_at", savedAt)
                         .putFloat("weather_data_lat", (float) latitude)
                         .putFloat("weather_data_lon", (float) longitude)
                         .putString("weather_cache_issued", forecastTime)
