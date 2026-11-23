@@ -81,7 +81,7 @@
         <activity android:name=".ChooseAppsActivity" android:exported="false" android:label="Choose apps" />
         <activity android:name=".SettingsActivity" android:exported="false" android:label="Settings" />
         <activity android:name=".BackgroundPickerActivity" android:exported="false" android:label="Choose background" />
-        <activity android:name=".CameraHomeActivity" android:enabled="false" android:exported="true" android:excludeFromRecents="true" android:label="YW Home">
+        <activity android:name=".CameraHomeActivity" android:enabled="false" android:exported="true" android:excludeFromRecents="true" android:label="YWHome">
             <intent-filter>
                 <action android:name="android.media.action.IMAGE_CAPTURE" />
                 <action android:name="android.media.action.STILL_IMAGE_CAMERA" />
