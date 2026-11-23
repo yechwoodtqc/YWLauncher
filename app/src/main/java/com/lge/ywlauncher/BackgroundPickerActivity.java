@@ -99,66 +99,117 @@ public final class BackgroundPickerActivity extends Activity {
     private void showGrid() {
         previewShowing = false;
         getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+        getWindow().setBackgroundDrawable(new ColorDrawable(ThemeUtils.surface(this)));
         root = pageRoot();
         addToolbar(root, "Choose background", () -> finish(), null);
-        TextView hint = label("Choose a background. Select one to preview it with your apps.", 13, false);
-        hint.setPadding(dp(14),dp(8),dp(14),dp(8));
+        TextView hint = label("Choose a background, then preview it with your apps.", 13, false);
+        hint.setPadding(dp(16), dp(8), dp(16), dp(8));
         root.addView(hint);
+
         ScrollView scroll = new ScrollView(this);
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        int columns=2;
-        for(int start=0;start<choices.size();start+=columns) {
-            LinearLayout row=new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            for(int col=0;col<columns;col++) {
-                int index=start+col;
-                if(index>=choices.size()) { row.addView(new View(this),new LinearLayout.LayoutParams(0,dp(92),1)); continue; }
-                Choice choice=choices.get(index);
-                LinearLayout tile=new LinearLayout(this);
-                tile.setOrientation(LinearLayout.VERTICAL);
-                tile.setGravity(Gravity.CENTER);
-                tile.setPadding(dp(8),dp(8),dp(8),dp(8));
-                tile.setFocusable(true); tile.setClickable(true);
-                tile.setBackground(ThemeUtils.focusBackground(this));
-                View swatch=new View(this);
-                if(choice.value==EXALT) swatch.setBackground(new ExaltBackgroundDrawable());
-                else if(choice.value==CLASSIC) swatch.setBackgroundResource(R.drawable.bg_lg_classic_menu);
-                else if(choice.value==SYSTEM) swatch.setBackgroundColor(0xff52616f);
-                else swatch.setBackgroundColor(choice.color);
-                tile.addView(swatch,new LinearLayout.LayoutParams(-1,dp(46)));
-                TextView title=label(choice.title,14,true);
-                title.setGravity(Gravity.CENTER);
-                tile.addView(title);
-                tile.setOnClickListener(v->{
-                    selected=index;
-                    if(choice.value==CUSTOM_IMAGE) {
-                        String savedImage=prefs.getString("custom_background_path","");
-                        if(pendingImage!=null || (!savedImage.isEmpty() && new File(savedImage).isFile())) showPreview();
-                        else pickImage();
-                    } else showPreview();
-                });
-                tile.setOnFocusChangeListener((v,f)->{
-                    if(f) selected=index;
-                    tile.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this));
-                });
-                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(100),1);
-                lp.setMargins(dp(5),dp(5),dp(5),dp(5));
-                row.addView(tile,lp);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(10), dp(2), dp(10), dp(8));
+        for (int index = 0; index < choices.size(); index++) {
+            final int choiceIndex = index;
+            Choice choice = choices.get(index);
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.HORIZONTAL);
+            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(dp(10), dp(8), dp(12), dp(8));
+            item.setFocusable(true);
+            item.setClickable(true);
+            item.setBackground(ThemeUtils.focusBackground(this));
+
+            View swatch = new View(this);
+            if (choice.value == EXALT) swatch.setBackground(new ExaltBackgroundDrawable());
+            else if (choice.value == CLASSIC) swatch.setBackgroundResource(R.drawable.bg_lg_classic_menu);
+            else if (choice.value == SYSTEM) {
+                swatch.setBackground(new android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{0xff627d91, 0xff26394a}));
+            } else swatch.setBackgroundColor(choice.color);
+            LinearLayout.LayoutParams swatchParams = new LinearLayout.LayoutParams(dp(58), dp(44));
+            swatchParams.rightMargin = dp(14);
+            item.addView(swatch, swatchParams);
+
+            LinearLayout labels = new LinearLayout(this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            TextView title = label(choice.title, 15, true);
+            TextView subtitle = label(choice.subtitle, 11, false);
+            subtitle.setTextColor(ThemeUtils.secondaryText(this));
+            labels.addView(title);
+            labels.addView(subtitle);
+            item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+
+            TextView marker = label(choiceIndex == selected ? "✓" : "›", 22, true);
+            marker.setTextColor(choiceIndex == selected ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
+            marker.setGravity(Gravity.CENTER);
+            item.addView(marker, new LinearLayout.LayoutParams(dp(28), dp(44)));
+
+            item.setOnFocusChangeListener((view, focused) -> {
+                if (focused) {
+                    selected = choiceIndex;
+                    marker.setText("✓");
+                    marker.setTextColor(ThemeUtils.accent(this));
+                } else {
+                    marker.setText(choiceIndex == selected ? "✓" : "›");
+                    marker.setTextColor(choiceIndex == selected ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
+                }
+                item.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this));
+            });
+            item.setOnClickListener(v -> {
+                selected = choiceIndex;
+                if (choice.value == CUSTOM_IMAGE) {
+                    String savedImage = prefs.getString("custom_background_path", "");
+                    if (pendingImage != null || (!savedImage.isEmpty() && new File(savedImage).isFile())) showPreview();
+                    else pickImage();
+                } else showPreview();
+            });
+            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-1, dp(64));
+            itemParams.bottomMargin = dp(4);
+            list.addView(item, itemParams);
+        }
+        scroll.addView(list, new ScrollView.LayoutParams(-1, -2));
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(softKeyBar("CANCEL", "PREVIEW", () -> finish(), () -> {
+            Choice choice = currentChoiceForSelected();
+            if (choice.value == CUSTOM_IMAGE && pendingImage == null) {
+                String saved = prefs.getString("custom_background_path", "");
+                if (saved.isEmpty() || !new File(saved).isFile()) { pickImage(); return; }
             }
-            grid.addView(row,new LinearLayout.LayoutParams(-1,-2));
-        }
-        scroll.addView(grid);
-        root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        Button close=button("Cancel",()->finish());
-        root.addView(close,new LinearLayout.LayoutParams(-1,dp(48)));
+            showPreview();
+        }));
         setContentView(root);
-        int selectedRow = selected / columns;
-        int selectedColumn = selected % columns;
-        if (selectedRow < grid.getChildCount()) {
-            LinearLayout row = (LinearLayout) grid.getChildAt(selectedRow);
-            if (selectedColumn < row.getChildCount()) row.getChildAt(selectedColumn).requestFocus();
-        }
+        int focusIndex = Math.max(0, Math.min(selected, list.getChildCount() - 1));
+        if (focusIndex >= 0 && focusIndex < list.getChildCount()) list.getChildAt(focusIndex).requestFocus();
+    }
+
+    private LinearLayout softKeyBar(String leftLabel, String rightLabel, Runnable leftAction, Runnable rightAction) {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(12), 0, dp(12), 0);
+        bar.setBackgroundColor(0xffb8b8b8);
+        TextView left = new TextView(this);
+        left.setText(leftLabel);
+        left.setTextColor(Color.WHITE);
+        left.setTextSize(12);
+        left.setTypeface(null, android.graphics.Typeface.BOLD);
+        left.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        left.setOnClickListener(v -> leftAction.run());
+        TextView right = new TextView(this);
+        right.setText(rightLabel);
+        right.setTextColor(Color.WHITE);
+        right.setTextSize(12);
+        right.setTypeface(null, android.graphics.Typeface.BOLD);
+        right.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        right.setOnClickListener(v -> rightAction.run());
+        bar.addView(left, new LinearLayout.LayoutParams(0, dp(34), 1));
+        bar.addView(right, new LinearLayout.LayoutParams(0, dp(34), 1));
+        return bar;
     }
 
     private LinearLayout pageRoot() {
