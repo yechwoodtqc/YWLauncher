@@ -33,6 +33,7 @@ public class MainActivity extends Activity {
     private float pageTouchDownX, pageTouchDownY;
     private boolean pagingGesture;
     private int pageTouchSlop = 8;
+    private boolean resetGridOnNextResume;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -472,6 +473,7 @@ public class MainActivity extends Activity {
         setIntent(intent);
         // A fresh launcher entry always starts at the top of the app grid.
         // Returning from Settings does not call onNewIntent, so its position is preserved.
+        resetGridOnNextResume = true;
         currentPage = 0;
         if (scroll != null) scroll.post(() -> {
             scroll.scrollTo(0, 0);
@@ -795,14 +797,22 @@ public class MainActivity extends Activity {
         // loadApps() rebuilds the grid. Preserve the focused app by its stable
         // activity name so returning from Settings does not send D-pad focus
         // back to the toolbar or lose the user's position.
+        boolean resetGrid = resetGridOnNextResume;
+        resetGridOnNextResume = false;
         View focusedBeforeRefresh = getCurrentFocus();
-        String focusedAppName = focusedBeforeRefresh != null
+        String focusedAppName = resetGrid ? null : (focusedBeforeRefresh != null
             && focusedBeforeRefresh.getTag() instanceof String
             ? (String) focusedBeforeRefresh.getTag()
-            : getSharedPreferences("launcher", 0).getString("last_focused_app", null);
+            : getSharedPreferences("launcher", 0).getString("last_focused_app", null));
+        if (resetGrid) {
+            currentPage = 0;
+            scroll.scrollTo(0, 0);
+        }
         applyBackground();
         loadApps();
-        if (focusedAppName != null) {
+        if (resetGrid) {
+            scroll.post(() -> { scroll.scrollTo(0, 0); focusFirstApp(); });
+        } else if (focusedAppName != null) {
             final String restoreName = focusedAppName;
             appsArea.post(() -> {
                 View restored = findAppItem(appsArea, restoreName);
