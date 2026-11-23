@@ -1507,11 +1507,6 @@ public class WeatherActivity extends Activity {
         }finally{conn.disconnect();}
     }
 
-    @Override protected void onResume() {
-        super.onResume();
-        updateWeatherTaskDescription();
-    }
-
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if ("discussion".equals(currentPage) && event.getAction() == KeyEvent.ACTION_DOWN && forecastScroller != null) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN) { forecastScroller.smoothScrollBy(0, dp(42)); return true; }
