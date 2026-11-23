@@ -114,12 +114,14 @@ public class WeatherActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (android.os.Build.VERSION.SDK_INT >= 21) {
-            setTaskDescription(new ActivityManager.TaskDescription(
-                "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
             try {
                 for (ActivityManager.AppTask task : ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getAppTasks())
                     task.setExcludeFromRecents(false);
             } catch (Exception ignored) { }
+            // Re-apply the actual weather icon after restoring the task's
+            // Recents visibility on LG's Android 6 task switcher.
+            setTaskDescription(new ActivityManager.TaskDescription(
+                "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
         }
         scheduleAutoRefresh();
     }
