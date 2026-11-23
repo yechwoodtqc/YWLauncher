@@ -253,6 +253,9 @@ public class MainActivity extends Activity {
         } else if (background == 5) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackground(new ExaltBackgroundDrawable());
+        } else if (background >= 8 && background <= 12) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            root.setBackground(new PresetBackgroundDrawable(background));
         } else if (background == 6) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundResource(R.drawable.bg_lg_classic_menu);
@@ -278,10 +281,15 @@ public class MainActivity extends Activity {
     }
 
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
-        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
-        // TaskDescription icons are consumed by the system task switcher,
-        // not by an ImageView. Supply a fixed, square pixel bitmap so older
-        // OEM Recents implementations do not apply a second density scaling.
+        android.graphics.drawable.Drawable drawable;
+        try {
+            drawable = getPackageManager().getActivityIcon(getComponentName());
+        } catch (Exception activityIconError) {
+            try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
+            catch (Exception appIconError) { drawable = getDrawable(resourceId); }
+        }
+        // Render the exact manifest-registered activity icon. This is the
+        // same source Android's task switcher uses as its icon fallback.
         int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
