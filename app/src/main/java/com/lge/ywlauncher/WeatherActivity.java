@@ -50,7 +50,13 @@ public class WeatherActivity extends Activity {
         JSONObject json() throws JSONException { JSONObject o=new JSONObject(); o.put("name",name); o.put("lat",lat); o.put("lon",lon); return o; }
     }
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
-        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
+        android.graphics.drawable.Drawable drawable;
+        try {
+            drawable = getPackageManager().getActivityIcon(getComponentName());
+        } catch (Exception activityIconError) {
+            try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
+            catch (Exception appIconError) { drawable = getDrawable(resourceId); }
+        }
         int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
@@ -59,6 +65,16 @@ public class WeatherActivity extends Activity {
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
         return bitmap;
+    }
+
+    private void updateWeatherTaskDescription() {
+        if (android.os.Build.VERSION.SDK_INT < 21) return;
+        try {
+            setTaskDescription(new android.app.ActivityManager.TaskDescription(
+                "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
+        } catch (RuntimeException ignored) {
+            setTaskDescription(new android.app.ActivityManager.TaskDescription("YW Weather"));
+        }
     }
 
     private int dialogTheme() {
@@ -89,8 +105,7 @@ public class WeatherActivity extends Activity {
         ThemeUtils.apply(this);
         // Supply an explicit bitmap: LG Android 6 Recents does not reliably
         // fall back to the manifest icon for TaskDescription entries.
-        setTaskDescription(new android.app.ActivityManager.TaskDescription(
-            "YW Weather", createTaskIcon(R.drawable.ic_weather), ThemeUtils.accent(this)));
+        updateWeatherTaskDescription();
         fontScale = prefs().getFloat("weather_font_scale", 1.0f);
         try { discussionProducts = new JSONArray(prefs().getString("weather_discussion_cache", "[]")); }
         catch (Exception ignored) { discussionProducts = new JSONArray(); }
@@ -1490,6 +1505,11 @@ public class WeatherActivity extends Activity {
             ByteArrayOutputStream out=new ByteArrayOutputStream();try{byte[] b=new byte[4096];int n;while((n=in.read(b))>0)out.write(b,0,n);}finally{in.close();}
             String body=new String(out.toByteArray(),"UTF-8");if(code>=400)throw new IOException("Server returned HTTP "+code);return body;
         }finally{conn.disconnect();}
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        updateWeatherTaskDescription();
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
