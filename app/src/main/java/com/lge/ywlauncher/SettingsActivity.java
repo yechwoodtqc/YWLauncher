@@ -76,8 +76,11 @@ public class SettingsActivity extends Activity {
             : "Keep a notification that opens the app.";
         addSwitchRow("Persistent launcher notification", notificationHelp, "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
-        if (isLgFlipModel()) addSettingRow("Add YW Launcher contact",
-            "For LG Classic Flip / LG Exalt. Save this contact to open YW Launcher from Contacts.", this::addLauncherContact);
+        if (isLgFlipModel()) {
+            addSettingRow("Add YW Launcher contact", "Save a separate contact that opens YW Launcher.", () -> addLauncherContact("launcher.vcf"));
+            addSettingRow("Add YW Home contact", "Save a separate contact that opens the main launcher screen.", () -> addLauncherContact("home.vcf"));
+        }
+        addSwitchRow("Make YW Home a camera option", "Adds YW Home to apps that can handle the standard camera capture intent. Android 6 cannot reliably limit this to calls; the phone's dedicated camera key may still open its normal camera directly.", "camera_home_enabled", false, this::updateCameraHomeHandler);
 
         section("Appearance");
         addSettingRow("Home layout", layoutSummary(), this::chooseLayout);
@@ -669,15 +672,24 @@ public class SettingsActivity extends Activity {
             || model.contains("exalt") || model.contains("lg-ax");
     }
 
-    private void addLauncherContact() {
-        Uri uri = Uri.parse("content://com.lge.ywlauncher.vcard/contact.vcf");
+    private void addLauncherContact(String card) {
+        Uri uri = Uri.parse("content://com.lge.ywlauncher.vcard/" + card);
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(uri, "text/x-vcard");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try { startActivity(intent); }
         catch (Exception e) {
-            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWlauncher.vcf file instead.");
+            showError("No contact importer on this phone accepts VCF cards. Open Contacts and import the bundled YWLauncher.vcf or YWHome.vcf file instead.");
         }
+    }
+
+    private void updateCameraHomeHandler() {
+        int state = prefs.getBoolean("camera_home_enabled", false)
+            ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+        getPackageManager().setComponentEnabledSetting(
+            new android.content.ComponentName(this, CameraHomeActivity.class), state,
+            android.content.pm.PackageManager.DONT_KILL_APP);
     }
 
     private boolean hasUserDictionaryProvider() {
