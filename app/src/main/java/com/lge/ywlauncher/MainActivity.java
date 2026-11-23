@@ -166,6 +166,11 @@ public class MainActivity extends Activity {
         pageDots.setPadding(0, dp(3), 0, dp(3));
         root.addView(pageDots, new LinearLayout.LayoutParams(-1, dp(26)));
         setContentView(root);
+        root.setFocusableInTouchMode(true);
+        root.requestFocus();
+        settingsButton.setBackground(ThemeUtils.focusBackground(this));
+        settingsButton.setOnFocusChangeListener((v, focused) -> settingsButton.setBackground(
+            focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
         updateSelectionToolbar();
     }
 
@@ -460,6 +465,19 @@ public class MainActivity extends Activity {
             params.setMargins(dp(5), 0, dp(5), 0);
             pageDots.addView(dot, params);
         }
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        // A fresh launcher entry always starts at the top of the app grid.
+        // Returning from Settings does not call onNewIntent, so its position is preserved.
+        currentPage = 0;
+        if (scroll != null) scroll.post(() -> {
+            scroll.scrollTo(0, 0);
+            renderApps();
+            focusFirstApp();
+        });
     }
 
     private void focusFirstApp() {
