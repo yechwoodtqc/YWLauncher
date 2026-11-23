@@ -81,7 +81,6 @@ public class SettingsActivity extends Activity {
             addSettingRow("Add YW Launcher contact", "Save a separate contact that opens YW Launcher.", () -> addLauncherContact("launcher.vcf"));
             addSettingRow("Add YW Home contact", "Save a separate contact that opens the main launcher screen.", () -> addLauncherContact("home.vcf"));
         }
-        addSwitchRow("Make YW Home a camera option", "Adds YW Home to apps that handle the standard camera capture intent. Android 6 cannot reliably limit this to phone calls, so this option is available whenever enabled. The phone's dedicated camera button is not affected and will still open its normal camera without offering YW Home.", "camera_home_enabled", false, this::updateCameraHomeHandler);
 
         section("Appearance");
         addSettingRow("Home layout", layoutSummary(), this::chooseLayout);
@@ -102,6 +101,7 @@ public class SettingsActivity extends Activity {
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
         addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
         addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
+        addSwitchRow("Make YW Home a camera option", "Adds YW Home to apps that handle the standard camera capture intent. Android 6 cannot reliably limit this to phone calls, so this option is available whenever enabled. The phone's dedicated camera button is not affected and will still open its normal camera without offering YW Home.", "camera_home_enabled", false, this::updateCameraHomeHandler);
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
