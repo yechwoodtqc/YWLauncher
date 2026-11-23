@@ -11,7 +11,7 @@ public final class CameraHomeActivity extends Activity {
         Intent home = new Intent(this, MainActivity.class);
         home.setAction(Intent.ACTION_MAIN);
         home.addCategory(Intent.CATEGORY_LAUNCHER);
-        home.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(home);
         finish();
     }
