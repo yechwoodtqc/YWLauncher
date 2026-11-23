@@ -78,6 +78,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="http" android:host="www.ywhome.go" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ywlauncher" android:host="home" />
+            </intent-filter>
         </activity>
         <activity android:name=".CameraHomeActivity" android:enabled="false" android:exported="true" android:excludeFromRecents="true" android:label="YW Home">
             <intent-filter>
