@@ -98,8 +98,6 @@ public class SettingsActivity extends Activity {
         addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
         addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
         addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
-        addSettingRow("Call-connected vibration", "Not available reliably on Android 6: the public call-state API also reports OFFHOOK while dialing.", () ->
-            showError("Android 6 does not expose a reliable public event for when the other party actually answers. OFFHOOK also occurs while the phone is still dialing, so vibrating on that event would be inaccurate."));
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
@@ -169,7 +167,7 @@ public class SettingsActivity extends Activity {
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setBackgroundDrawable(new ColorDrawable(ThemeUtils.surface(SettingsActivity.this)));
                 dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-                dialog.getWindow().setDimAmount(0.72f);
+                dialog.getWindow().setDimAmount(1.0f);
                 dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
             }
             return dialog;
