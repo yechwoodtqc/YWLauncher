@@ -36,6 +36,7 @@ public class SettingsActivity extends Activity {
         super.onCreate(state);
         ThemeUtils.apply(this);
         prefs = getSharedPreferences("launcher", 0);
+        updateCameraHomeHandler();
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
