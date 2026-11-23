@@ -116,7 +116,7 @@ public class SettingsActivity extends Activity {
         addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
         addSwitchRowWithInfo("Enable YWHome to be camera app", "camera_home_enabled", false,
             this::updateCameraHomeHandler,
-            "During a phone call: press the top-right soft key and choose Camera. Press the top-left soft key to open Gallery. Press the top-left soft key again to return to Camera. Choose YWHome from the camera choices to open the YW Launcher main screen.");
+            "During a phone call: press the top-right soft key and choose Camera. Press the top-left soft key to open Gallery. Press the top-left soft key again to return to Camera. Select YWHome from the camera choices to return to the phone's Home screen.");
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
