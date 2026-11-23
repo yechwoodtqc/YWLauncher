@@ -520,8 +520,14 @@ public class SettingsActivity extends Activity {
             paletteRowParams.setMargins(dp(10), dp(4), dp(10), dp(4));
             choices.addView(row, paletteRowParams);
         }
+        int selectedPaletteIndex = 0;
+        for (int i = 0; i < colors.length; i++) if (colors[i] == current) { selectedPaletteIndex = i; break; }
+        final int focusPaletteIndex = selectedPaletteIndex;
         dialog.show();
-        choices.post(() -> { if (choices.getChildCount() > 0) choices.getChildAt(0).requestFocus(); });
+        choices.post(() -> {
+            if (focusPaletteIndex >= 0 && focusPaletteIndex < choices.getChildCount())
+                choices.getChildAt(focusPaletteIndex).requestFocus();
+        });
     }
 
     private ArrayList<ResolveInfo> queryApps() {
