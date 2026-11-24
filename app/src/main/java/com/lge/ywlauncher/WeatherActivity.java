@@ -112,6 +112,9 @@ public class WeatherActivity extends Activity {
         catch (Exception ignored) { discussionProducts = new JSONArray(); }
         loadSavedPlaces();
         buildScreen();
+        getWindow().getDecorView().post(() -> {
+            if (!isFinishing()) updateWeatherTaskDescription();
+        });
         if (getIntent().getBooleanExtra("configure_location", false)) showLocationsPage();
         else if ("current".equals(prefs().getString("weather_location_source", ""))) {
             // Current-location coordinates are a cache only, never a saved-place selection.
@@ -137,6 +140,9 @@ public class WeatherActivity extends Activity {
             // Re-apply the registered Weather activity icon after restoring
             // task visibility on LG's Android 6 task switcher.
             updateWeatherTaskDescription();
+            getWindow().getDecorView().post(() -> {
+                if (!isFinishing()) updateWeatherTaskDescription();
+            });
         }
         scheduleAutoRefresh();
     }
