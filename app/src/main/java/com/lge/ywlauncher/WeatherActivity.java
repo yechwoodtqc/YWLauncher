@@ -50,12 +50,13 @@ public class WeatherActivity extends Activity {
         JSONObject json() throws JSONException { JSONObject o=new JSONObject(); o.put("name",name); o.put("lat",lat); o.put("lon",lon); return o; }
     }
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
-        android.graphics.drawable.Drawable drawable;
-        try {
-            drawable = getPackageManager().getActivityIcon(getComponentName());
-        } catch (Exception activityIconError) {
-            try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
-            catch (Exception appIconError) { drawable = getDrawable(resourceId); }
+        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
+        if (drawable == null) {
+            try { drawable = getPackageManager().getActivityIcon(getComponentName()); }
+            catch (Exception activityIconError) {
+                try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
+                catch (Exception appIconError) { return null; }
+            }
         }
         int size = 192;
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
