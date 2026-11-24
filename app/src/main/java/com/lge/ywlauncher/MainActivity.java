@@ -608,13 +608,12 @@ public class MainActivity extends Activity {
         shape.setCornerRadius(dp(10));
         boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true);
         if (focused && outline) {
-            shape.setColor(selected ? 0x4426a7ff : Color.TRANSPARENT);
-            shape.setStroke(dp(3), selected ? Color.WHITE : ThemeUtils.accent(this));
-        } else if (focused) {
+            // Keep text readable over the normal surface in outline mode.
+            shape.setColor(selected ? ThemeUtils.surface(this) : Color.TRANSPARENT);
+            shape.setStroke(dp(3), selected ? ThemeUtils.accent(this) : ThemeUtils.accent(this));
+        } else if (focused || selected) {
+            // A solid accent fill pairs with ThemeUtils.focusText()/onAccent().
             shape.setColor(ThemeUtils.accent(this));
-            shape.setStroke(dp(2), selected ? Color.WHITE : ThemeUtils.accent(this));
-        } else {
-            shape.setColor(0x6626a7ff);
             shape.setStroke(dp(2), ThemeUtils.accent(this));
         }
         return shape;
