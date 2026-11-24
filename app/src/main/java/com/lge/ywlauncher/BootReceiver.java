@@ -52,22 +52,27 @@ public class BootReceiver extends BroadcastReceiver {
                                 int width=Math.max(1,metrics.widthPixels), height=Math.max(1,metrics.heightPixels);
                                 output=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                                 Canvas canvas=new Canvas(output);
-                                canvas.rotate(prefs.getFloat("kept_wallpaper_rotation", 0f), width / 2f, height / 2f);
+                                float rotation=prefs.getFloat("kept_wallpaper_rotation", 0f);
+                                boolean quarterTurn=((Math.round(rotation / 90f) & 1) == 1);
+                                canvas.rotate(rotation, width / 2f, height / 2f);
+                                canvas.translate(prefs.getFloat("kept_wallpaper_pan_x", 0f),
+                                    prefs.getFloat("kept_wallpaper_pan_y", 0f));
                                 Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
-                                float sx=width/(float)bitmap.getWidth(), sy=height/(float)bitmap.getHeight();
+                                float rotatedWidth=quarterTurn?bitmap.getHeight():bitmap.getWidth();
+                                float rotatedHeight=quarterTurn?bitmap.getWidth():bitmap.getHeight();
+                                float sx=width/rotatedWidth, sy=height/rotatedHeight;
+                                float zoom=Math.max(0.5f,Math.min(3f,prefs.getFloat("kept_wallpaper_zoom",1f)));
                                 float scale="fit".equals(fit)?Math.min(sx,sy):("stretch".equals(fit)?-1f:Math.max(sx,sy));
-                                if (!"stretch".equals(fit)) scale *= Math.max(0.5f, Math.min(2f, prefs.getFloat("kept_wallpaper_zoom", 1f)));
+                                if (!"stretch".equals(fit)) scale *= zoom;
                                 Rect destination;
                                 if("stretch".equals(fit)) {
-                                    float zoom=Math.max(0.5f,Math.min(2f,prefs.getFloat("kept_wallpaper_zoom",1f)));
-                                    int dw=Math.round(width*zoom), dh=Math.round(height*zoom);
+                                    int dw=Math.round((quarterTurn?height:width)*zoom);
+                                    int dh=Math.round((quarterTurn?width:height)*zoom);
                                     destination=new Rect((width-dw)/2,(height-dh)/2,(width+dw)/2,(height+dh)/2);
                                 } else {
                                     int dw=Math.round(bitmap.getWidth()*scale), dh=Math.round(bitmap.getHeight()*scale);
                                     destination=new Rect((width-dw)/2,(height-dh)/2,(width+dw)/2,(height+dh)/2);
                                 }
-                                destination.offset(Math.round(prefs.getFloat("kept_wallpaper_pan_x", 0f)),
-                                    Math.round(prefs.getFloat("kept_wallpaper_pan_y", 0f)));
                                 canvas.drawBitmap(bitmap,null,destination,paint);
                                 WallpaperManager.getInstance(context).setBitmap(output);
                             } finally {
