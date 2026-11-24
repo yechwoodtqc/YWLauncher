@@ -419,7 +419,13 @@ public final class BackgroundPickerActivity extends Activity {
         if (pendingImage != null && !pendingImage.isRecycled()
             && pendingImagePath != null && new File(pendingImagePath).isFile()) return true;
         String saved = prefs.getString("custom_background_path", "");
-        return !saved.isEmpty() && new File(saved).isFile() && new File(saved).length() > 0;
+        if (saved.isEmpty()) return false;
+        File file = new File(saved);
+        if (!file.isFile() || file.length() <= 0) return false;
+        Bitmap decoded = decodePreviewBitmap(saved);
+        if (decoded == null) return false;
+        decoded.recycle();
+        return true;
     }
 
     private void pickImage() {
