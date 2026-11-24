@@ -44,6 +44,9 @@ public class MainActivity extends Activity {
         appliedAccent = ThemeUtils.accent(this);
         build();
         updateRecentTaskDescription();
+        getWindow().getDecorView().post(() -> {
+            if (!isFinishing()) updateRecentTaskDescription();
+        });
         loadApps();
         scroll.post(() -> { if (!isFinishing()) { renderApps(); focusFirstApp(); } });
         postLaunchNotification();
@@ -817,6 +820,9 @@ public class MainActivity extends Activity {
             // Re-apply after OEM task metadata updates; LG Android 6 Recents
             // can otherwise replace the launcher task's explicit icon.
             updateRecentTaskDescription();
+            getWindow().getDecorView().post(() -> {
+                if (!isFinishing()) updateRecentTaskDescription();
+            });
         }
         if (root == null) return;
         String mode = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
