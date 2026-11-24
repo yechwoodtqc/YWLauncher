@@ -25,9 +25,21 @@ public final class ThemeUtils {
     }
 
     public static int onAccent(Context context) {
+        // Choose whichever of black or white gives the stronger WCAG contrast
+        // against the actual accent color, including mid-tone custom accents.
         int color = accent(context);
-        int luminance = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114) / 1000;
-        return luminance > 140 ? Color.BLACK : Color.WHITE;
+        double r = linear(Color.red(color) / 255.0);
+        double g = linear(Color.green(color) / 255.0);
+        double b = linear(Color.blue(color) / 255.0);
+        double luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        double whiteContrast = 1.05 / (luminance + 0.05);
+        double blackContrast = (luminance + 0.05) / 0.05;
+        return blackContrast >= whiteContrast ? Color.BLACK : Color.WHITE;
+    }
+
+    private static double linear(double channel) {
+        return channel <= 0.04045 ? channel / 12.92
+            : Math.pow((channel + 0.055) / 1.055, 2.4);
     }
 
     public static int text(Context context) { return isDark(context) ? Color.WHITE : Color.rgb(24, 28, 33); }
