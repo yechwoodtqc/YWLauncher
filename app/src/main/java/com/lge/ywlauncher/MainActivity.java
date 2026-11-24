@@ -183,7 +183,7 @@ public class MainActivity extends Activity {
 
     private int defaultBackgroundForDevice() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
-        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 6;
+        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 5;
         if (model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax")) return 5;
         return 0;
     }
@@ -222,8 +222,11 @@ public class MainActivity extends Activity {
                     options.inSampleSize = sample;
                     Bitmap bitmap = BitmapFactory.decodeFile(imagePath, options);
                     if (bitmap != null) {
-                        String fit = getSharedPreferences("launcher", 0).getString("wallpaper_fit", "crop");
-                        root.setBackground(new WallpaperDrawable(bitmap, fit));
+                        SharedPreferences wallpaperPrefs = getSharedPreferences("launcher", 0);
+                        String fit = wallpaperPrefs.getString("wallpaper_fit", "crop");
+                        root.setBackground(new WallpaperDrawable(bitmap, fit,
+                            wallpaperPrefs.getFloat("custom_background_zoom", 1f),
+                            wallpaperPrefs.getFloat("custom_background_rotation", 0f)));
                         applied = true;
                     }
                 } catch (Throwable ignored) { }
@@ -247,8 +250,11 @@ public class MainActivity extends Activity {
                         if (input != null) {
                             Bitmap bitmap = BitmapFactory.decodeStream(input, null, options);
                             if (bitmap != null) {
-                                String fit = getSharedPreferences("launcher", 0).getString("wallpaper_fit", "crop");
-                                root.setBackground(new WallpaperDrawable(bitmap, fit));
+                                SharedPreferences wallpaperPrefs = getSharedPreferences("launcher", 0);
+                                String fit = wallpaperPrefs.getString("wallpaper_fit", "crop");
+                                root.setBackground(new WallpaperDrawable(bitmap, fit,
+                                    wallpaperPrefs.getFloat("custom_background_zoom", 1f),
+                                    wallpaperPrefs.getFloat("custom_background_rotation", 0f)));
                                 applied = true;
                             }
                         }
