@@ -502,6 +502,11 @@ public final class BackgroundPickerActivity extends Activity {
         } else {
             if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT || keyCode==KeyEvent.KEYCODE_BACK) { finish(); return true; }
             if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT) { showPreview(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_DPAD_CENTER || keyCode==KeyEvent.KEYCODE_ENTER) {
+                previewIndex = selected;
+                saveChoice();
+                return true;
+            }
         }
         return super.onKeyDown(keyCode,event);
     }
