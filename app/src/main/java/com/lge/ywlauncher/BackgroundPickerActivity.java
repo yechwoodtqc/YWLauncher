@@ -43,7 +43,7 @@ public final class BackgroundPickerActivity extends Activity {
         "Purple", "Violet", "Teal", "Forest"
     };
     private static final int SYSTEM = 7, EXALT = 5, CLASSIC = 6, CUSTOM_IMAGE = 4, CUSTOM_COLOR = 3;
-    private static final int PRESET_FIRST = 8, PRESET_LAST = 12;
+    private static final int PRESET_FIRST = 8, PRESET_LAST = 17;
     private final ArrayList<Choice> choices = new ArrayList<>();
     private int selected = 0;
     private int previewIndex = 0;
@@ -81,6 +81,11 @@ public final class BackgroundPickerActivity extends Activity {
         choices.add(new Choice("Sunset", "Warm amber fading into plum", 10, 0xff82476d));
         choices.add(new Choice("Forest", "Deep evergreen with emerald light", 11, 0xff145b4c));
         choices.add(new Choice("Graphite", "Soft charcoal with slate highlights", 12, 0xff354454));
+        choices.add(new Choice("Ember", "Warm copper light over deep charcoal", 13, 0xff713d36));
+        choices.add(new Choice("Glacier", "Cool blue with an icy cyan glow", 14, 0xff286a80));
+        choices.add(new Choice("Plum", "Rich violet with a soft orchid glow", 15, 0xff573b78));
+        choices.add(new Choice("Dune", "Warm sand and bronze tones", 16, 0xff806044));
+        choices.add(new Choice("Borealis", "Deep teal with northern-light green", 17, 0xff12635e));
         choices.add(new Choice("System wallpaper", "Use the phone's wallpaper", SYSTEM, Color.TRANSPARENT));
         choices.add(new Choice("Custom image", "Choose a picture from the phone", CUSTOM_IMAGE, 0xff34495e));
         int saved = prefs.getInt("background", defaultBackground());
@@ -312,14 +317,14 @@ public final class BackgroundPickerActivity extends Activity {
         TextView leftArrow = label("‹", 38, true);
         leftArrow.setTextColor(Color.WHITE);
         leftArrow.setGravity(Gravity.CENTER);
-        leftArrow.setBackgroundColor(0x22000000);
+        leftArrow.setBackgroundColor(Color.TRANSPARENT);
         leftArrow.setOnClickListener(v -> stepPreview(-1));
         android.widget.FrameLayout.LayoutParams leftParams = new android.widget.FrameLayout.LayoutParams(dp(38), -1, Gravity.LEFT | Gravity.CENTER_VERTICAL);
         previewFrame.addView(leftArrow, leftParams);
         TextView rightArrow = label("›", 38, true);
         rightArrow.setTextColor(Color.WHITE);
         rightArrow.setGravity(Gravity.CENTER);
-        rightArrow.setBackgroundColor(0x22000000);
+        rightArrow.setBackgroundColor(Color.TRANSPARENT);
         rightArrow.setOnClickListener(v -> stepPreview(1));
         android.widget.FrameLayout.LayoutParams rightParams = new android.widget.FrameLayout.LayoutParams(dp(38), -1, Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         previewFrame.addView(rightArrow, rightParams);
