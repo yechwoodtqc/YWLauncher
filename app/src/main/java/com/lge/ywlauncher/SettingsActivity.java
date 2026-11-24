@@ -262,7 +262,8 @@ public class SettingsActivity extends Activity {
 
     private android.graphics.drawable.GradientDrawable settingsCard(boolean focused) {
         android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
-        card.setColor(ThemeUtils.surface(this));
+        boolean outlineOnly = prefs.getBoolean("focus_outline_only", true);
+        card.setColor(focused && !outlineOnly ? ThemeUtils.accent(this) : ThemeUtils.surface(this));
         card.setCornerRadius(dp(11));
         card.setStroke(dp(focused ? 2 : 1), focused ? ThemeUtils.accent(this) : ThemeUtils.divider(this));
         return card;
@@ -302,6 +303,7 @@ public class SettingsActivity extends Activity {
         row.setPadding(dp(14), dp(11), dp(12), dp(11));
         row.setFocusable(true);
         row.setClickable(true);
+        row.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         row.setBackground(settingsCard(false));
 
         LinearLayout labels = new LinearLayout(this);
@@ -332,6 +334,9 @@ public class SettingsActivity extends Activity {
             info.setContentDescription("More information");
             info.setBackground(ThemeUtils.focusBackground(this));
             info.setFocusable(true);
+            info.setFocusableInTouchMode(true);
+            info.setClickable(true);
+            info.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
             info.setOnFocusChangeListener((v, focused) -> {
                 if (focused) lastFocusedSettingsView = info;
                 info.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this));
