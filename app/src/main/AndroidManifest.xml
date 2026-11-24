@@ -98,6 +98,8 @@
             android:exported="true"
             android:label="YW Weather"
             android:icon="@drawable/ic_weather"
+            android:excludeFromRecents="false"
+            android:alwaysRetainTaskState="true"
             android:taskAffinity="com.lge.ywlauncher.weather"
             android:launchMode="singleTask">
             <intent-filter>
