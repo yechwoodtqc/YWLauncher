@@ -95,7 +95,7 @@ public final class BackgroundPickerActivity extends Activity {
 
     private int defaultBackground() {
         String model=(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).toLowerCase(Locale.US);
-        if(model.contains("l125dl")||model.contains("l125")||model.contains("classic")) return CLASSIC;
+        if(model.contains("l125dl")||model.contains("l125")||model.contains("classic")) return EXALT;
         if(model.contains("vn220")||model.contains("exalt")||model.contains("lg-ax")) return EXALT;
         return SYSTEM;
     }
@@ -157,7 +157,6 @@ public final class BackgroundPickerActivity extends Activity {
                 }
                 marker.setText(isCurrent ? "✓" : "");
                 marker.setTextColor(ThemeUtils.accent(this));
-                }
                 item.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this));
             });
             item.setOnClickListener(v -> {
