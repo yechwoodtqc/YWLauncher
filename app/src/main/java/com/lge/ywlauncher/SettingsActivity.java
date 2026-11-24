@@ -37,6 +37,12 @@ public class SettingsActivity extends Activity {
         super.onCreate(state);
         ThemeUtils.apply(this);
         prefs = getSharedPreferences("launcher", 0);
+        String deviceModel = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        boolean exaltDevice = deviceModel.contains("exalt") || deviceModel.contains("vn220") || deviceModel.contains("lg-ax");
+        if (exaltDevice && !prefs.getBoolean("icon_size_default_migrated", false)) {
+            if (prefs.getInt("icon_size", 40) == 40) prefs.edit().putInt("icon_size", 48).apply();
+            prefs.edit().putBoolean("icon_size_default_migrated", true).apply();
+        }
         updateCameraHomeHandler();
 
         LinearLayout page = new LinearLayout(this);
@@ -78,14 +84,29 @@ public class SettingsActivity extends Activity {
             int savedScroll = state == null ? prefs.getInt("settings_scroll_y", 0) : state.getInt("settings_scroll_y", 0);
             settingsScroll.scrollTo(0, savedScroll);
             if (state == null && content.getChildCount() > 1) {
-                View firstSetting = content.getChildAt(1);
-                if (firstSetting instanceof android.view.ViewGroup) {
-                    android.view.ViewGroup group = (android.view.ViewGroup) firstSetting;
+                View focusTarget = null;
+                int y = Math.max(0, savedScroll);
+                for (int i = 0; i < content.getChildCount(); i++) {
+                    View candidate = content.getChildAt(i);
+                    if (candidate.getBottom() >= y && candidate.isFocusable()) { focusTarget = candidate; break; }
+                    if (candidate instanceof android.view.ViewGroup && candidate.getBottom() >= y) {
+                        android.view.ViewGroup group = (android.view.ViewGroup) candidate;
+                        for (int j = 0; j < group.getChildCount(); j++) {
+                            View child = group.getChildAt(j);
+                            if (child.isFocusable()) { focusTarget = child; break; }
+                        }
+                        if (focusTarget != null) break;
+                    }
+                }
+                if (focusTarget == null) focusTarget = content.getChildAt(1);
+                if (focusTarget.isFocusable()) focusTarget.requestFocus();
+                else if (focusTarget instanceof android.view.ViewGroup) {
+                    android.view.ViewGroup group = (android.view.ViewGroup) focusTarget;
                     for (int i = 0; i < group.getChildCount(); i++) {
                         View child = group.getChildAt(i);
                         if (child.isFocusable()) { child.requestFocus(); break; }
                     }
-                } else firstSetting.requestFocus();
+                }
             }
         });
 
@@ -448,7 +469,7 @@ public class SettingsActivity extends Activity {
 
     private int defaultBackgroundForDevice() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
-        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 6;
+        if (model.contains("l125dl") || model.contains("l125") || model.contains("classic")) return 5;
         if (model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax")) return 5;
         return 0;
     }
