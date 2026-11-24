@@ -29,7 +29,19 @@ public final class PresetBackgroundDrawable extends Drawable {
                 top = 0xff291a48; middle = 0xff82476d; bottom = 0xffd17b4e; glow = 0xffffbd68; break;
             case 11: // Forest
                 top = 0xff071f25; middle = 0xff145b4c; bottom = 0xff102c32; glow = 0xff65d6a1; break;
-            default: // Graphite
+            case 12: // Graphite
+                top = 0xff101820; middle = 0xff354454; bottom = 0xff111923; glow = 0xff8aa9bd; break;
+            case 13: // Ember
+                top = 0xff241522; middle = 0xff713d36; bottom = 0xff201725; glow = 0xffff965e; break;
+            case 14: // Glacier
+                top = 0xff0b2439; middle = 0xff286a80; bottom = 0xff102d49; glow = 0xff8be8f2; break;
+            case 15: // Plum
+                top = 0xff1d1635; middle = 0xff573b78; bottom = 0xff21172f; glow = 0xffd69bfa; break;
+            case 16: // Dune
+                top = 0xff33251f; middle = 0xff806044; bottom = 0xff34251e; glow = 0xffffd08a; break;
+            case 17: // Borealis
+                top = 0xff071d2b; middle = 0xff12635e; bottom = 0xff10283d; glow = 0xff72f0d0; break;
+            default:
                 top = 0xff101820; middle = 0xff354454; bottom = 0xff111923; glow = 0xff8aa9bd; break;
         }
         canvas.save();
