@@ -265,12 +265,12 @@ public class MainActivity extends Activity {
         } else if (background == 5) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackground(new ExaltBackgroundDrawable());
-        } else if (background >= 8 && background <= 12) {
+        } else if (background >= 8 && background <= 17) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackground(new PresetBackgroundDrawable(background));
         } else if (background == 6) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
-            root.setBackgroundResource(R.drawable.bg_lg_classic_menu);
+            root.setBackground(new ExaltBackgroundDrawable());
         } else {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             root.setBackgroundColor(Color.TRANSPARENT);
