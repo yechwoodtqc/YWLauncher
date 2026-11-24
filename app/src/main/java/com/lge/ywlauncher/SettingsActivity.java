@@ -1206,9 +1206,16 @@ public class SettingsActivity extends Activity {
         final float[] pan = {prefs.getFloat("kept_wallpaper_pan_x", 0f), prefs.getFloat("kept_wallpaper_pan_y", 0f)};
         Runnable updatePreview = () -> {
             if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
-            float base = Math.max(preview.getWidth() / (float) bitmap.getWidth(),
-                preview.getHeight() / (float) bitmap.getHeight());
+            boolean quarterTurn = ((Math.round(rotation[0] / 90f) & 1) == 1);
+            float rotatedWidth = quarterTurn ? bitmap.getHeight() : bitmap.getWidth();
+            float rotatedHeight = quarterTurn ? bitmap.getWidth() : bitmap.getHeight();
+            float base = Math.max(preview.getWidth() / rotatedWidth, preview.getHeight() / rotatedHeight);
             float scale = base * zoom[0];
+            float drawnWidth = rotatedWidth * scale, drawnHeight = rotatedHeight * scale;
+            float maxPanX = Math.max(0f, (drawnWidth - preview.getWidth()) / 2f);
+            float maxPanY = Math.max(0f, (drawnHeight - preview.getHeight()) / 2f);
+            pan[0] = Math.max(-maxPanX, Math.min(maxPanX, pan[0]));
+            pan[1] = Math.max(-maxPanY, Math.min(maxPanY, pan[1]));
             android.graphics.Matrix matrix = new android.graphics.Matrix();
             matrix.setTranslate(-bitmap.getWidth() / 2f, -bitmap.getHeight() / 2f);
             matrix.postScale(scale, scale);
