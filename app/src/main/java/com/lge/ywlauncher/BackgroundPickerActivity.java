@@ -198,6 +198,11 @@ public final class BackgroundPickerActivity extends Activity {
             TextView key = label(labels[i], 15, true);
             key.setTextColor(Color.WHITE);
             key.setGravity(Gravity.CENTER);
+            key.setFocusable(true);
+            key.setClickable(true);
+            key.setBackground(ThemeUtils.focusBackground(this));
+            key.setOnFocusChangeListener((view, focused) ->
+                key.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
             key.setOnClickListener(v -> action.run());
             bar.addView(key, new LinearLayout.LayoutParams(0, dp(38), 1));
         }
@@ -330,12 +335,16 @@ public final class BackgroundPickerActivity extends Activity {
         android.widget.FrameLayout.LayoutParams rightParams = new android.widget.FrameLayout.LayoutParams(dp(38), -1, Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         previewFrame.addView(rightArrow, rightParams);
         root.addView(previewFrame,new LinearLayout.LayoutParams(-1,0,1));
-        root.addView(choice.value == CUSTOM_IMAGE
-            ? softKeyBar("ZOOM −", "SAVE", "ZOOM +",
+        if (choice.value == CUSTOM_IMAGE) {
+            boolean imageReady = hasCustomImage();
+            root.addView(softKeyBar("ZOOM −", imageReady ? "SAVE" : "OPEN", "ZOOM +",
                 () -> { previewZoom = Math.max(0.5f, previewZoom - 0.1f); showPreview(); },
-                () -> saveChoice(),
-                () -> { previewZoom = Math.min(3f, previewZoom + 0.1f); showPreview(); })
-            : softKeyBar("PREVIOUS", "SAVE", "NEXT", () -> stepPreview(-1), () -> saveChoice(), () -> stepPreview(1)));
+                () -> { if (hasCustomImage()) saveChoice(); else pickImage(); },
+                () -> { previewZoom = Math.min(3f, previewZoom + 0.1f); showPreview(); }));
+        } else {
+            root.addView(softKeyBar("PREVIOUS", "SAVE", "NEXT",
+                () -> stepPreview(-1), () -> saveChoice(), () -> stepPreview(1)));
+        }
         setContentView(root);
     }
 
@@ -404,6 +413,13 @@ public final class BackgroundPickerActivity extends Activity {
         previewZoom = prefs.getFloat("custom_background_zoom", 1f);
         previewRotation = prefs.getFloat("custom_background_rotation", 0f);
         showPreview();
+    }
+
+    private boolean hasCustomImage() {
+        if (pendingImage != null && !pendingImage.isRecycled()
+            && pendingImagePath != null && new File(pendingImagePath).isFile()) return true;
+        String saved = prefs.getString("custom_background_path", "");
+        return !saved.isEmpty() && new File(saved).isFile() && new File(saved).length() > 0;
     }
 
     private void pickImage() {
@@ -498,7 +514,11 @@ public final class BackgroundPickerActivity extends Activity {
                 else saveChoice();
                 return true;
             }
-            if (keyCode==KeyEvent.KEYCODE_ENTER || keyCode==KeyEvent.KEYCODE_DPAD_CENTER) { saveChoice(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_ENTER || keyCode==KeyEvent.KEYCODE_DPAD_CENTER) {
+                if (currentChoice().value == CUSTOM_IMAGE && !hasCustomImage()) pickImage();
+                else saveChoice();
+                return true;
+            }
             if (keyCode==KeyEvent.KEYCODE_BACK) { showGrid(); return true; }
         } else {
             if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT || keyCode==KeyEvent.KEYCODE_BACK) { finish(); return true; }
