@@ -458,7 +458,7 @@ public class SettingsActivity extends Activity {
         new FullScreenDialogBuilder(this).setTitle("Launcher font size")
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("font_size_percent", values[which]).apply();
-                dialog.dismiss(); recreate();
+                dialog.dismiss(); recreateKeepingPosition();
             }).setNegativeButton("Cancel", null).show();
     }
 
@@ -477,14 +477,13 @@ public class SettingsActivity extends Activity {
     private String backgroundSummary() {
         int value = prefs.getInt("background", defaultBackgroundForDevice());
         if (value == 0) value = defaultBackgroundForDevice();
-        if (value == 6) return "LG Classic menu";
-        if (value == 5) return "Aurora";
+        if (value == 5 || value == 6) return "Aurora";
         if (value == 7) return "System wallpaper";
-        if (value >= 8 && value <= 12) {
-            String[] presets = {"Midnight", "Ocean", "Sunset", "Forest", "Graphite"};
+        if (value >= 8 && value <= 17) {
+            String[] presets = {"Midnight", "Ocean", "Sunset", "Forest", "Graphite", "Ember", "Glacier", "Plum", "Dune", "Borealis"};
             return presets[value - 8];
         }
-        return value == 1 ? "Blue" : (value == 2 ? "Black" : (value == 3 ? "Custom color" : (value == 4 ? "Custom image" : "System wallpaper")));
+        return value == 4 ? "Custom image" : "System wallpaper";
     }
 
     private String themeSummary() {
@@ -499,7 +498,7 @@ public class SettingsActivity extends Activity {
             .setSingleChoiceItems(new String[]{"Paged grid", "List", "Single-screen grid"}, selected, (dialog, which) -> {
                 prefs.edit().putString("layout_mode", which == 1 ? "list" : (which == 2 ? "single_grid" : "grid")).apply();
                 dialog.dismiss();
-                recreate();
+                recreateKeepingPosition();
             }).setNegativeButton("Cancel", null).show();
     }
 
@@ -511,7 +510,7 @@ public class SettingsActivity extends Activity {
             .setSingleChoiceItems(choices, Math.max(0, Math.min(max - min, current - min)), (dialog, which) -> {
                 prefs.edit().putInt(key, min + which).apply();
                 dialog.dismiss();
-                recreate();
+                recreateKeepingPosition();
             }).setNegativeButton("Cancel", null).show();
     }
 
@@ -524,7 +523,7 @@ public class SettingsActivity extends Activity {
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 prefs.edit().putInt("icon_size", sizes[which]).apply();
                 dialog.dismiss();
-                recreate();
+                recreateKeepingPosition();
             }).setNegativeButton("Cancel", null).show();
     }
 
@@ -555,7 +554,7 @@ public class SettingsActivity extends Activity {
                 String[] modes = {"system", "light", "dark"};
                 prefs.edit().putString("theme_mode", modes[which]).apply();
                 dialog.dismiss();
-                recreate();
+                recreateKeepingPosition();
             }).setNegativeButton("Cancel", null).show();
     }
 
@@ -569,7 +568,7 @@ public class SettingsActivity extends Activity {
             .setSingleChoiceItems(new String[]{"Filled highlight", "Outline only"}, outline ? 1 : 0, (dialog, which) -> {
                 prefs.edit().putBoolean("focus_outline_only", which == 1).apply();
                 dialog.dismiss();
-                recreate();
+                recreateKeepingPosition();
             }).setNegativeButton("Cancel", null).show();
     }
 
@@ -633,7 +632,7 @@ public class SettingsActivity extends Activity {
             tile.setOnClickListener(view -> {
                 prefs.edit().putInt(key, color).apply();
                 dialog.dismiss();
-                recreate();
+                recreateKeepingPosition();
             });
             LinearLayout.LayoutParams tileParams = new LinearLayout.LayoutParams(0, dp(68), 1f);
             tileParams.setMargins(dp(3), dp(3), dp(3), dp(3));
@@ -1029,7 +1028,7 @@ public class SettingsActivity extends Activity {
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
         if (requestCode == PICK_BACKGROUND_CHOOSER) {
-            if (resultCode == RESULT_OK) recreate();
+            if (resultCode == RESULT_OK) recreateKeepingPosition();
             return;
         }
         if(requestCode==CREATE_DICTIONARY_FILE || requestCode==CREATE_LOG_FILE ||
@@ -1204,7 +1203,7 @@ public class SettingsActivity extends Activity {
 
         final float[] zoom = {Math.max(0.5f, Math.min(3f, prefs.getFloat("kept_wallpaper_zoom", 1f)))};
         final float[] rotation = {prefs.getFloat("kept_wallpaper_rotation", 0f)};
-        final float[] pan = {0f, 0f};
+        final float[] pan = {prefs.getFloat("kept_wallpaper_pan_x", 0f), prefs.getFloat("kept_wallpaper_pan_y", 0f)};
         Runnable updatePreview = () -> {
             if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
             float base = Math.max(preview.getWidth() / (float) bitmap.getWidth(),
@@ -1251,7 +1250,9 @@ public class SettingsActivity extends Activity {
                 prefs.edit().putBoolean("keep_wallpaper", true)
                     .putString("kept_wallpaper_fit", "crop")
                     .putFloat("kept_wallpaper_zoom", zoom[0])
-                    .putFloat("kept_wallpaper_rotation", rotation[0]).apply();
+                    .putFloat("kept_wallpaper_rotation", rotation[0])
+                    .putFloat("kept_wallpaper_pan_x", pan[0])
+                    .putFloat("kept_wallpaper_pan_y", pan[1]).apply();
                 previewDialog.dismiss();
                 Toast.makeText(this, "Wallpaper saved.", Toast.LENGTH_LONG).show();
                 recreateKeepingPosition();
@@ -1361,7 +1362,7 @@ public class SettingsActivity extends Activity {
                     prefs.edit().putString("custom_background_path", savedImage.getAbsolutePath())
                         .remove("custom_background_uri").putString("wallpaper_fit",fit)
                         .putInt("background",4).apply();
-                    recreate();
+                    recreateKeepingPosition();
                 } catch(Exception e){showError("Could not save that wallpaper: "+e.getMessage());}
             }).setNegativeButton("Cancel",null).create();
         dialog.show();
