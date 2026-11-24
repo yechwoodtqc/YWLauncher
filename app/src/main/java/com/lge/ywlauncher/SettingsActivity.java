@@ -139,7 +139,7 @@ public class SettingsActivity extends Activity {
 
     private void recreateKeepingPosition() {
         if (settingsScroll != null) prefs.edit().putInt("settings_scroll_y", settingsScroll.getScrollY()).apply();
-        recreateKeepingPosition();
+        recreate();
     }
 
     @Override public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
