@@ -84,7 +84,7 @@ public final class BackgroundPickerActivity extends Activity {
         choices.add(new Choice("System wallpaper", "Use the phone's wallpaper", SYSTEM, Color.TRANSPARENT));
         choices.add(new Choice("Custom image", "Choose a picture from the phone", CUSTOM_IMAGE, 0xff34495e));
         int saved = prefs.getInt("background", defaultBackground());
-        if (saved == 0) saved = defaultBackground();
+        if (saved == 0 || saved == CLASSIC) saved = defaultBackground();
         int savedColor = prefs.getInt("custom_background", PALETTE[0]);
         for (int i=0;i<choices.size();i++) {
             Choice c=choices.get(i);
@@ -300,14 +300,11 @@ public final class BackgroundPickerActivity extends Activity {
             appGrid.addView(empty);
         }
         mock.addView(appGrid,new LinearLayout.LayoutParams(-1,-2));
-        if (choice.value == CUSTOM_IMAGE && pendingImage == null) {
-            String savedPath = prefs.getString("custom_background_path", "");
-            if (savedPath.isEmpty() || !new File(savedPath).isFile()) {
-                Button selectPicture = button("Select custom picture", this::pickImage);
-                LinearLayout.LayoutParams chooseParams = new LinearLayout.LayoutParams(-1, dp(52));
-                chooseParams.setMargins(dp(26), dp(18), dp(26), dp(18));
-                mock.addView(selectPicture, 0, chooseParams);
-            }
+        if (choice.value == CUSTOM_IMAGE) {
+            Button selectPicture = button("Select custom picture", this::pickImage);
+            LinearLayout.LayoutParams chooseParams = new LinearLayout.LayoutParams(-1, dp(48));
+            chooseParams.setMargins(dp(44), dp(8), dp(44), dp(8));
+            mock.addView(selectPicture, 0, chooseParams);
         }
         previewScroll.addView(mock);
         android.widget.FrameLayout previewFrame = new android.widget.FrameLayout(this);
@@ -327,10 +324,12 @@ public final class BackgroundPickerActivity extends Activity {
         android.widget.FrameLayout.LayoutParams rightParams = new android.widget.FrameLayout.LayoutParams(dp(38), -1, Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         previewFrame.addView(rightArrow, rightParams);
         root.addView(previewFrame,new LinearLayout.LayoutParams(-1,0,1));
-        root.addView(softKeyBar("BACK", "SAVE", "ZOOM +", () -> showGrid(), () -> saveChoice(), () -> {
-            if (choice.value == CUSTOM_IMAGE) { previewZoom = Math.min(3f, previewZoom + 0.1f); showPreview(); }
-            else stepPreview(1);
-        }));
+        root.addView(choice.value == CUSTOM_IMAGE
+            ? softKeyBar("ZOOM −", "SAVE", "ZOOM +",
+                () -> { previewZoom = Math.max(0.5f, previewZoom - 0.1f); showPreview(); },
+                () -> saveChoice(),
+                () -> { previewZoom = Math.min(3f, previewZoom + 0.1f); showPreview(); })
+            : softKeyBar("PREVIOUS", "SAVE", "NEXT", () -> stepPreview(-1), () -> saveChoice(), () -> stepPreview(1)));
         setContentView(root);
     }
 
