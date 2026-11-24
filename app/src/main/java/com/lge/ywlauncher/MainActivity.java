@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         pageTouchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+        resetGridOnNextResume = state == null;
         ThemeUtils.apply(this);
         appliedTheme = getSharedPreferences("launcher", 0).getString("theme_mode", "system");
         appliedAccent = ThemeUtils.accent(this);
@@ -146,7 +147,7 @@ public class MainActivity extends Activity {
                     pagingGesture = false;
                     if ((direction > 0 && currentPage < pageCount() - 1)
                         || (direction < 0 && currentPage > 0)) {
-                        changePage(direction, direction > 0 ? 0 :
+                        changePage(direction, 0, direction > 0 ? 0 :
                             clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6) - 1);
                     }
                     return true;
@@ -173,6 +174,11 @@ public class MainActivity extends Activity {
         settingsButton.setOnFocusChangeListener((v, focused) -> settingsButton.setBackground(
             focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
         updateSelectionToolbar();
+    }
+
+    private int defaultIconSize() {
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        return (model.contains("exalt") || model.contains("vn220") || model.contains("lg-ax")) ? 48 : 40;
     }
 
     private int defaultBackgroundForDevice() {
@@ -281,12 +287,13 @@ public class MainActivity extends Activity {
     }
 
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
-        android.graphics.drawable.Drawable drawable;
-        try {
-            drawable = getPackageManager().getActivityIcon(getComponentName());
-        } catch (Exception activityIconError) {
-            try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
-            catch (Exception appIconError) { drawable = getDrawable(resourceId); }
+        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
+        if (drawable == null) {
+            try { drawable = getPackageManager().getActivityIcon(getComponentName()); }
+            catch (Exception activityIconError) {
+                try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
+                catch (Exception appIconError) { return null; }
+            }
         }
         // Render the exact manifest-registered activity icon. This is the
         // same source Android's task switcher uses as its icon fallback.
@@ -467,7 +474,7 @@ public class MainActivity extends Activity {
             dot.setFocusable(false);
             dot.setOnClickListener(v -> {
                 int delta = page - currentPage;
-                if (delta != 0) changePage(delta, 0);
+                if (delta != 0) changePage(delta, 0, 0);
             });
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 dp(i == currentPage ? 13 : 11), dp(i == currentPage ? 13 : 11));
@@ -502,7 +509,7 @@ public class MainActivity extends Activity {
         } else if (first.isFocusable()) first.requestFocus();
     }
 
-    private void changePage(int delta, int targetColumn) {
+    private void changePage(int delta, int targetRow, int targetColumn) {
         currentPage = clamp(currentPage + delta, 0, pageCount() - 1);
         if (appsArea != null) {
             appsArea.animate().cancel();
@@ -521,18 +528,17 @@ public class MainActivity extends Activity {
         }
         int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
-        int index = currentPage * rows * columns + clamp(targetColumn, 0, columns - 1);
-        if (appsArea.getChildCount() > 0 && appsArea.getChildAt(0) instanceof ViewGroup) {
-            ViewGroup firstRow = (ViewGroup) appsArea.getChildAt(0);
-            View target = null;
-            int rowIndex = Math.min(rows - 1, Math.max(0, (index - currentPage * rows * columns) / columns));
-            if (rowIndex < appsArea.getChildCount()) {
-                ViewGroup row = (ViewGroup) appsArea.getChildAt(rowIndex);
-                int col = Math.min(columns - 1, Math.max(0, index % columns));
-                if (col < row.getChildCount()) target = row.getChildAt(col);
-            }
-            if (target != null && target.isFocusable()) target.requestFocus(); else focusFirstApp();
+        int pageStart = currentPage * rows * columns;
+        int pageEnd = Math.min(apps.size(), pageStart + rows * columns);
+        int index = pageStart + clamp(targetRow, 0, rows - 1) * columns + clamp(targetColumn, 0, columns - 1);
+        if (index >= pageEnd) index = Math.max(pageStart, pageEnd - 1);
+        int local = index - pageStart, rowIndex = local / columns, col = local % columns;
+        View target = null;
+        if (rowIndex < appsArea.getChildCount() && appsArea.getChildAt(rowIndex) instanceof ViewGroup) {
+            ViewGroup row = (ViewGroup) appsArea.getChildAt(rowIndex);
+            if (col < row.getChildCount()) target = row.getChildAt(col);
         }
+        if (target != null && target.isFocusable()) target.requestFocus(); else focusFirstApp();
     }
 
     private int pageCount() {
@@ -544,14 +550,13 @@ public class MainActivity extends Activity {
 
     private LinearLayout createAppItem(ResolveInfo app, boolean grid, int cellHeightDp) {
         LinearLayout item = new LinearLayout(this);
-        item.setGravity(Gravity.CENTER);
+        item.setGravity(grid ? Gravity.CENTER : (Gravity.CENTER_VERTICAL | Gravity.LEFT));
         item.setOrientation(grid ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         item.setPadding(dp(3), dp(2), dp(3), dp(2));
         item.setFocusable(true); item.setClickable(true);
         item.setBackground(ThemeUtils.focusBackground(this));
-        int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", 40), 18, 56);
-        // List mode is icon-only, matching a simple home-screen app list.
-        boolean showLabel = grid && cellHeightDp >= 42;
+        int iconSize = clamp(getSharedPreferences("launcher", 0).getInt("icon_size", defaultIconSize()), 18, 56);
+        boolean showLabel = !grid || cellHeightDp >= 42;
         // Keep icon dimensions constant before and after the first layout pass.
         ImageView icon = new ImageView(this);
         try { icon.setImageDrawable(app.loadIcon(getPackageManager())); }
@@ -641,7 +646,10 @@ public class MainActivity extends Activity {
         return null;
     }
 
-    private void clearSelection() { selectedApps.clear(); updateSelectionToolbar(); renderApps(); }
+    private void clearSelection() {
+        selectedApps.clear(); updateSelectionToolbar(); renderApps();
+        if (scroll != null) scroll.post(() -> { scroll.scrollTo(0, 0); focusFirstApp(); });
+    }
 
     private void updateSelectionToolbar() {
         boolean selecting = !selectedApps.isEmpty();
@@ -775,11 +783,17 @@ public class MainActivity extends Activity {
                 int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
                 if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
                     && (index % columns == columns - 1 || index + 1 >= apps.size())) {
-                    if (currentPage + 1 < pageCount()) changePage(1, 0);
+                    if (currentPage + 1 < pageCount()) {
+                        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
+                        changePage(1, (index % (rows * columns)) / columns, 0);
+                    }
                     return true;
                 }
                 if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0) {
-                    if (currentPage > 0) changePage(-1, columns - 1);
+                    if (currentPage > 0) {
+                        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
+                        changePage(-1, (index % (rows * columns)) / columns, columns - 1);
+                    }
                     return true;
                 }
             }
