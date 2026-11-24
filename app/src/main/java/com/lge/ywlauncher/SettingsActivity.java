@@ -16,6 +16,7 @@ import java.util.*;
 public class SettingsActivity extends Activity {
     private LinearLayout content;
     private ScrollView settingsScroll;
+    private View lastFocusedSettingsView;
     private SharedPreferences prefs;
     private static final int CREATE_LOG_FILE = 501;
     private static final int PICK_BACKGROUND_IMAGE = 502;
@@ -74,7 +75,7 @@ public class SettingsActivity extends Activity {
         page.setFocusableInTouchMode(true);
         page.requestFocus();
         settingsScroll.post(() -> {
-            int savedScroll = state == null ? 0 : state.getInt("settings_scroll_y", 0);
+            int savedScroll = state == null ? prefs.getInt("settings_scroll_y", 0) : state.getInt("settings_scroll_y", 0);
             settingsScroll.scrollTo(0, savedScroll);
             if (state == null && content.getChildCount() > 1) {
                 View firstSetting = content.getChildAt(1);
@@ -92,7 +93,9 @@ public class SettingsActivity extends Activity {
         addSwitchRow("Show notification to access the launcher", "", "notify", true, this::refreshNotification);
         addSwitchRow("Show notification icon", "Display the notification icon in the status bar.", "status_icon", false, this::refreshNotification);
         if (isLgFlipModel()) {
-            addSettingRow("Add YW contacts", "Import both YW Launcher and YW Home contacts together.", () -> addLauncherContact("contacts.vcf"));
+            addSettingRow("Add YW contacts", "Import both YW Launcher and YW Home contacts together.",
+                () -> addLauncherContact("contacts.vcf"),
+                "Import the YW contacts so you can open YW apps and return to the phone's Home screen while you are on a call.");
         }
 
         section("Appearance");
@@ -111,23 +114,33 @@ public class SettingsActivity extends Activity {
         addSettingRow("Reorder apps", "Change the order of app icons.", () -> startActivity(new Intent(this, ReorderAppsActivity.class)));
 
         section("Tweaks");
-        addSwitchRow("Keep wallpaper", "Choose an image to restore after restart if another app replaces it.", "keep_wallpaper", false, this::updateKeptWallpaper);
-        addSettingRow("Customize kept wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
-        addSettingRow("LG Keyboard settings", "General > Word Suggestions > Emoticons. Turn it on to add emoji suggestions to T9.", this::openLgKeyboardSettings);
+        addSettingRow("Customize wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
+        addSettingRow("Add emojis to T9 suggestions", "LG Keyboard · Word Suggestions", this::openLgKeyboardSettings);
         addSwitchRowWithInfo("Enable YWHome to be camera app", "camera_home_enabled", false,
             this::updateCameraHomeHandler,
-            "During a phone call: press the top-right soft key and choose Camera. Press the top-left soft key to open Gallery. Press the top-left soft key again to return to Camera. Select YWHome from the camera choices to return to the phone's Home screen.");
+            "While on phone call to get to main screen press top right button options, then press the camera button. Then press top left button gallery, then top left again for camera. And select YWHome to get to main screen.");
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
     }
 
     @Override protected void onSaveInstanceState(Bundle outState) {
-        if (settingsScroll != null) outState.putInt("settings_scroll_y", settingsScroll.getScrollY());
+        if (settingsScroll != null) {
+            outState.putInt("settings_scroll_y", settingsScroll.getScrollY());
+            prefs.edit().putInt("settings_scroll_y", settingsScroll.getScrollY()).apply();
+        }
         super.onSaveInstanceState(outState);
     }
 
-    @Override protected void onPause() { super.onPause(); }
+    @Override protected void onPause() {
+        if (settingsScroll != null) prefs.edit().putInt("settings_scroll_y", settingsScroll.getScrollY()).apply();
+        super.onPause();
+    }
+
+    private void recreateKeepingPosition() {
+        if (settingsScroll != null) prefs.edit().putInt("settings_scroll_y", settingsScroll.getScrollY()).apply();
+        recreateKeepingPosition();
+    }
 
     @Override public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
         if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) { finish(); return true; }
@@ -205,7 +218,18 @@ public class SettingsActivity extends Activity {
         }
         @Override public AlertDialog create() {
             AlertDialog dialog = super.create();
-            dialog.setOnShowListener(ignored -> styleDialog(dialog));
+            dialog.setOnShowListener(ignored -> {
+                styleDialog(dialog);
+                Window window = dialog.getWindow();
+                if (window != null) {
+                    View body = window.findViewById(android.R.id.content);
+                    if (body != null) body.setPadding(dp(14), dp(1), dp(14), dp(1));
+                }
+            });
+            dialog.setOnDismissListener(ignored -> {
+                View restore = lastFocusedSettingsView;
+                if (restore != null) restore.post(() -> { if (restore.isShown()) restore.requestFocus(); });
+            });
             return dialog;
         }
         @Override public AlertDialog show() {
@@ -247,6 +271,10 @@ public class SettingsActivity extends Activity {
     }
 
     private void addSettingRow(String titleText, String summaryText, Runnable action) {
+        addSettingRow(titleText, summaryText, action, null);
+    }
+
+    private void addSettingRow(String titleText, String summaryText, Runnable action, String infoText) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -276,8 +304,24 @@ public class SettingsActivity extends Activity {
         chevron.setTextColor(ThemeUtils.secondaryText(this));
         chevron.setGravity(Gravity.CENTER);
         row.addView(chevron, new LinearLayout.LayoutParams(dp(24), -1));
+        if (infoText != null) {
+            ImageButton info = new ImageButton(this);
+            info.setImageResource(android.R.drawable.ic_menu_info_details);
+            info.setColorFilter(ThemeUtils.secondaryText(this));
+            info.setContentDescription("More information");
+            info.setBackground(ThemeUtils.focusBackground(this));
+            info.setFocusable(true);
+            info.setOnFocusChangeListener((v, focused) -> {
+                if (focused) lastFocusedSettingsView = info;
+                info.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this));
+            });
+            info.setOnClickListener(v -> new FullScreenDialogBuilder(this).setTitle(titleText)
+                .setMessage(infoText).setPositiveButton("OK", null).show());
+            row.addView(info, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        }
 
         row.setOnFocusChangeListener((view, focused) -> {
+            if (focused) lastFocusedSettingsView = row;
             int primary = focused ? ThemeUtils.focusText(this) : ThemeUtils.text(this);
             int secondary = focused ? ThemeUtils.focusText(this) : ThemeUtils.secondaryText(this);
             title.setTextColor(primary);
@@ -334,7 +378,10 @@ public class SettingsActivity extends Activity {
         toggle.setTrackTintList(ColorStateList.valueOf(ThemeUtils.accent(this)));
         toggle.setFocusable(true);
         toggle.setFocusableInTouchMode(true);
-        toggle.setOnFocusChangeListener((view, focused) -> row.setBackground(settingsCard(focused)));
+        toggle.setOnFocusChangeListener((view, focused) -> {
+            if (focused) lastFocusedSettingsView = toggle;
+            row.setBackground(settingsCard(focused));
+        });
         toggle.setOnCheckedChangeListener((button, checked) -> {
             prefs.edit().putBoolean(key, checked).apply();
             changed.run();
@@ -348,7 +395,10 @@ public class SettingsActivity extends Activity {
             info.setFocusable(true);
             info.setFocusableInTouchMode(true);
             info.setClickable(true);
-            info.setOnFocusChangeListener((view, focused) -> row.setBackground(settingsCard(focused)));
+            info.setOnFocusChangeListener((view, focused) -> {
+                if (focused) lastFocusedSettingsView = info;
+                row.setBackground(settingsCard(focused));
+            });
             info.setOnClickListener(v -> new FullScreenDialogBuilder(this)
                 .setTitle("Using YWHome during a call")
                 .setMessage(infoText)
@@ -770,8 +820,8 @@ public class SettingsActivity extends Activity {
 
     private void openLgKeyboardSettings() {
         new FullScreenDialogBuilder(this)
-            .setTitle("LG Keyboard · Emoticon suggestions")
-            .setMessage("In LG Keyboard settings, open General > Word Suggestions > Emoticons and turn it on. When you type a word with a matching emoji, the emoji can then appear as a T9 suggestion.")
+            .setTitle("Add emojis to T9 suggestions")
+            .setMessage("Open LG Keyboard settings, then General > Word Suggestions > Emoticons. Turn Emoticons on to add matching emoji suggestions while typing with T9.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Open keyboard settings", (dialog, which) -> {
                 try {
