@@ -52,6 +52,7 @@ public class BootReceiver extends BroadcastReceiver {
                                 int width=Math.max(1,metrics.widthPixels), height=Math.max(1,metrics.heightPixels);
                                 output=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                                 Canvas canvas=new Canvas(output);
+                                canvas.rotate(prefs.getFloat("kept_wallpaper_rotation", 0f), width / 2f, height / 2f);
                                 Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
                                 float sx=width/(float)bitmap.getWidth(), sy=height/(float)bitmap.getHeight();
                                 float scale="fit".equals(fit)?Math.min(sx,sy):("stretch".equals(fit)?-1f:Math.max(sx,sy));
@@ -65,6 +66,8 @@ public class BootReceiver extends BroadcastReceiver {
                                     int dw=Math.round(bitmap.getWidth()*scale), dh=Math.round(bitmap.getHeight()*scale);
                                     destination=new Rect((width-dw)/2,(height-dh)/2,(width+dw)/2,(height+dh)/2);
                                 }
+                                destination.offset(Math.round(prefs.getFloat("kept_wallpaper_pan_x", 0f)),
+                                    Math.round(prefs.getFloat("kept_wallpaper_pan_y", 0f)));
                                 canvas.drawBitmap(bitmap,null,destination,paint);
                                 WallpaperManager.getInstance(context).setBitmap(output);
                             } finally {
