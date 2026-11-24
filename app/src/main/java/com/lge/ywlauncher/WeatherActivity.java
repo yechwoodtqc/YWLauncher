@@ -997,10 +997,20 @@ public class WeatherActivity extends Activity {
 
     private String fontScaleLabel(){return fontScale<0.95f?"Small":fontScale>1.25f?"Extra large":fontScale>1.05f?"Large":"Normal";}
     private String refreshLabel(){int n=prefs().getInt("weather_refresh_minutes",30);return n==0?"Off":"Every "+n+" minutes";}
+    private android.graphics.drawable.GradientDrawable weatherSettingBackground(boolean focused) {
+        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+        shape.setColor(ThemeUtils.surface(this));
+        shape.setCornerRadius(dp(12));
+        shape.setStroke(dp(focused ? 2 : 1),
+            focused ? ThemeUtils.accent(this) : ThemeUtils.divider(this));
+        return shape;
+    }
+
     private void addSwitchSetting(String title, String summary, String key, boolean defaultValue) {
         LinearLayout row=new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(12),dp(10),dp(12),dp(10)); row.setBackground(ThemeUtils.focusBackground(this));
+        row.setPadding(dp(14),dp(12),dp(14),dp(12));
+        row.setBackground(weatherSettingBackground(false));
         row.setFocusable(true); row.setClickable(true);
         LinearLayout labels=new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
         labels.addView(text(title,15,true)); labels.addView(text(summary,12,false));
@@ -1012,15 +1022,33 @@ public class WeatherActivity extends Activity {
         toggle.setOnCheckedChangeListener((button,checked)->prefs().edit().putBoolean(key,checked).apply());
         row.addView(toggle,new LinearLayout.LayoutParams(-2,-2));
         row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));
-        row.setOnFocusChangeListener((v,focused)->row.setBackground(focused?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
-        forecastList.addView(row); View line=new View(this); line.setBackgroundColor(ThemeUtils.divider(this));
-        forecastList.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
+        row.setOnFocusChangeListener((v,focused)->row.setBackground(weatherSettingBackground(focused)));
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
+        params.setMargins(dp(12),dp(4),dp(12),dp(4));
+        forecastList.addView(row,params);
     }
 
     private void addSetting(String title,String summary,Runnable action){
-        LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));row.setBackground(ThemeUtils.focusBackground(this));row.setFocusable(true);row.setClickable(true);
-        row.addView(text(title,15,true));row.addView(text(summary,12,false));row.setOnClickListener(v->action.run());row.setOnFocusChangeListener((v,f)->row.setBackground(f?ThemeUtils.focusOutlineBackground(this):ThemeUtils.focusBackground(this)));
-        forecastList.addView(row);View line=new View(this);line.setBackgroundColor(ThemeUtils.divider(this));forecastList.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
+        LinearLayout row=new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(14),dp(12),dp(14),dp(12));
+        row.setBackground(weatherSettingBackground(false));
+        row.setFocusable(true); row.setClickable(true);
+        LinearLayout labels=new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.addView(text(title,15,true));
+        labels.addView(text(summary,12,false));
+        row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+        TextView chevron=text("›",24,true);
+        chevron.setTextColor(ThemeUtils.secondaryText(this));
+        chevron.setGravity(Gravity.CENTER);
+        row.addView(chevron,new LinearLayout.LayoutParams(dp(24),-2));
+        row.setOnClickListener(v->action.run());
+        row.setOnFocusChangeListener((v,focused)->row.setBackground(weatherSettingBackground(focused)));
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
+        params.setMargins(dp(12),dp(4),dp(12),dp(4));
+        forecastList.addView(row,params);
     }
 
     private void loadSavedPlaces(){
