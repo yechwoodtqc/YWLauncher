@@ -607,12 +607,13 @@ public class MainActivity extends Activity {
         android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
         shape.setCornerRadius(dp(10));
         boolean outline = getSharedPreferences("launcher", 0).getBoolean("focus_outline_only", true);
-        if (focused && outline) {
-            // Keep text readable over the normal surface in outline mode.
+        if (outline) {
+            // Outline mode keeps selected and focused cells on a known surface,
+            // so the normal theme text color remains readable.
             shape.setColor(selected ? ThemeUtils.surface(this) : Color.TRANSPARENT);
-            shape.setStroke(dp(3), selected ? ThemeUtils.accent(this) : ThemeUtils.accent(this));
-        } else if (focused || selected) {
-            // A solid accent fill pairs with ThemeUtils.focusText()/onAccent().
+            shape.setStroke(dp(focused ? 3 : 2), ThemeUtils.accent(this));
+        } else {
+            // Filled mode uses a solid accent and a contrast-calculated text color.
             shape.setColor(ThemeUtils.accent(this));
             shape.setStroke(dp(2), ThemeUtils.accent(this));
         }
