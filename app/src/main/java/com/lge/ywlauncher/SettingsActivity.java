@@ -1158,10 +1158,7 @@ public class SettingsActivity extends Activity {
         try (InputStream in = getContentResolver().openInputStream(imageUri)) {
             if (in == null) throw new IOException("Could not open the selected image.");
             android.graphics.BitmapFactory.decodeStream(in, null, bounds);
-        } catch (Exception e) {
-            showError("Could not inspect this image: " + e.getMessage());
-            return;
-        }
+        } catch (Exception e) { showError("Could not inspect this image: " + e.getMessage()); return; }
         int targetW = Math.max(1, getResources().getDisplayMetrics().widthPixels);
         int targetH = Math.max(1, getResources().getDisplayMetrics().heightPixels);
         int sample = 1;
@@ -1171,68 +1168,54 @@ public class SettingsActivity extends Activity {
         final android.graphics.Bitmap bitmap;
         try (InputStream in = getContentResolver().openInputStream(imageUri)) {
             bitmap = in == null ? null : android.graphics.BitmapFactory.decodeStream(in, null, options);
-        } catch (Exception e) {
-            showError("Could not load the selected picture.");
-            return;
-        }
-        if (bitmap == null) {
-            showError("Could not preview this picture.");
-            return;
-        }
+        } catch (Exception e) { showError("Could not load the selected picture."); return; }
+        if (bitmap == null) { showError("Could not preview this picture."); return; }
 
         Dialog previewDialog = new Dialog(this, dialogTheme());
         LinearLayout frame = new LinearLayout(this);
         frame.setOrientation(LinearLayout.VERTICAL);
         frame.setBackgroundColor(Color.BLACK);
-
-        TextView heading = new TextView(this);
-        heading.setText("CUSTOMIZE WALLPAPER");
-        heading.setTextColor(Color.WHITE);
-        heading.setTextSize(13);
-        heading.setTypeface(null, android.graphics.Typeface.BOLD);
-        heading.setGravity(Gravity.CENTER);
-        heading.setPadding(dp(8), dp(9), dp(8), dp(9));
-        heading.setBackgroundColor(0xff18232f);
-        frame.addView(heading, new LinearLayout.LayoutParams(-1, -2));
-
         ImageView preview = new ImageView(this);
         preview.setImageBitmap(bitmap);
         preview.setScaleType(ImageView.ScaleType.MATRIX);
         preview.setBackgroundColor(Color.BLACK);
         frame.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        float initialZoom = Math.max(0.5f, Math.min(2f, prefs.getFloat("kept_wallpaper_zoom", 1f)));
-        final float[] zoom = {initialZoom};
+        final float[] zoom = {Math.max(0.5f, Math.min(3f, prefs.getFloat("kept_wallpaper_zoom", 1f)))};
+        final float[] rotation = {prefs.getFloat("kept_wallpaper_rotation", 0f)};
+        final float[] pan = {0f, 0f};
         Runnable updatePreview = () -> {
             if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
-            float sx = preview.getWidth() / (float) bitmap.getWidth();
-            float sy = preview.getHeight() / (float) bitmap.getHeight();
-            float scale = Math.max(sx, sy) * zoom[0];
+            float base = Math.max(preview.getWidth() / (float) bitmap.getWidth(),
+                preview.getHeight() / (float) bitmap.getHeight());
+            float scale = base * zoom[0];
             android.graphics.Matrix matrix = new android.graphics.Matrix();
-            matrix.setScale(scale, scale);
-            matrix.postTranslate((preview.getWidth() - bitmap.getWidth() * scale) / 2f,
-                (preview.getHeight() - bitmap.getHeight() * scale) / 2f);
+            matrix.setTranslate(-bitmap.getWidth() / 2f, -bitmap.getHeight() / 2f);
+            matrix.postScale(scale, scale);
+            matrix.postRotate(rotation[0]);
+            matrix.postTranslate(preview.getWidth() / 2f + pan[0], preview.getHeight() / 2f + pan[1]);
             preview.setImageMatrix(matrix);
         };
         preview.post(updatePreview);
 
         LinearLayout softKeys = new LinearLayout(this);
         softKeys.setGravity(Gravity.CENTER_VERTICAL);
-        softKeys.setBackgroundColor(0xff18232f);
+        softKeys.setPadding(dp(8), 0, dp(8), 0);
+        softKeys.setBackgroundColor(0xff929292);
         String[] keyLabels = {"ZOOM −", "SAVE", "ZOOM +"};
         TextView[] keyViews = new TextView[3];
         for (int i = 0; i < keyLabels.length; i++) {
             TextView key = new TextView(this);
             key.setText(keyLabels[i]);
             key.setTextColor(Color.WHITE);
-            key.setTextSize(11);
+            key.setTextSize(14);
             key.setTypeface(null, android.graphics.Typeface.BOLD);
             key.setGravity(Gravity.CENTER);
-            key.setPadding(dp(2), dp(13), dp(2), dp(13));
-            softKeys.addView(key, new LinearLayout.LayoutParams(0, -2, 1f));
+            key.setPadding(dp(2), dp(5), dp(2), dp(5));
+            softKeys.addView(key, new LinearLayout.LayoutParams(0, dp(38), 1f));
             keyViews[i] = key;
         }
-        frame.addView(softKeys, new LinearLayout.LayoutParams(-1, -2));
+        frame.addView(softKeys, new LinearLayout.LayoutParams(-1, dp(38)));
 
         Runnable saveWallpaper = () -> {
             try {
@@ -1240,50 +1223,50 @@ public class SettingsActivity extends Activity {
                     try (InputStream in = getContentResolver().openInputStream(imageUri);
                          OutputStream out = new FileOutputStream(new File(getFilesDir(), "kept_wallpaper.png"))) {
                         if (in == null) throw new IOException("The selected picture could not be opened.");
-                        byte[] buffer = new byte[8192];
-                        int count;
+                        byte[] buffer = new byte[8192]; int count;
                         while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
                     }
                 }
                 prefs.edit().putBoolean("keep_wallpaper", true)
                     .putString("kept_wallpaper_fit", "crop")
-                    .putFloat("kept_wallpaper_zoom", zoom[0]).apply();
+                    .putFloat("kept_wallpaper_zoom", zoom[0])
+                    .putFloat("kept_wallpaper_rotation", rotation[0]).apply();
                 previewDialog.dismiss();
                 Toast.makeText(this, "Wallpaper saved.", Toast.LENGTH_LONG).show();
-                recreate();
+                recreateKeepingPosition();
             } catch (Exception e) {
                 prefs.edit().putBoolean("keep_wallpaper", false).apply();
                 showError("Could not save that wallpaper image: " + e.getMessage());
             }
         };
-        keyViews[0].setOnClickListener(v -> {
-            zoom[0] = Math.max(0.5f, zoom[0] - 0.1f);
-            updatePreview.run();
-        });
+        keyViews[0].setOnClickListener(v -> { zoom[0] = Math.max(0.5f, zoom[0] - 0.1f); updatePreview.run(); });
         keyViews[1].setOnClickListener(v -> saveWallpaper.run());
-        keyViews[2].setOnClickListener(v -> {
-            zoom[0] = Math.min(2f, zoom[0] + 0.1f);
-            updatePreview.run();
-        });
+        keyViews[2].setOnClickListener(v -> { zoom[0] = Math.min(3f, zoom[0] + 0.1f); updatePreview.run(); });
 
         previewDialog.setContentView(frame);
         previewDialog.setCancelable(true);
         previewDialog.setOnKeyListener((dialog, keyCode, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return true;
             if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) {
-                zoom[0] = Math.max(0.5f, zoom[0] - 0.1f);
-                updatePreview.run();
-                return true;
+                zoom[0] = Math.max(0.5f, zoom[0] - 0.1f); updatePreview.run(); return true;
             }
             if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_RIGHT) {
-                zoom[0] = Math.min(2f, zoom[0] + 0.1f);
-                updatePreview.run();
-                return true;
+                zoom[0] = Math.min(3f, zoom[0] + 0.1f); updatePreview.run(); return true;
             }
-            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
-                || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
-                saveWallpaper.run();
-                return true;
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                saveWallpaper.run(); return true;
+            }
+            if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP || keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN
+                || keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT || keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (zoom[0] > 1.05f) {
+                    float step = dp(24);
+                    if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) pan[1] += step;
+                    if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) pan[1] -= step;
+                    if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) pan[0] += step;
+                    if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) pan[0] -= step;
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP) rotation[0] = (rotation[0] + 270f) % 360f;
+                else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN) rotation[0] = (rotation[0] + 90f) % 360f;
+                updatePreview.run(); return true;
             }
             if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
                 previewDialog.dismiss();
@@ -1295,8 +1278,7 @@ public class SettingsActivity extends Activity {
         previewDialog.show();
         if (previewDialog.getWindow() != null) {
             previewDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
-            previewDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT);
+            previewDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
             previewDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
     }
