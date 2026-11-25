@@ -31,6 +31,7 @@
             android:alwaysRetainTaskState="true"
             android:launchMode="singleTask"
             android:icon="@drawable/ic_launcher"
+            android:logo="@drawable/ic_launcher"
             android:label="YW Launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -98,6 +99,7 @@
             android:exported="true"
             android:label="YW Weather"
             android:icon="@drawable/ic_weather"
+            android:logo="@drawable/ic_weather"
             android:excludeFromRecents="false"
             android:alwaysRetainTaskState="true"
             android:taskAffinity="com.lge.ywlauncher.weather"
