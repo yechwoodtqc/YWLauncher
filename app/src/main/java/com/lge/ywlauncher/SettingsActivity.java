@@ -135,7 +135,7 @@ public class SettingsActivity extends Activity {
         addSettingRow("Reorder apps", "Change the order of app icons.", () -> startActivity(new Intent(this, ReorderAppsActivity.class)));
 
         section("Tweaks");
-        addSettingRow("Customize wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
+        addSettingRow("Pick wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
         addSettingRow("Add emojis to T9 suggestions", "LG Keyboard · Word Suggestions", this::openLgKeyboardSettings);
         addSwitchRowWithInfo("Enable YWHome to be camera app", "camera_home_enabled", false,
             this::updateCameraHomeHandler,
@@ -302,6 +302,7 @@ public class SettingsActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(14), dp(11), dp(12), dp(11));
         row.setFocusable(true);
+        row.setFocusableInTouchMode(false);
         row.setClickable(true);
         row.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         row.setBackground(settingsCard(false));
@@ -334,8 +335,13 @@ public class SettingsActivity extends Activity {
             info.setContentDescription("More information");
             info.setBackground(ThemeUtils.focusBackground(this));
             info.setFocusable(true);
-            info.setFocusableInTouchMode(true);
+            info.setFocusableInTouchMode(false);
             info.setClickable(true);
+            info.setEnabled(true);
+            info.setId(View.generateViewId());
+            row.setId(View.generateViewId());
+            row.setNextFocusRightId(info.getId());
+            info.setNextFocusLeftId(row.getId());
             info.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
             info.setOnFocusChangeListener((v, focused) -> {
                 if (focused) lastFocusedSettingsView = info;
@@ -348,8 +354,10 @@ public class SettingsActivity extends Activity {
 
         row.setOnFocusChangeListener((view, focused) -> {
             if (focused) lastFocusedSettingsView = row;
-            int primary = focused ? ThemeUtils.focusText(this) : ThemeUtils.text(this);
-            int secondary = focused ? ThemeUtils.focusText(this) : ThemeUtils.secondaryText(this);
+            int focusedText = prefs.getBoolean("focus_outline_only", true)
+                ? ThemeUtils.text(this) : ThemeUtils.onAccent(this);
+            int primary = focused ? focusedText : ThemeUtils.text(this);
+            int secondary = focused ? focusedText : ThemeUtils.secondaryText(this);
             title.setTextColor(primary);
             summary.setTextColor(secondary);
             chevron.setTextColor(focused ? ThemeUtils.accent(this) : ThemeUtils.secondaryText(this));
@@ -878,7 +886,13 @@ public class SettingsActivity extends Activity {
     }
 
     private void updateCameraHomeHandler() {
-        int state = prefs.getBoolean("camera_home_enabled", false)
+        String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
+        boolean exaltOnly = model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax");
+        boolean enable = exaltOnly && prefs.getBoolean("camera_home_enabled", false);
+        if (!exaltOnly && prefs.getBoolean("camera_home_enabled", false)) {
+            prefs.edit().putBoolean("camera_home_enabled", false).apply();
+        }
+        int state = enable
             ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
         getPackageManager().setComponentEnabledSetting(
@@ -1206,7 +1220,7 @@ public class SettingsActivity extends Activity {
         preview.setBackgroundColor(Color.BLACK);
         frame.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        final float[] zoom = {Math.max(0.5f, Math.min(3f, prefs.getFloat("kept_wallpaper_zoom", 1f)))};
+        final float[] zoom = {Math.max(1f, Math.min(3f, prefs.getFloat("kept_wallpaper_zoom", 1f)))};
         final float[] rotation = {prefs.getFloat("kept_wallpaper_rotation", 0f)};
         final float[] pan = {prefs.getFloat("kept_wallpaper_pan_x", 0f), prefs.getFloat("kept_wallpaper_pan_y", 0f)};
         Runnable updatePreview = () -> {
@@ -1240,14 +1254,14 @@ public class SettingsActivity extends Activity {
             TextView key = new TextView(this);
             key.setText(keyLabels[i]);
             key.setTextColor(Color.WHITE);
-            key.setTextSize(14);
+            key.setTextSize(12);
             key.setTypeface(null, android.graphics.Typeface.BOLD);
-            key.setGravity(Gravity.CENTER);
-            key.setPadding(dp(2), dp(5), dp(2), dp(5));
+            key.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            key.setPadding(dp(2), 0, dp(2), dp(2));
             softKeys.addView(key, new LinearLayout.LayoutParams(0, dp(38), 1f));
             keyViews[i] = key;
         }
-        frame.addView(softKeys, new LinearLayout.LayoutParams(-1, dp(38)));
+        frame.addView(softKeys, new LinearLayout.LayoutParams(-1, dp(28)));
 
         Runnable saveWallpaper = () -> {
             try {
@@ -1273,7 +1287,7 @@ public class SettingsActivity extends Activity {
                 showError("Could not save that wallpaper image: " + e.getMessage());
             }
         };
-        keyViews[0].setOnClickListener(v -> { zoom[0] = Math.max(0.5f, zoom[0] - 0.1f); updatePreview.run(); });
+        keyViews[0].setOnClickListener(v -> { zoom[0] = Math.max(1f, zoom[0] - 0.1f); if (zoom[0] <= 1.01f) { pan[0]=0f; pan[1]=0f; } updatePreview.run(); });
         keyViews[1].setOnClickListener(v -> saveWallpaper.run());
         keyViews[2].setOnClickListener(v -> { zoom[0] = Math.min(3f, zoom[0] + 0.1f); updatePreview.run(); });
 
@@ -1282,7 +1296,7 @@ public class SettingsActivity extends Activity {
         previewDialog.setOnKeyListener((dialog, keyCode, event) -> {
             if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return true;
             if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_LEFT) {
-                zoom[0] = Math.max(0.5f, zoom[0] - 0.1f); updatePreview.run(); return true;
+                zoom[0] = Math.max(1f, zoom[0] - 0.1f); if (zoom[0] <= 1.01f) { pan[0]=0f; pan[1]=0f; } updatePreview.run(); return true;
             }
             if (keyCode == android.view.KeyEvent.KEYCODE_SOFT_RIGHT) {
                 zoom[0] = Math.min(3f, zoom[0] + 0.1f); updatePreview.run(); return true;
@@ -1303,8 +1317,15 @@ public class SettingsActivity extends Activity {
                 updatePreview.run(); return true;
             }
             if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
-                previewDialog.dismiss();
-                if (!editingSavedImage) prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                if (zoom[0] > 1.01f || Math.abs(pan[0]) > 1f || Math.abs(pan[1]) > 1f) {
+                    zoom[0] = 1f;
+                    pan[0] = 0f;
+                    pan[1] = 0f;
+                    updatePreview.run();
+                } else {
+                    previewDialog.dismiss();
+                    if (!editingSavedImage) prefs.edit().putBoolean("keep_wallpaper", false).apply();
+                }
                 return true;
             }
             return false;
@@ -1314,6 +1335,7 @@ public class SettingsActivity extends Activity {
             previewDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
             previewDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
             previewDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            previewDialog.getWindow().getDecorView().setPadding(0, 0, 0, 0);
         }
     }
 
