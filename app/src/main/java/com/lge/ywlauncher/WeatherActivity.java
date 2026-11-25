@@ -160,7 +160,7 @@ public class WeatherActivity extends Activity {
     private void buildScreen() {
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(10), dp(6), dp(10), dp(6));
+        root.setPadding(dp(4), dp(4), dp(4), dp(4));
         root.setBackgroundColor(ThemeUtils.surface(this));
         setContentView(root);
 
@@ -189,7 +189,11 @@ public class WeatherActivity extends Activity {
             back.setBackground(outlineFocusBackground());
             back.setPadding(dp(8),dp(8),dp(8),dp(8));
             back.setFocusable(true);
-            back.setOnClickListener(v -> { if ("add-location".equals(currentPage)) showLocationsPage(); else showForecastPage(); });
+            back.setOnClickListener(v -> {
+                if ("add-location".equals(currentPage)) showLocationsPage();
+                else if ("settings-font".equals(currentPage) || "settings-refresh".equals(currentPage)) showWeatherSettings();
+                else showForecastPage();
+            });
             toolbar.addView(back,new LinearLayout.LayoutParams(dp(36),dp(36)));
         }
         TextView title = new TextView(this);
@@ -973,32 +977,82 @@ public class WeatherActivity extends Activity {
         showForecastPage();
     }
 
+    private interface WeatherChoiceListener { void onSelected(int index); }
+
+    private void showWeatherChoicePage(String page, String title, String[] options,
+            int selected, WeatherChoiceListener listener) {
+        currentPage = page;
+        removeHeaderRows();
+        rebuildToolbar(title, false, false);
+        forecastList.removeAllViews();
+        for (int i = 0; i < options.length; i++) {
+            final int index = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), dp(11), dp(14), dp(11));
+            row.setFocusable(true);
+            row.setClickable(true);
+            row.setBackground(weatherSettingBackground(false));
+            TextView label = text(options[i], 15, index == selected);
+            row.addView(label, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView check = text(index == selected ? "✓" : "", 20, true);
+            check.setTextColor(ThemeUtils.accent(this));
+            row.addView(check, new LinearLayout.LayoutParams(dp(28), -2));
+            row.setOnFocusChangeListener((v, focused) -> row.setBackground(weatherSettingBackground(focused)));
+            row.setOnClickListener(v -> listener.onSelected(index));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.setMargins(dp(4), dp(3), dp(4), dp(3));
+            forecastList.addView(row, params);
+        }
+        if (forecastList.getChildCount() > 0) forecastList.getChildAt(Math.max(0, Math.min(selected, forecastList.getChildCount() - 1))).requestFocus();
+    }
+
     private void showWeatherSettings() {
-        currentPage="settings";removeHeaderRows();rebuildToolbar("Weather settings",false,false);forecastList.removeAllViews();
-        addSetting("Choose location","Manage saved locations",()->showLocationsPage());
-        addSetting("Font size",fontScaleLabel(),()->{
-            String[] labels={"Small","Normal","Large","Extra large"};float[] values={0.85f,1f,1.15f,1.3f};
-            int selected=1;for(int i=0;i<values.length;i++)if(Math.abs(values[i]-fontScale)<0.04f)selected=i;
-            new AlertDialog.Builder(this, dialogTheme()).setTitle("Weather font size").setSingleChoiceItems(labels,selected,(d,w)->{fontScale=values[w];prefs().edit().putFloat("weather_font_scale",fontScale).apply();d.dismiss();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
+        currentPage = "settings";
+        removeHeaderRows();
+        rebuildToolbar("Weather settings", false, false);
+        forecastList.removeAllViews();
+        addSetting("Choose location", "Manage saved locations", () -> showLocationsPage());
+        addSetting("Font size", fontScaleLabel(), () -> {
+            String[] labels = {"Small", "Normal", "Large", "Extra large"};
+            float[] values = {0.85f, 1f, 1.15f, 1.3f};
+            int selected = 1;
+            for (int i = 0; i < values.length; i++) if (Math.abs(values[i] - fontScale) < 0.04f) selected = i;
+            showWeatherChoicePage("settings-font", "Weather font size", labels, selected, which -> {
+                fontScale = values[which];
+                prefs().edit().putFloat("weather_font_scale", fontScale).apply();
+                showWeatherSettings();
+            });
         });
         addSwitchSetting("New forecast notifications", "Notify only when the forecast issue/update time changes.",
             "weather_new_forecast_notifications", true);
-        addSetting("Auto refresh",refreshLabel(),()->{
-            String[] labels={"Off","5 minutes","10 minutes","15 minutes","30 minutes","60 minutes"};int[] values={0,5,10,15,30,60};int selected=3;
-            int current=prefs().getInt("weather_refresh_minutes",30);for(int i=0;i<values.length;i++)if(values[i]==current)selected=i;
-            new AlertDialog.Builder(this, dialogTheme()).setTitle("Auto refresh interval").setSingleChoiceItems(labels,selected,(d,w)->{prefs().edit().putInt("weather_refresh_minutes",values[w]).apply();d.dismiss();scheduleAutoRefresh();showWeatherSettings();}).setNegativeButton("Cancel",null).show();
+        addSetting("Auto refresh", refreshLabel(), () -> {
+            String[] labels = {"Off", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "60 minutes"};
+            int[] values = {0, 5, 10, 15, 30, 60};
+            int selected = 3;
+            int current = prefs().getInt("weather_refresh_minutes", 30);
+            for (int i = 0; i < values.length; i++) if (values[i] == current) selected = i;
+            showWeatherChoicePage("settings-refresh", "Auto refresh interval", labels, selected, which -> {
+                prefs().edit().putInt("weather_refresh_minutes", values[which]).apply();
+                scheduleAutoRefresh();
+                showWeatherSettings();
+            });
         });
-        addSetting("Refresh now","Update forecast immediately",()->{
-            currentPage="forecast";removeHeaderRows();showForecastPageHeader();
+        addSetting("Refresh now", "Update forecast immediately", () -> {
+            currentPage = "forecast";
+            removeHeaderRows();
+            showForecastPageHeader();
             if ("current".equals(prefs().getString("weather_location_source", ""))) detectLocation();
             else {
-                SavedPlace p=selectedPlace();
-                if(p!=null)fetchForecastAt(p.lat,p.lon);
-                else if(prefs().contains("weather_lat")&&prefs().contains("weather_lon"))fetchForecastAt(prefs().getFloat("weather_lat",0),prefs().getFloat("weather_lon",0));
+                SavedPlace p = selectedPlace();
+                if (p != null) fetchForecastAt(p.lat, p.lon);
+                else if (prefs().contains("weather_lat") && prefs().contains("weather_lon"))
+                    fetchForecastAt(prefs().getFloat("weather_lat", 0), prefs().getFloat("weather_lon", 0));
                 else detectLocation();
             }
         });
-        addSetting("Back to forecast","Return to the forecast",()->showForecastPage());
+        addSetting("Back to forecast", "Return to the forecast", () -> showForecastPage());
     }
 
     private String fontScaleLabel(){return fontScale<0.95f?"Small":fontScale>1.25f?"Extra large":fontScale>1.05f?"Large":"Normal";}
@@ -1030,7 +1084,7 @@ public class WeatherActivity extends Activity {
         row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));
         row.setOnFocusChangeListener((v,focused)->row.setBackground(weatherSettingBackground(focused)));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
-        params.setMargins(dp(12),dp(4),dp(12),dp(4));
+        params.setMargins(dp(4),dp(3),dp(4),dp(3));
         forecastList.addView(row,params);
     }
 
@@ -1561,6 +1615,7 @@ public class WeatherActivity extends Activity {
         }
         if(keyCode==KeyEvent.KEYCODE_BACK){
             if("add-location".equals(currentPage)){showLocationsPage();return true;}
+            if ("settings-font".equals(currentPage) || "settings-refresh".equals(currentPage)) { showWeatherSettings(); return true; }
             if("locations".equals(currentPage)||"settings".equals(currentPage)||"discussion".equals(currentPage)){showForecastPage();return true;}
             if("forecast".equals(currentPage)){finish();return true;}
         }
