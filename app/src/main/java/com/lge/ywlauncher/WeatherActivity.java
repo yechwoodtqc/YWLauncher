@@ -1073,16 +1073,25 @@ public class WeatherActivity extends Activity {
         row.setBackground(weatherSettingBackground(false));
         row.setFocusable(true); row.setClickable(true);
         LinearLayout labels=new LinearLayout(this); labels.setOrientation(LinearLayout.VERTICAL);
-        labels.addView(text(title,15,true)); labels.addView(text(summary,12,false));
+        TextView titleView=text(title,15,true), summaryView=text(summary,12,false);
+        labels.addView(titleView); labels.addView(summaryView);
         row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
         android.widget.Switch toggle=new android.widget.Switch(this);
+        toggle.setFocusable(false);
+        toggle.setClickable(false);
         toggle.setChecked(prefs().getBoolean(key,defaultValue));
         toggle.setThumbTintList(android.content.res.ColorStateList.valueOf(ThemeUtils.accent(this)));
         toggle.setTrackTintList(android.content.res.ColorStateList.valueOf(ThemeUtils.accent(this)));
         toggle.setOnCheckedChangeListener((button,checked)->prefs().edit().putBoolean(key,checked).apply());
         row.addView(toggle,new LinearLayout.LayoutParams(-2,-2));
         row.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));
-        row.setOnFocusChangeListener((v,focused)->row.setBackground(weatherSettingBackground(focused)));
+        row.setOnFocusChangeListener((v,focused)->{
+            row.setBackground(weatherSettingBackground(focused));
+            int focusedText = prefs().getBoolean("focus_outline_only", true)
+                ? ThemeUtils.text(this) : ThemeUtils.onAccent(this);
+            titleView.setTextColor(focused ? focusedText : ThemeUtils.text(this));
+            summaryView.setTextColor(focused ? focusedText : ThemeUtils.secondaryText(this));
+        });
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
         params.setMargins(dp(4),dp(3),dp(4),dp(3));
         forecastList.addView(row,params);
@@ -1097,15 +1106,24 @@ public class WeatherActivity extends Activity {
         row.setFocusable(true); row.setClickable(true);
         LinearLayout labels=new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
-        labels.addView(text(title,15,true));
-        labels.addView(text(summary,12,false));
+        TextView titleView = text(title,15,true);
+        TextView summaryView = text(summary,12,false);
+        labels.addView(titleView);
+        labels.addView(summaryView);
         row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
         TextView chevron=text("›",24,true);
         chevron.setTextColor(ThemeUtils.secondaryText(this));
         chevron.setGravity(Gravity.CENTER);
         row.addView(chevron,new LinearLayout.LayoutParams(dp(24),-2));
         row.setOnClickListener(v->action.run());
-        row.setOnFocusChangeListener((v,focused)->row.setBackground(weatherSettingBackground(focused)));
+        row.setOnFocusChangeListener((v,focused)->{
+            row.setBackground(weatherSettingBackground(focused));
+            int focusedText = prefs().getBoolean("focus_outline_only", true)
+                ? ThemeUtils.text(this) : ThemeUtils.onAccent(this);
+            titleView.setTextColor(focused ? focusedText : ThemeUtils.text(this));
+            summaryView.setTextColor(focused ? focusedText : ThemeUtils.secondaryText(this));
+            chevron.setTextColor(focused ? focusedText : ThemeUtils.secondaryText(this));
+        });
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
         params.setMargins(dp(12),dp(4),dp(12),dp(4));
         forecastList.addView(row,params);
