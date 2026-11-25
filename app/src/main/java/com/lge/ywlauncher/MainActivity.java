@@ -779,6 +779,46 @@ public class MainActivity extends Activity {
         manager.notify(42, notification.build());
     }
 
+    private boolean handleGridPageNavigation(int keyCode) {
+        if (!"grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
+            || (keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT)) return false;
+        View focused = getCurrentFocus();
+        if (focused == null || !(focused.getTag() instanceof String)) return false;
+        int index = -1;
+        for (int i = 0; i < apps.size(); i++) {
+            if (apps.get(i).activityInfo.name.equals(focused.getTag())) { index = i; break; }
+        }
+        if (index < 0) return false;
+        int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+        int actualRow = -1;
+        if (appsArea != null) {
+            for (int row = 0; row < appsArea.getChildCount(); row++) {
+                View child = appsArea.getChildAt(row);
+                if (child instanceof ViewGroup && ((ViewGroup) child).indexOfChild(focused) >= 0) {
+                    actualRow = row;
+                    break;
+                }
+            }
+        }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+            && (index % columns == columns - 1 || index + 1 >= apps.size())) {
+            if (currentPage + 1 < pageCount()) changePage(1, Math.max(0, actualRow), 0);
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0) {
+            if (currentPage > 0) changePage(-1, Math.max(0, actualRow), columns - 1);
+            return true;
+        }
+        return false;
+    }
+
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        // Intercept the horizontal page-edge move before Android's default
+        // focus search can jump to another row on the outgoing page.
+        if (event.getAction() == KeyEvent.ACTION_DOWN && handleGridPageNavigation(event.getKeyCode())) return true;
+        return super.dispatchKeyEvent(event);
+    }
+
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
             try {
