@@ -327,6 +327,12 @@ public final class BackgroundPickerActivity extends Activity {
             LinearLayout.LayoutParams chooseParams = new LinearLayout.LayoutParams(-1, dp(48));
             chooseParams.setMargins(dp(44), dp(8), dp(44), dp(8));
             mock.addView(selectPicture, 0, chooseParams);
+            TextView resetNotice = label("This wallpaper resets when the phone restarts.", 11, false);
+            resetNotice.setTextColor(Color.WHITE);
+            resetNotice.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams noticeParams = new LinearLayout.LayoutParams(-1, -2);
+            noticeParams.setMargins(dp(24), 0, dp(24), dp(8));
+            mock.addView(resetNotice, 1, noticeParams);
         }
         previewScroll.addView(mock);
         android.widget.FrameLayout previewFrame = new android.widget.FrameLayout(this);
