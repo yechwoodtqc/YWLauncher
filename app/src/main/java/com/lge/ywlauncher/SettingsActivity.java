@@ -263,7 +263,7 @@ public class SettingsActivity extends Activity {
         android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
         boolean outlineOnly = prefs.getBoolean("focus_outline_only", true);
         card.setColor(focused && !outlineOnly ? ThemeUtils.accent(this) : ThemeUtils.surface(this));
-        card.setCornerRadius(dp(11));
+        card.setCornerRadius(dp(12));
         card.setStroke(dp(focused ? 2 : 1), focused ? ThemeUtils.accent(this) : ThemeUtils.divider(this));
         return card;
     }
@@ -299,7 +299,7 @@ public class SettingsActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(14), dp(11), dp(12), dp(11));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
         row.setFocusable(true);
         row.setFocusableInTouchMode(false);
         row.setClickable(true);
@@ -364,7 +364,7 @@ public class SettingsActivity extends Activity {
         });
         row.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-        cardParams.setMargins(dp(10), dp(3), dp(10), dp(3));
+        cardParams.setMargins(dp(4), dp(3), dp(4), dp(3));
         content.addView(row, cardParams);
     }
 
