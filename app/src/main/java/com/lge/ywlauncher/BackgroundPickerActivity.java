@@ -169,8 +169,10 @@ public final class BackgroundPickerActivity extends Activity {
             });
             item.setOnClickListener(v -> {
                 selected = choiceIndex;
-                previewZoom = prefs.getFloat("custom_background_zoom", 1f);
+                previewZoom = Math.max(1f, prefs.getFloat("custom_background_zoom", 1f));
                 previewRotation = prefs.getFloat("custom_background_rotation", 0f);
+                previewPanX = prefs.getFloat("custom_background_pan_x", 0f);
+                previewPanY = prefs.getFloat("custom_background_pan_y", 0f);
                 showPreview();
             });
             LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(-1, dp(64));
@@ -417,8 +419,10 @@ public final class BackgroundPickerActivity extends Activity {
     private void stepPreview(int delta) {
         previewIndex=(previewIndex+delta+choices.size())%choices.size();
         selected=previewIndex;
-        previewZoom = prefs.getFloat("custom_background_zoom", 1f);
+        previewZoom = Math.max(1f, prefs.getFloat("custom_background_zoom", 1f));
         previewRotation = prefs.getFloat("custom_background_rotation", 0f);
+        previewPanX = prefs.getFloat("custom_background_pan_x", 0f);
+        previewPanY = prefs.getFloat("custom_background_pan_y", 0f);
         showPreview();
     }
 
@@ -530,7 +534,7 @@ public final class BackgroundPickerActivity extends Activity {
                 return true;
             }
             if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT) {
-                if (currentChoice().value == CUSTOM_IMAGE) { previewZoom = Math.max(0.5f, previewZoom - 0.1f); showPreview(); }
+                if (currentChoice().value == CUSTOM_IMAGE) { previewZoom = Math.max(1f, previewZoom - 0.1f); if (previewZoom <= 1.01f) { previewPanX=0f; previewPanY=0f; } showPreview(); }
                 else stepPreview(-1);
                 return true;
             }
