@@ -703,18 +703,9 @@ public class WeatherActivity extends Activity {
     private View dailyWeatherIcon(JSONObject period, int sizeDp) {
         String condition = period.optString("shortForecast", "")
             + (period.optBoolean("isDaytime", true) ? "" : " night");
-        FrameLayout frame = new FrameLayout(this);
-        frame.addView(weatherIcon(condition, sizeDp),
-            new FrameLayout.LayoutParams(-1, -1));
-        String iconUrl = period.optString("icon", "");
-        if (iconUrl != null && iconUrl.startsWith("https://")) {
-            ImageView image = new ImageView(this);
-            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            image.setContentDescription(condition);
-            frame.addView(image, new FrameLayout.LayoutParams(-1, -1));
-            loadDailyForecastImage(image, iconUrl);
-        }
-        return frame;
+        // Draw directly from this period's own forecast text. The old async
+        // NWS overlay could remain blank or stale when an OEM TLS request failed.
+        return weatherIcon(condition, sizeDp);
     }
 
     /**
