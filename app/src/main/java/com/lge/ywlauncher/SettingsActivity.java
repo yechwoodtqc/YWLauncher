@@ -303,7 +303,7 @@ public class SettingsActivity extends Activity {
         row.setFocusable(true);
         row.setFocusableInTouchMode(false);
         row.setClickable(true);
-        row.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        row.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
         row.setBackground(settingsCard(false));
 
         LinearLayout labels = new LinearLayout(this);
