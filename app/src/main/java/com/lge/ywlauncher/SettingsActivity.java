@@ -38,7 +38,7 @@ public class SettingsActivity extends Activity {
         ThemeUtils.apply(this);
         prefs = getSharedPreferences("launcher", 0);
         String deviceModel = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
-        boolean exaltDevice = deviceModel.contains("exalt") || deviceModel.contains("vn220") || deviceModel.contains("lg-ax");
+        boolean exaltDevice = deviceModel.contains("exalt") || deviceModel.contains("vn220");
         if (exaltDevice && !prefs.getBoolean("icon_size_default_migrated", false)) {
             if (prefs.getInt("icon_size", 40) == 40) prefs.edit().putInt("icon_size", 48).apply();
             prefs.edit().putBoolean("icon_size_default_migrated", true).apply();
