@@ -886,7 +886,7 @@ public class SettingsActivity extends Activity {
 
     private void updateCameraHomeHandler() {
         String model = (android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL).toLowerCase(Locale.US);
-        boolean exaltOnly = model.contains("vn220") || model.contains("exalt") || model.contains("lg-ax");
+        boolean exaltOnly = model.contains("vn220") || model.contains("exalt");
         boolean enable = exaltOnly && prefs.getBoolean("camera_home_enabled", false);
         if (!exaltOnly && prefs.getBoolean("camera_home_enabled", false)) {
             prefs.edit().putBoolean("camera_home_enabled", false).apply();
