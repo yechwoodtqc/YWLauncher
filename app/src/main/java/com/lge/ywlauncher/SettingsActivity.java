@@ -185,13 +185,10 @@ public class SettingsActivity extends Activity {
     }
 
     private void customizeKeptWallpaper() {
-        File image = new File(getFilesDir(), "kept_wallpaper.png");
-        if (image.isFile() && image.length() > 0) {
-            showKeptWallpaperPreview(Uri.fromFile(image), true);
-        } else {
-            prefs.edit().putBoolean("keep_wallpaper", true).apply();
-            launchKeptWallpaperBrowser();
-        }
+        // "Pick wallpaper" always opens the image picker so the user can
+        // choose a new picture; it must not silently reopen the old saved one.
+        prefs.edit().putBoolean("keep_wallpaper", true).apply();
+        launchKeptWallpaperBrowser();
     }
 
     private void launchKeptWallpaperBrowser() {
