@@ -226,13 +226,13 @@ public class SettingsActivity extends Activity {
             if (window == null) return;
             android.graphics.drawable.GradientDrawable card = new android.graphics.drawable.GradientDrawable();
             card.setColor(ThemeUtils.surface(SettingsActivity.this));
-            card.setCornerRadius(dp(15));
+            card.setCornerRadius(dp(12));
             card.setStroke(dp(1), ThemeUtils.divider(SettingsActivity.this));
             window.setBackgroundDrawable(card);
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             window.setDimAmount(0.62f);
             int screenWidth = getResources().getDisplayMetrics().widthPixels;
-            int width = Math.max(dp(120), Math.min(dp(420), screenWidth - dp(28)));
+            int width = Math.max(dp(120), Math.min(dp(480), screenWidth - dp(10)));
             window.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
             window.setGravity(Gravity.CENTER);
         }
@@ -243,7 +243,7 @@ public class SettingsActivity extends Activity {
                 Window window = dialog.getWindow();
                 if (window != null) {
                     View body = window.findViewById(android.R.id.content);
-                    if (body != null) body.setPadding(dp(14), dp(1), dp(14), dp(1));
+                    if (body != null) body.setPadding(dp(8), 0, dp(8), 0);
                 }
             });
             dialog.setOnDismissListener(ignored -> {
