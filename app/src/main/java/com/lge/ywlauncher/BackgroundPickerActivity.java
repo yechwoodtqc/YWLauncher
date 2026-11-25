@@ -553,9 +553,10 @@ public final class BackgroundPickerActivity extends Activity {
         double angle = Math.toRadians(previewRotation);
         float localX = (float) (Math.cos(angle) * screenX + Math.sin(angle) * screenY);
         float localY = (float) (-Math.sin(angle) * screenX + Math.cos(angle) * screenY);
-        // Invert crop offsets so the image follows the key's screen direction.
-        previewPanX -= localX;
-        previewPanY -= localY;
+        // WallpaperDrawable translates the image with these offsets, so
+        // positive screen movement keeps the picture moving with the D-pad.
+        previewPanX += localX;
+        previewPanY += localY;
         showPreview();
     }
 
