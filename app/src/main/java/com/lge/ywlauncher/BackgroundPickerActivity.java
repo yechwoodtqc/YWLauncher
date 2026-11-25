@@ -50,6 +50,7 @@ public final class BackgroundPickerActivity extends Activity {
     private int previewIndex = 0;
     private boolean previewShowing = false;
     private float previewZoom = 1f, previewRotation = 0f;
+    private float previewPanX = 0f, previewPanY = 0f;
     private Bitmap pendingImage;
     private String pendingImagePath = "";
     private LinearLayout root;
@@ -88,7 +89,7 @@ public final class BackgroundPickerActivity extends Activity {
         choices.add(new Choice("Dune", "Warm sand and bronze tones", 16, 0xff806044));
         choices.add(new Choice("Borealis", "Deep teal with northern-light green", 17, 0xff12635e));
         choices.add(new Choice("System wallpaper", "Use the phone's wallpaper", SYSTEM, Color.TRANSPARENT));
-        choices.add(new Choice("Custom image", "Choose a picture from the phone", CUSTOM_IMAGE, 0xff34495e));
+        choices.add(new Choice("Pick wallpaper", "Choose a picture from the phone", CUSTOM_IMAGE, 0xff34495e));
         int saved = prefs.getInt("background", defaultBackground());
         if (saved == 0 || saved == CLASSIC) saved = defaultBackground();
         int savedColor = prefs.getInt("custom_background", PALETTE[0]);
@@ -108,6 +109,7 @@ public final class BackgroundPickerActivity extends Activity {
 
     private void showGrid() {
         previewShowing = false;
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
         getWindow().setBackgroundDrawable(new ColorDrawable(ThemeUtils.surface(this)));
         root = pageRoot();
@@ -197,14 +199,15 @@ public final class BackgroundPickerActivity extends Activity {
             final Runnable action = actions[i];
             TextView key = label(labels[i], 15, true);
             key.setTextColor(Color.WHITE);
-            key.setGravity(Gravity.CENTER);
+            key.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            key.setPadding(dp(2), 0, dp(2), dp(2));
             key.setFocusable(true);
             key.setClickable(true);
             key.setBackground(ThemeUtils.focusBackground(this));
             key.setOnFocusChangeListener((view, focused) ->
                 key.setBackground(focused ? ThemeUtils.focusOutlineBackground(this) : ThemeUtils.focusBackground(this)));
             key.setOnClickListener(v -> action.run());
-            bar.addView(key, new LinearLayout.LayoutParams(0, dp(38), 1));
+            bar.addView(key, new LinearLayout.LayoutParams(0, dp(28), 1));
         }
         return bar;
     }
@@ -263,6 +266,7 @@ public final class BackgroundPickerActivity extends Activity {
 
     private void showPreview() {
         previewShowing = true;
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
         previewIndex=selected;
         Choice choice=currentChoice();
         root=pageRoot();
@@ -270,15 +274,17 @@ public final class BackgroundPickerActivity extends Activity {
             root.setBackgroundColor(Color.TRANSPARENT);
             getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
-        TextView heading = label(choice.title, 18, true);
-        heading.setGravity(Gravity.CENTER);
-        root.addView(heading, new LinearLayout.LayoutParams(-1, dp(34)));
+        if (choice.value != CUSTOM_IMAGE) {
+            TextView heading = label(choice.title, 18, true);
+            heading.setGravity(Gravity.CENTER);
+            root.addView(heading, new LinearLayout.LayoutParams(-1, dp(34)));
+        }
         ScrollView previewScroll=new ScrollView(this);
         previewScroll.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout mock=new LinearLayout(this);
         mock.setOrientation(LinearLayout.VERTICAL);
         mock.setPadding(dp(4),dp(4),dp(4),dp(4));
-        applyPreviewBackground(mock,choice);
+        mock.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout appGrid=new LinearLayout(this);
         appGrid.setOrientation(LinearLayout.VERTICAL);
         List<ResolveInfo> apps=visibleApps();
@@ -319,6 +325,7 @@ public final class BackgroundPickerActivity extends Activity {
         }
         previewScroll.addView(mock);
         android.widget.FrameLayout previewFrame = new android.widget.FrameLayout(this);
+        applyPreviewBackground(previewFrame, choice);
         previewFrame.addView(previewScroll, new android.widget.FrameLayout.LayoutParams(-1, -1));
         TextView leftArrow = label("‹", 38, true);
         leftArrow.setTextColor(Color.WHITE);
@@ -338,7 +345,7 @@ public final class BackgroundPickerActivity extends Activity {
         if (choice.value == CUSTOM_IMAGE) {
             boolean imageReady = hasCustomImage();
             root.addView(softKeyBar("ZOOM −", imageReady ? "SAVE" : "OPEN", "ZOOM +",
-                () -> { previewZoom = Math.max(0.5f, previewZoom - 0.1f); showPreview(); },
+                () -> { previewZoom = Math.max(1f, previewZoom - 0.1f); if (previewZoom <= 1.01f) { previewPanX=0f; previewPanY=0f; } showPreview(); },
                 () -> { if (hasCustomImage()) saveChoice(); else pickImage(); },
                 () -> { previewZoom = Math.min(3f, previewZoom + 0.1f); showPreview(); }));
         } else {
@@ -372,7 +379,7 @@ public final class BackgroundPickerActivity extends Activity {
         return found;
     }
 
-    private void applyPreviewBackground(LinearLayout target,Choice choice) {
+    private void applyPreviewBackground(View target,Choice choice) {
         if(choice.value==SYSTEM) {
             getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
             target.setBackgroundColor(Color.TRANSPARENT);
@@ -382,11 +389,11 @@ public final class BackgroundPickerActivity extends Activity {
             else if(choice.value>=PRESET_FIRST && choice.value<=PRESET_LAST)
                 target.setBackground(new PresetBackgroundDrawable(choice.value));
             else if(choice.value==CUSTOM_IMAGE && pendingImage!=null)
-                target.setBackground(new WallpaperDrawable(pendingImage,"crop",previewZoom,previewRotation));
+                target.setBackground(new WallpaperDrawable(pendingImage,"crop",previewZoom,previewRotation,previewPanX,previewPanY));
             else if(choice.value==CUSTOM_IMAGE) {
                 String path=prefs.getString("custom_background_path","");
                 Bitmap bitmap=path.isEmpty()?null:decodePreviewBitmap(path);
-                if(bitmap!=null) target.setBackground(new WallpaperDrawable(bitmap,prefs.getString("wallpaper_fit","crop"),previewZoom,previewRotation));
+                if(bitmap!=null) target.setBackground(new WallpaperDrawable(bitmap,prefs.getString("wallpaper_fit","crop"),previewZoom,previewRotation,previewPanX,previewPanY));
                 else target.setBackgroundColor(0xff34495e);
             } else target.setBackgroundColor(choice.color);
         }
@@ -457,6 +464,9 @@ public final class BackgroundPickerActivity extends Activity {
             if(pendingImage==null) throw new java.io.IOException("Selected file is not a supported image.");
             pendingImagePath=temp.getAbsolutePath();
             previewIndex=selected;
+            previewZoom=1f;
+            previewRotation=0f;
+            previewPanX=0f; previewPanY=0f;
             showPreview();
         } catch(Exception e) {
             android.widget.Toast.makeText(this,"Could not preview that image.",android.widget.Toast.LENGTH_LONG).show();
@@ -489,7 +499,9 @@ public final class BackgroundPickerActivity extends Activity {
             }
             edit.putString("wallpaper_fit","crop").putInt("background",CUSTOM_IMAGE)
                 .putFloat("custom_background_zoom", previewZoom)
-                .putFloat("custom_background_rotation", previewRotation);
+                .putFloat("custom_background_rotation", previewRotation)
+                .putFloat("custom_background_pan_x", previewPanX)
+                .putFloat("custom_background_pan_y", previewPanY);
         } else {
             edit.putInt("background",choice.value);
         }
@@ -500,14 +512,21 @@ public final class BackgroundPickerActivity extends Activity {
 
     @Override public boolean onKeyDown(int keyCode,KeyEvent event) {
         if (previewShowing) {
-            if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT) { stepPreview(-1); return true; }
-            if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) { stepPreview(1); return true; }
-            if (keyCode==KeyEvent.KEYCODE_DPAD_UP) {
-                if (currentChoice().value == CUSTOM_IMAGE) { previewRotation = (previewRotation + 270f) % 360f; showPreview(); }
-                return true;
-            }
-            if (keyCode==KeyEvent.KEYCODE_DPAD_DOWN) {
-                if (currentChoice().value == CUSTOM_IMAGE) { previewRotation = (previewRotation + 90f) % 360f; showPreview(); }
+            if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT || keyCode==KeyEvent.KEYCODE_DPAD_RIGHT
+                || keyCode==KeyEvent.KEYCODE_DPAD_UP || keyCode==KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (currentChoice().value == CUSTOM_IMAGE && previewZoom > 1.01f) {
+                    float step = dp(24);
+                    if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT) previewPanX += step;
+                    if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) previewPanX -= step;
+                    if (keyCode==KeyEvent.KEYCODE_DPAD_UP) previewPanY += step;
+                    if (keyCode==KeyEvent.KEYCODE_DPAD_DOWN) previewPanY -= step;
+                    showPreview();
+                } else if (currentChoice().value == CUSTOM_IMAGE && keyCode==KeyEvent.KEYCODE_DPAD_UP) {
+                    previewRotation=(previewRotation+270f)%360f; showPreview();
+                } else if (currentChoice().value == CUSTOM_IMAGE && keyCode==KeyEvent.KEYCODE_DPAD_DOWN) {
+                    previewRotation=(previewRotation+90f)%360f; showPreview();
+                } else if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT) stepPreview(-1);
+                else if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) stepPreview(1);
                 return true;
             }
             if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT) {
@@ -525,7 +544,12 @@ public final class BackgroundPickerActivity extends Activity {
                 else saveChoice();
                 return true;
             }
-            if (keyCode==KeyEvent.KEYCODE_BACK) { showGrid(); return true; }
+            if (keyCode==KeyEvent.KEYCODE_BACK) {
+                if (currentChoice().value == CUSTOM_IMAGE && previewZoom > 1.01f) {
+                    previewZoom = 1f; previewPanX = 0f; previewPanY = 0f; showPreview();
+                } else showGrid();
+                return true;
+            }
         } else {
             if (keyCode==KeyEvent.KEYCODE_SOFT_LEFT || keyCode==KeyEvent.KEYCODE_BACK) { finish(); return true; }
             if (keyCode==KeyEvent.KEYCODE_SOFT_RIGHT) { showPreview(); return true; }
