@@ -11,14 +11,19 @@ public class WallpaperDrawable extends Drawable {
     private final Bitmap bitmap;
     private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private final String mode;
-    private final float zoom, rotation;
+    private final float zoom, rotation, panX, panY;
 
     public WallpaperDrawable(Bitmap bitmap, String mode) { this(bitmap, mode, 1f, 0f); }
     public WallpaperDrawable(Bitmap bitmap, String mode, float zoom, float rotation) {
+        this(bitmap, mode, zoom, rotation, 0f, 0f);
+    }
+    public WallpaperDrawable(Bitmap bitmap, String mode, float zoom, float rotation, float panX, float panY) {
         this.bitmap = bitmap;
         this.mode = mode == null ? "crop" : mode;
-        this.zoom = Math.max(0.5f, Math.min(3f, zoom));
+        this.zoom = Math.max(1f, Math.min(3f, zoom));
         this.rotation = rotation;
+        this.panX = panX;
+        this.panY = panY;
     }
     @Override public void draw(Canvas canvas) {
         Rect b = getBounds();
@@ -28,8 +33,8 @@ public class WallpaperDrawable extends Drawable {
         float base = "fit".equals(mode) ? Math.min(sx, sy) : Math.max(sx, sy);
         float scale = base * zoom;
         float dw = iw * scale, dh = ih * scale;
-        RectF dst = new RectF(b.left + (vw - dw) / 2f, b.top + (vh - dh) / 2f,
-            b.left + (vw + dw) / 2f, b.top + (vh + dh) / 2f);
+        RectF dst = new RectF(b.left + (vw - dw) / 2f + panX, b.top + (vh - dh) / 2f + panY,
+            b.left + (vw + dw) / 2f + panX, b.top + (vh + dh) / 2f + panY);
         canvas.save();
         canvas.clipRect(b);
         canvas.rotate(rotation, b.exactCenterX(), b.exactCenterY());
