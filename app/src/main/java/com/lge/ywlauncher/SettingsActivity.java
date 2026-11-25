@@ -380,7 +380,7 @@ public class SettingsActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(14), dp(10), dp(12), dp(10));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
         row.setFocusable(false);
         row.setClickable(true);
         row.setBackground(settingsCard(false));
@@ -441,7 +441,7 @@ public class SettingsActivity extends Activity {
         row.addView(toggle, new LinearLayout.LayoutParams(-2, -2));
         row.setOnClickListener(v -> toggle.setChecked(!toggle.isChecked()));
         LinearLayout.LayoutParams switchCardParams = new LinearLayout.LayoutParams(-1, -2);
-        switchCardParams.setMargins(dp(10), dp(3), dp(10), dp(3));
+        switchCardParams.setMargins(dp(4), dp(3), dp(4), dp(3));
         content.addView(row, switchCardParams);
     }
 
