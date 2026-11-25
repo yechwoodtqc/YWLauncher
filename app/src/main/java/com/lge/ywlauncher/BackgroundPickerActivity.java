@@ -345,8 +345,7 @@ public final class BackgroundPickerActivity extends Activity {
         leftArrow.setBackgroundColor(Color.TRANSPARENT);
         leftArrow.setOnClickListener(v -> {
             if (choice.value == CUSTOM_IMAGE && previewZoom > 1.01f) {
-                previewPanX -= dp(24);
-                showPreview();
+                panImage(KeyEvent.KEYCODE_DPAD_LEFT);
             } else stepPreview(-1);
         });
         android.widget.FrameLayout.LayoutParams leftParams = new android.widget.FrameLayout.LayoutParams(dp(38), -1, Gravity.LEFT | Gravity.CENTER_VERTICAL);
@@ -357,8 +356,7 @@ public final class BackgroundPickerActivity extends Activity {
         rightArrow.setBackgroundColor(Color.TRANSPARENT);
         rightArrow.setOnClickListener(v -> {
             if (choice.value == CUSTOM_IMAGE && previewZoom > 1.01f) {
-                previewPanX += dp(24);
-                showPreview();
+                panImage(KeyEvent.KEYCODE_DPAD_RIGHT);
             } else stepPreview(1);
         });
         android.widget.FrameLayout.LayoutParams rightParams = new android.widget.FrameLayout.LayoutParams(dp(38), -1, Gravity.RIGHT | Gravity.CENTER_VERTICAL);
@@ -536,19 +534,30 @@ public final class BackgroundPickerActivity extends Activity {
         finish();
     }
 
+    private void panImage(int keyCode) {
+        float distance = dp(24);
+        float screenX = 0f, screenY = 0f;
+        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) screenX = -distance;
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) screenX = distance;
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) screenY = -distance;
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) screenY = distance;
+        double angle = Math.toRadians(previewRotation);
+        float localX = (float) (Math.cos(angle) * screenX + Math.sin(angle) * screenY);
+        float localY = (float) (-Math.sin(angle) * screenX + Math.cos(angle) * screenY);
+        previewPanX += localX;
+        previewPanY += localY;
+        showPreview();
+    }
+
     @Override public boolean onKeyDown(int keyCode,KeyEvent event) {
         if (previewShowing) {
             if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT || keyCode==KeyEvent.KEYCODE_DPAD_RIGHT
                 || keyCode==KeyEvent.KEYCODE_DPAD_UP || keyCode==KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (currentChoice().value == CUSTOM_IMAGE && previewZoom > 1.01f) {
                     float step = dp(24);
-                    // D-pad direction follows the picture: Right moves the
-                    // picture right, Left moves it left, Up moves it up.
-                    if (keyCode==KeyEvent.KEYCODE_DPAD_LEFT) previewPanX -= step;
-                    if (keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) previewPanX += step;
-                    if (keyCode==KeyEvent.KEYCODE_DPAD_UP) previewPanY -= step;
-                    if (keyCode==KeyEvent.KEYCODE_DPAD_DOWN) previewPanY += step;
-                    showPreview();
+                    // Map screen directions through the current rotation so
+                    // D-pad movement always follows the direction pressed.
+                    panImage(keyCode);
                 } else if (currentChoice().value == CUSTOM_IMAGE && keyCode==KeyEvent.KEYCODE_DPAD_UP) {
                     previewRotation=(previewRotation+270f)%360f; showPreview();
                 } else if (currentChoice().value == CUSTOM_IMAGE && keyCode==KeyEvent.KEYCODE_DPAD_DOWN) {
