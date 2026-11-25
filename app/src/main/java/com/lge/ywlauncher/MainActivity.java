@@ -865,6 +865,13 @@ public class MainActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && android.os.Build.VERSION.SDK_INT >= 21) {
+            updateRecentTaskDescription();
+        }
+    }
+
     @Override protected void onResume() {
         super.onResume();
         if (android.os.Build.VERSION.SDK_INT >= 21) {
