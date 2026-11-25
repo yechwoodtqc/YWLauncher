@@ -25,6 +25,9 @@ public class WeatherActivity extends Activity {
     private static final int LOCATION_PERMISSION_REQUEST = 71;
     private static final String PREFS = "launcher";
     private final Handler handler = new Handler();
+    private final ExecutorService forecastIconExecutor = Executors.newFixedThreadPool(2);
+    private final java.util.concurrent.ConcurrentHashMap<String, Bitmap> forecastIconCache =
+        new java.util.concurrent.ConcurrentHashMap<>();
     private TextView locationTitle, updated, forecasted;
     private LinearLayout forecastList, root, toolbar;
     private ScrollView forecastScroller;
@@ -676,7 +679,7 @@ public class WeatherActivity extends Activity {
         card.setBackground(ThemeUtils.focusBackground(this));
         card.setFocusable(true);
         card.setClickable(true);
-        card.addView(weatherIcon(period.optString("shortForecast", "") + (period.optBoolean("isDaytime", true) ? "" : " night"), 48),
+        card.addView(dailyWeatherIcon(period, 48),
             new LinearLayout.LayoutParams(dp(56), dp(56)));
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
@@ -695,6 +698,61 @@ public class WeatherActivity extends Activity {
         card.setOnFocusChangeListener((v, focused) ->
             card.setBackground(focused ? outlineFocusBackground() : ThemeUtils.focusBackground(this)));
         forecastList.addView(card, rowMargins());
+    }
+
+    private View dailyWeatherIcon(JSONObject period, int sizeDp) {
+        String condition = period.optString("shortForecast", "")
+            + (period.optBoolean("isDaytime", true) ? "" : " night");
+        FrameLayout frame = new FrameLayout(this);
+        frame.addView(weatherIcon(condition, sizeDp),
+            new FrameLayout.LayoutParams(-1, -1));
+        String iconUrl = period.optString("icon", "");
+        if (iconUrl != null && iconUrl.startsWith("https://")) {
+            ImageView image = new ImageView(this);
+            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            image.setContentDescription(condition);
+            frame.addView(image, new FrameLayout.LayoutParams(-1, -1));
+            loadDailyForecastImage(image, iconUrl);
+        }
+        return frame;
+    }
+
+    /**
+     * NWS supplies a separate icon URL for every forecast period. Load that
+     * period-specific image so the daily forecast changes with its actual
+     * conditions instead of relying only on a generic fallback drawing.
+     */
+    private void loadDailyForecastImage(ImageView target, String url) {
+        target.setTag(url);
+        Bitmap cached = forecastIconCache.get(url);
+        if (cached != null && !cached.isRecycled()) {
+            target.setImageBitmap(cached);
+            return;
+        }
+        forecastIconExecutor.execute(() -> {
+            Bitmap decoded = null;
+            HttpURLConnection connection = null;
+            try {
+                URLConnection opened = new URL(url).openConnection();
+                opened.setConnectTimeout(9000);
+                opened.setReadTimeout(9000);
+                opened.setRequestProperty("User-Agent", "YWLauncher/1.2 (Android weather client)");
+                connection = (HttpURLConnection) opened;
+                try (InputStream input = connection.getInputStream()) {
+                    decoded = BitmapFactory.decodeStream(input);
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+            if (decoded != null) {
+                forecastIconCache.put(url, decoded);
+                Bitmap result = decoded;
+                handler.post(() -> {
+                    if (!isFinishing() && url.equals(target.getTag())) target.setImageBitmap(result);
+                });
+            }
+        });
     }
 
     private String formatForecastTime(String iso) {
@@ -1650,6 +1708,7 @@ public class WeatherActivity extends Activity {
         if(locationTimeout!=null)handler.removeCallbacks(locationTimeout);
         if(autoRefreshRunnable!=null)handler.removeCallbacks(autoRefreshRunnable);
         if(pendingLocationListener!=null)try{((LocationManager)getSystemService(LOCATION_SERVICE)).removeUpdates(pendingLocationListener);}catch(Exception ignored){}
+        forecastIconExecutor.shutdownNow();
         super.onDestroy();
     }
 }
