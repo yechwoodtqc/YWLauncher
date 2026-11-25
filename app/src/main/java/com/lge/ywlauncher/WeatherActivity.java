@@ -58,10 +58,10 @@ public class WeatherActivity extends Activity {
                 catch (Exception appIconError) { return null; }
             }
         }
-        int size = 192;
+        int size = Math.max(64, dp(48));
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
-        bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
+        bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
