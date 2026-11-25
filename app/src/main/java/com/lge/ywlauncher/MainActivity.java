@@ -786,6 +786,16 @@ public class MainActivity extends Activity {
         manager.notify(42, notification.build());
     }
 
+    private int gridRowForFocusedView(View focused) {
+        if (focused == null || appsArea == null) return 0;
+        View current = focused;
+        while (current.getParent() instanceof View && current.getParent() != appsArea) {
+            current = (View) current.getParent();
+        }
+        if (current.getParent() != appsArea) return 0;
+        return Math.max(0, appsArea.indexOfChild(current));
+    }
+
     private boolean handleGridPageNavigation(int keyCode) {
         if (!"grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
             || (keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT)) return false;
@@ -797,22 +807,18 @@ public class MainActivity extends Activity {
         }
         if (index < 0) return false;
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
-        int actualRow = -1;
-        if (appsArea != null) {
-            for (int row = 0; row < appsArea.getChildCount(); row++) {
-                View child = appsArea.getChildAt(row);
-                if (child instanceof ViewGroup && ((ViewGroup) child).indexOfChild(focused) >= 0) {
-                    actualRow = row;
-                    break;
-                }
-            }
-        }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-            && (index % columns == columns - 1 || index + 1 >= apps.size())) {
+        int actualRow = gridRowForFocusedView(focused);
+        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
+        int pageSize = rows * columns;
+        int localIndex = index - currentPage * pageSize;
+        int column = localIndex % columns;
+        boolean atRightEdge = column == columns - 1
+            || index + 1 >= Math.min(apps.size(), (currentPage + 1) * pageSize);
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && atRightEdge) {
             if (currentPage + 1 < pageCount()) changePage(1, Math.max(0, actualRow), 0);
             return true;
         }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && column == 0) {
             if (currentPage > 0) changePage(-1, Math.max(0, actualRow), columns - 1);
             return true;
         }
@@ -837,31 +843,7 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
         }
         if (keyCode == KeyEvent.KEYCODE_MENU) { startActivity(new Intent(this, SettingsActivity.class)); return true; }
-        if ("grid".equals(getSharedPreferences("launcher", 0).getString("layout_mode", "grid"))
-            && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
-            View focused = getCurrentFocus();
-            if (focused != null && focused.getTag() instanceof String) {
-                int index = -1;
-                for (int i = 0; i < apps.size(); i++) if (apps.get(i).activityInfo.name.equals(focused.getTag())) { index = i; break; }
-                int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
-                int actualRow = -1;
-                if (appsArea != null) {
-                    for (int row = 0; row < appsArea.getChildCount(); row++) {
-                        ViewGroup rowView = (ViewGroup) appsArea.getChildAt(row);
-                        if (rowView.indexOfChild(focused) >= 0) { actualRow = row; break; }
-                    }
-                }
-                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-                    && (index % columns == columns - 1 || index + 1 >= apps.size())) {
-                    if (currentPage + 1 < pageCount()) changePage(1, Math.max(0, actualRow), 0);
-                    return true;
-                }
-                if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0) {
-                    if (currentPage > 0) changePage(-1, Math.max(0, actualRow), columns - 1);
-                    return true;
-                }
-            }
-        }
+        // Grid paging is intercepted once in dispatchKeyEvent(), before default focus search.
         return super.onKeyDown(keyCode, event);
     }
 
