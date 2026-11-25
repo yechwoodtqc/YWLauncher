@@ -999,7 +999,13 @@ public class WeatherActivity extends Activity {
             TextView check = text(index == selected ? "✓" : "", 20, true);
             check.setTextColor(ThemeUtils.accent(this));
             row.addView(check, new LinearLayout.LayoutParams(dp(28), -2));
-            row.setOnFocusChangeListener((v, focused) -> row.setBackground(weatherSettingBackground(focused)));
+            row.setOnFocusChangeListener((v, focused) -> {
+                row.setBackground(weatherSettingBackground(focused));
+                int focusedText = prefs().getBoolean("focus_outline_only", true)
+                    ? ThemeUtils.text(this) : ThemeUtils.onAccent(this);
+                label.setTextColor(focused ? focusedText : ThemeUtils.text(this));
+                check.setTextColor(focused ? focusedText : ThemeUtils.accent(this));
+            });
             row.setOnClickListener(v -> listener.onSelected(index));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.setMargins(dp(4), dp(3), dp(4), dp(3));
