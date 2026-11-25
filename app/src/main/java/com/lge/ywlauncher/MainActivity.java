@@ -298,17 +298,24 @@ public class MainActivity extends Activity {
     }
 
     private android.graphics.Bitmap createTaskIcon(int resourceId) {
-        android.graphics.drawable.Drawable drawable = getDrawable(resourceId);
-        if (drawable == null) {
-            try { drawable = getPackageManager().getActivityIcon(getComponentName()); }
-            catch (Exception activityIconError) {
-                try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
-                catch (Exception appIconError) { return null; }
+        android.graphics.drawable.Drawable drawable = null;
+        try {
+            drawable = getPackageManager().getActivityIcon(new ComponentName(this, MainActivity.class));
+        } catch (Exception activityIconError) {
+            try { drawable = getPackageManager().getApplicationIcon(getApplicationInfo()); }
+            catch (Exception appIconError) {
+                try { drawable = getDrawable(resourceId); }
+                catch (Exception ignored) { return null; }
             }
         }
-        // Render the exact manifest-registered activity icon. This is the
-        // same source Android's task switcher uses as its icon fallback.
-        int size = Math.max(64, dp(48));
+        if (drawable == null) {
+            try { drawable = getDrawable(resourceId); }
+            catch (Exception ignored) { return null; }
+        }
+        // Supply a generously sized, density-tagged bitmap. Several Android 6
+        // OEM task switchers discard vector/activity icons and only render the
+        // bitmap stored in TaskDescription.
+        int size = Math.max(128, dp(96));
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
         bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
@@ -537,7 +544,7 @@ public class MainActivity extends Activity {
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
                 .start();
         }
-        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", 3), 2, 6);
+        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
         int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
         int pageStart = currentPage * rows * columns;
         int pageEnd = Math.min(apps.size(), pageStart + rows * columns);
