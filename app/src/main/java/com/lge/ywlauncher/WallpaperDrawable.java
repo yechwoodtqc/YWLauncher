@@ -29,15 +29,23 @@ public class WallpaperDrawable extends Drawable {
         Rect b = getBounds();
         if (bitmap == null || b.isEmpty()) return;
         float vw = b.width(), vh = b.height(), iw = bitmap.getWidth(), ih = bitmap.getHeight();
-        float sx = vw / iw, sy = vh / ih;
+        boolean quarterTurn = (Math.round(rotation / 90f) & 1) == 1;
+        float rotatedWidth = quarterTurn ? ih : iw;
+        float rotatedHeight = quarterTurn ? iw : ih;
+        float sx = vw / rotatedWidth, sy = vh / rotatedHeight;
         float base = "fit".equals(mode) ? Math.min(sx, sy) : Math.max(sx, sy);
         float scale = base * zoom;
         float dw = iw * scale, dh = ih * scale;
-        RectF dst = new RectF(b.left + (vw - dw) / 2f + panX, b.top + (vh - dh) / 2f + panY,
-            b.left + (vw + dw) / 2f + panX, b.top + (vh + dh) / 2f + panY);
+        float maxPanX = Math.max(0f, (rotatedWidth * scale - vw) / 2f);
+        float maxPanY = Math.max(0f, (rotatedHeight * scale - vh) / 2f);
+        float boundedPanX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+        float boundedPanY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+        RectF dst = new RectF(b.left + (vw - dw) / 2f, b.top + (vh - dh) / 2f,
+            b.left + (vw + dw) / 2f, b.top + (vh + dh) / 2f);
         canvas.save();
         canvas.clipRect(b);
         canvas.rotate(rotation, b.exactCenterX(), b.exactCenterY());
+        canvas.translate(boundedPanX, boundedPanY);
         canvas.drawBitmap(bitmap, null, dst, paint);
         canvas.restore();
     }
