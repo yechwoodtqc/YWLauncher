@@ -137,9 +137,11 @@ public class SettingsActivity extends Activity {
         section("Tweaks");
         addSettingRow("Pick wallpaper", keptWallpaperSummary(), this::customizeKeptWallpaper);
         addSettingRow("Add emojis to T9 suggestions", "LG Keyboard · Word Suggestions", this::openLgKeyboardSettings);
-        addSwitchRowWithInfo("Enable YWHome to be camera app", "camera_home_enabled", false,
-            this::updateCameraHomeHandler,
-            "While on phone call to get to main screen press top right button options, then press the camera button. Then press top left button gallery, then top left again for camera. And select YWHome to get to main screen.");
+        if (exaltDevice) {
+            addSwitchRowWithInfo("Enable YWHome to be camera app", "camera_home_enabled", false,
+                this::updateCameraHomeHandler,
+                "While on phone call to get to main screen press top right button options, then press the camera button. Then press top left button gallery, then top left again for camera. And select YWHome to get to main screen.");
+        }
 
         section("Tools");
         addSettingRow("Export logcat", "Save recent Android log messages to Downloads.", this::exportLogcat);
