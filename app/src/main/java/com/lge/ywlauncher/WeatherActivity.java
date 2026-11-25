@@ -737,6 +737,9 @@ public class WeatherActivity extends Activity {
                 opened.setConnectTimeout(9000);
                 opened.setReadTimeout(9000);
                 opened.setRequestProperty("User-Agent", "YWLauncher/1.2 (Android weather client)");
+                if (opened instanceof javax.net.ssl.HttpsURLConnection) {
+                    LegacyTlsCompat.configure(this, (javax.net.ssl.HttpsURLConnection) opened);
+                }
                 connection = (HttpURLConnection) opened;
                 try (InputStream input = connection.getInputStream()) {
                     decoded = BitmapFactory.decodeStream(input);
