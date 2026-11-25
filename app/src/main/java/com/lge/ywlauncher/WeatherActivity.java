@@ -1192,7 +1192,7 @@ public class WeatherActivity extends Activity {
             chevron.setTextColor(focused ? focusedText : ThemeUtils.secondaryText(this));
         });
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);
-        params.setMargins(dp(12),dp(4),dp(12),dp(4));
+        params.setMargins(dp(4),dp(3),dp(4),dp(3));
         forecastList.addView(row,params);
     }
 
@@ -1590,7 +1590,7 @@ public class WeatherActivity extends Activity {
             boolean rain = condition.contains("rain") || condition.contains("shower") || condition.contains("drizzle") || thunder;
             boolean snow = condition.contains("snow") || condition.contains("sleet") || condition.contains("ice") || condition.contains("blizzard");
             boolean fog = condition.contains("fog") || condition.contains("haze") || condition.contains("smoke");
-            boolean partly = condition.contains("partly") || condition.contains("mostly");
+            boolean partly = condition.contains("partly") || condition.contains("mostly sunny");
             boolean sunny = condition.contains("sun") || condition.contains("clear") || partly;
             boolean night = condition.contains("night") || condition.contains("tonight") || condition.contains("overnight");
             boolean cloudy = condition.contains("cloud") || condition.contains("overcast") || partly || rain || snow || fog || thunder;
