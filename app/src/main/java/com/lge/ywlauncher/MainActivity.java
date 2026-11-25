@@ -257,7 +257,9 @@ public class MainActivity extends Activity {
                                 String fit = wallpaperPrefs.getString("wallpaper_fit", "crop");
                                 root.setBackground(new WallpaperDrawable(bitmap, fit,
                                     wallpaperPrefs.getFloat("custom_background_zoom", 1f),
-                                    wallpaperPrefs.getFloat("custom_background_rotation", 0f)));
+                                    wallpaperPrefs.getFloat("custom_background_rotation", 0f),
+                                    wallpaperPrefs.getFloat("custom_background_pan_x", 0f),
+                                    wallpaperPrefs.getFloat("custom_background_pan_y", 0f)));
                                 applied = true;
                             }
                         }
