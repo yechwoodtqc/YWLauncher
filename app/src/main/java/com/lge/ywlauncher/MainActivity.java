@@ -306,10 +306,10 @@ public class MainActivity extends Activity {
         }
         // Render the exact manifest-registered activity icon. This is the
         // same source Android's task switcher uses as its icon fallback.
-        int size = 192;
+        int size = Math.max(64, dp(48));
         android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
             size, size, android.graphics.Bitmap.Config.ARGB_8888);
-        bitmap.setDensity(android.graphics.Bitmap.DENSITY_NONE);
+        bitmap.setDensity(getResources().getDisplayMetrics().densityDpi);
         android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
         drawable.setBounds(0, 0, size, size);
         drawable.draw(canvas);
@@ -542,12 +542,17 @@ public class MainActivity extends Activity {
         int index = pageStart + clamp(targetRow, 0, rows - 1) * columns + clamp(targetColumn, 0, columns - 1);
         if (index >= pageEnd) index = Math.max(pageStart, pageEnd - 1);
         int local = index - pageStart, rowIndex = local / columns, col = local % columns;
-        View target = null;
-        if (rowIndex < appsArea.getChildCount() && appsArea.getChildAt(rowIndex) instanceof ViewGroup) {
-            ViewGroup row = (ViewGroup) appsArea.getChildAt(rowIndex);
-            if (col < row.getChildCount()) target = row.getChildAt(col);
-        }
-        if (target != null && target.isFocusable()) target.requestFocus(); else focusFirstApp();
+        final int focusRow = rowIndex;
+        final int focusColumn = col;
+        if (appsArea != null) appsArea.post(() -> {
+            View target = null;
+            if (focusRow < appsArea.getChildCount() && appsArea.getChildAt(focusRow) instanceof ViewGroup) {
+                ViewGroup row = (ViewGroup) appsArea.getChildAt(focusRow);
+                if (focusColumn < row.getChildCount()) target = row.getChildAt(focusColumn);
+            }
+            if (target != null && target.isFocusable()) target.requestFocus();
+            else focusFirstApp();
+        });
     }
 
     private int pageCount() {
@@ -790,19 +795,20 @@ public class MainActivity extends Activity {
                 int index = -1;
                 for (int i = 0; i < apps.size(); i++) if (apps.get(i).activityInfo.name.equals(focused.getTag())) { index = i; break; }
                 int columns = clamp(getSharedPreferences("launcher", 0).getInt("grid_columns", 3), 2, 6);
+                int actualRow = -1;
+                if (appsArea != null) {
+                    for (int row = 0; row < appsArea.getChildCount(); row++) {
+                        ViewGroup rowView = (ViewGroup) appsArea.getChildAt(row);
+                        if (rowView.indexOfChild(focused) >= 0) { actualRow = row; break; }
+                    }
+                }
                 if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
                     && (index % columns == columns - 1 || index + 1 >= apps.size())) {
-                    if (currentPage + 1 < pageCount()) {
-                        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
-                        changePage(1, (index % (rows * columns)) / columns, 0);
-                    }
+                    if (currentPage + 1 < pageCount()) changePage(1, Math.max(0, actualRow), 0);
                     return true;
                 }
                 if (index >= 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index % columns == 0) {
-                    if (currentPage > 0) {
-                        int rows = clamp(getSharedPreferences("launcher", 0).getInt("grid_rows", defaultGridRows()), 2, 6);
-                        changePage(-1, (index % (rows * columns)) / columns, columns - 1);
-                    }
+                    if (currentPage > 0) changePage(-1, Math.max(0, actualRow), columns - 1);
                     return true;
                 }
             }
