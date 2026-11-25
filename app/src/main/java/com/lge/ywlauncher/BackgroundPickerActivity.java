@@ -419,10 +419,10 @@ public final class BackgroundPickerActivity extends Activity {
     private void stepPreview(int delta) {
         previewIndex=(previewIndex+delta+choices.size())%choices.size();
         selected=previewIndex;
-        previewZoom = Math.max(1f, prefs.getFloat("custom_background_zoom", 1f));
+        previewZoom = 1f;
         previewRotation = prefs.getFloat("custom_background_rotation", 0f);
-        previewPanX = prefs.getFloat("custom_background_pan_x", 0f);
-        previewPanY = prefs.getFloat("custom_background_pan_y", 0f);
+        previewPanX = 0f;
+        previewPanY = 0f;
         showPreview();
     }
 
