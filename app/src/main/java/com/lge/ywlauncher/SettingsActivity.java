@@ -1219,9 +1219,10 @@ public class SettingsActivity extends Activity {
         preview.setBackgroundColor(Color.BLACK);
         frame.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1f));
 
-        final float[] zoom = {Math.max(1f, Math.min(3f, prefs.getFloat("kept_wallpaper_zoom", 1f)))};
-        final float[] rotation = {prefs.getFloat("kept_wallpaper_rotation", 0f)};
-        final float[] pan = {prefs.getFloat("kept_wallpaper_pan_x", 0f), prefs.getFloat("kept_wallpaper_pan_y", 0f)};
+        final float[] zoom = {editingSavedImage ? Math.max(1f, Math.min(3f, prefs.getFloat("kept_wallpaper_zoom", 1f))) : 1f};
+        final float[] rotation = {editingSavedImage ? prefs.getFloat("kept_wallpaper_rotation", 0f) : 0f};
+        final float[] pan = {editingSavedImage ? prefs.getFloat("kept_wallpaper_pan_x", 0f) : 0f,
+            editingSavedImage ? prefs.getFloat("kept_wallpaper_pan_y", 0f) : 0f};
         Runnable updatePreview = () -> {
             if (preview.getWidth() <= 0 || preview.getHeight() <= 0) return;
             boolean quarterTurn = ((Math.round(rotation[0] / 90f) & 1) == 1);
