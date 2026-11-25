@@ -201,8 +201,8 @@ public final class BackgroundPickerActivity extends Activity {
             final Runnable action = actions[i];
             TextView key = label(labels[i], 16, true);
             key.setTextColor(Color.WHITE);
-            key.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-            key.setPadding(dp(2), 0, dp(2), dp(2));
+            key.setGravity(Gravity.CENTER);
+            key.setPadding(dp(2), 0, dp(2), 0);
             key.setFocusable(true);
             key.setClickable(true);
             key.setBackground(ThemeUtils.focusBackground(this));
@@ -334,6 +334,9 @@ public final class BackgroundPickerActivity extends Activity {
             // Put the selected image on the full preview root, not just the
             // scrolling content frame, so it reaches the very top edge.
             applyPreviewBackground(root, choice);
+            android.graphics.drawable.Drawable fullBleed = root.getBackground();
+            root.setBackgroundColor(Color.TRANSPARENT);
+            if (fullBleed != null) getWindow().setBackgroundDrawable(fullBleed);
             previewFrame.setBackgroundColor(Color.TRANSPARENT);
         } else {
             applyPreviewBackground(previewFrame, choice);
@@ -544,8 +547,9 @@ public final class BackgroundPickerActivity extends Activity {
         double angle = Math.toRadians(previewRotation);
         float localX = (float) (Math.cos(angle) * screenX + Math.sin(angle) * screenY);
         float localY = (float) (-Math.sin(angle) * screenX + Math.cos(angle) * screenY);
-        previewPanX += localX;
-        previewPanY += localY;
+        // Invert crop offsets so the image follows the key's screen direction.
+        previewPanX -= localX;
+        previewPanY -= localY;
         showPreview();
     }
 
